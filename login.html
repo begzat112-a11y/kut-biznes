@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#005F40">
+  <title>Вход — КУТ: БИЗНЕС</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --kut-green: #005F40;
+      --kut-green-dark: #003F2A;
+      --kut-green-soft: #E6F1ED;
+      --kut-gold: #D4AF37;
+      --kut-gold-dark: #B8952A;
+      --kut-bg: #F4F7F5;
+      --kut-surface: #FFFFFF;
+      --kut-border: #E3EAE6;
+      --kut-text: #14211C;
+      --kut-muted: #64776E;
+      --kut-danger: #C0392B;
+      --radius-sm: 10px;
+      --radius: 14px;
+      --radius-lg: 22px;
+      --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
+      --shadow-md: 0 6px 18px rgba(16,32,25,.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, #005F40 0%, #003F2A 100%);
+      color: var(--kut-text);
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      background: #fff;
+      border-radius: 24px;
+      padding: 32px 28px;
+      box-shadow: var(--shadow-lg);
+      animation: cardIn .35s cubic-bezier(.2,.9,.3,1.1);
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      justify-content: center;
+    }
+    .auth-brand__mark {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: var(--kut-green);
+      color: var(--kut-gold);
+      display: grid; place-items: center;
+      font-size: 26px;
+      font-weight: 800;
+      box-shadow: 0 8px 20px rgba(0,95,64,.30);
+    }
+    .auth-brand__text { line-height: 1.15; }
+    .auth-brand__text strong {
+      display: block;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--kut-green);
+      letter-spacing: -.3px;
+    }
+    .auth-brand__text small {
+      display: block;
+      font-size: 12px;
+      color: var(--kut-muted);
+      margin-top: 2px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--kut-green-soft);
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 22px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px 12px;
+      border: none;
+      background: transparent;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--kut-muted);
+      cursor: pointer;
+      transition: all .18s ease;
+    }
+    .auth-tab.is-active {
+      background: #fff;
+      color: var(--kut-green);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+
+    .form-field {
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-field label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--kut-text);
+    }
+    .form-field label .req { color: var(--kut-danger); margin-left: 2px; }
+    .form-field input {
+      width: 100%;
+      padding: 13px 15px;
+      border: 1.5px solid var(--kut-border);
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--kut-text);
+      outline: none;
+      background: #fff;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .form-field input:focus {
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .form-field input.is-invalid {
+      border-color: var(--kut-danger);
+      box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+    .form-error {
+      font-size: 12px;
+      color: var(--kut-danger);
+      min-height: 14px;
+      font-weight: 500;
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 15px 18px;
+      border: none;
+      border-radius: 14px;
+      background: var(--kut-green);
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,95,64,.28);
+      transition: background .18s ease, transform .12s ease;
+      margin-top: 8px;
+    }
+    .auth-btn:hover { background: var(--kut-green-dark); }
+    .auth-btn:active { transform: translateY(1px); }
+    .auth-btn:disabled { opacity: .7; cursor: wait; }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--kut-muted);
+    }
+    .auth-footer a {
+      color: var(--kut-green);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .auth-message {
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .auth-message.is-error {
+      display: block;
+      background: rgba(192,57,43,.08);
+      color: var(--kut-danger);
+      border: 1px solid rgba(192,57,43,.20);
+    }
+    .auth-message.is-success {
+      display: block;
+      background: rgba(30,190,90,.08);
+      color: #0F7F3A;
+      border: 1px solid rgba(30,190,90,.20);
+    }
+
+    .hidden { display: none !important; }
+    ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
+  </style>
+</head>
+<body>
+
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-brand__mark">К</div>
+      <div class="auth-brand__text">
+        <strong>КУТ: БИЗНЕС</strong>
+        <small>Облачная система учёта</small>
+      </div>
+    </div>
+
+    <!-- Табы: Вход / Регистрация -->
+    <div class="auth-tabs" role="tablist">
+      <button class="auth-tab is-active" type="button" data-tab="login" role="tab" aria-selected="true">
+        Вход
+      </button>
+      <button class="auth-tab" type="button" data-tab="register" role="tab" aria-selected="false">
+        Регистрация для бизнеса
+      </button>
+    </div>
+
+    <!-- Сообщение -->
+    <div class="auth-message" id="authMessage"></div>
+
+    <!-- ============ ФОРМА ВХОДА ============ -->
+    <form id="loginForm" novalidate>
+      <div class="form-field">
+        <label for="loginEmail">Email <span class="req">*</span></label>
+        <input type="email" id="loginEmail" placeholder="owner@shop.kg" autocomplete="email" required>
+        <div class="form-error" data-for="loginEmail"></div>
+      </div>
+
+      <div class="form-field">
+        <label for="loginPassword">Пароль <span class="req">*</span></label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" required>
+        <div class="form-error" data-for="loginPassword"></div>
+      </div>
+
+      <button class="auth-btn" type="submit" id="loginBtn">Войти в систему</button>
+
+      <div class="auth-footer">
+        <a href="#" id="forgotLink">Забыли пароль?</a>
+      </div>
+    </form>
+
+    <!-- ============ ФОРМА РЕГИСТРАЦИИ ============ -->
+    <form id="registerForm" class="hidden" novalidate>
+      <div class="form-field">
+        <label for="regCompany">Название компании <span class="req">*</span></label>
+        <input type="text" id="regCompany" placeholder="Магазин «Береке»" maxlength="80" autocomplete="organization" required>
+        <div class="form-error" data-for="regCompany"></div>
+      </div>
+
+      <div class="form-field">
+        <label for="regName">Ваше имя <span class="req">*</span></label>
+        <input type="text" id="regName" placeholder="Азамат" maxlength="60" autocomplete="name" required>
+        <div class="form-error" data-for="regName"></div>
+      </div>
+
+      <div class="form-field">
+        <label for="regEmail">Email <span class="req">*</span></label>
+        <input type="email" id="regEmail" placeholder="owner@shop.kg" autocomplete="email" required>
+        <div class="form-error" data-for="regEmail"></div>
+      </div>
+
+      <div class="form-field">
+        <label for="regPassword">Пароль <span class="req">*</span></label>
+        <input type="password" id="regPassword" placeholder="Минимум 6 символов" autocomplete="new-password" required>
+        <div class="form-error" data-for="regPassword"></div>
+      </div>
+
+      <button class="auth-btn" type="submit" id="registerBtn">Создать аккаунт бизнеса</button>
+
+      <div class="auth-footer">
+        Регистрируясь, вы соглашаетесь с условиями сервиса.
+      </div>
+    </form>
+  </div>
+
+  <!-- ============ СКРИПТЫ ============ -->
+  <script type="module">
+    import './js/firebase-config.js';
+
+    // ---------- Утилиты ----------
+    const $ = (s) => document.querySelector(s);
+
+    function showMessage(text, kind) {
+      const box = $('#authMessage');
+      box.textContent = text;
+      box.className = 'auth-message ' + (kind === 'error' ? 'is-error' : 'is-success');
+    }
+    function clearMessage() {
+      const box = $('#authMessage');
+      box.className = 'auth-message';
+      box.textContent = '';
+    }
+    function setError(fieldId, msg) {
+      const input = document.getElementById(fieldId);
+      const box = document.querySelector(`.form-error[data-for="${fieldId}"]`);
+      if (input) input.classList.toggle('is-invalid', Boolean(msg));
+      if (box) box.textContent = msg || '';
+    }
+    function clearErrors(form) {
+      form.querySelectorAll('.form-error').forEach((e) => (e.textContent = ''));
+      form.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
+    }
+
+    // ---------- Табы ----------
+    const loginForm = $('#loginForm');
+    const registerForm = $('#registerForm');
+    document.querySelectorAll('.auth-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+        document.querySelectorAll('.auth-tab').forEach((t) => {
+          const active = t.dataset.tab === target;
+          t.classList.toggle('is-active', active);
+          t.setAttribute('aria-selected', String(active));
+        });
+        loginForm.classList.toggle('hidden', target !== 'login');
+        registerForm.classList.toggle('hidden', target !== 'register');
+        clearMessage();
+      });
+    });
+
+    // ---------- Вход ----------
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors(loginForm);
+      clearMessage();
+
+      const email = $('#loginEmail').value.trim();
+      const password = $('#loginPassword').value;
+      let ok = true;
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setError('loginEmail', 'Введите корректный email'); ok = false;
+      }
+      if (password.length < 6) {
+        setError('loginPassword', 'Пароль минимум 6 символов'); ok = false;
+      }
+      if (!ok) return;
+
+      const btn = $('#loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Входим...';
+
+      try {
+        const { profile } = await window.FB.login(email, password);
+        if (!profile) {
+          showMessage('Профиль не найден. Обратитесь к администратору.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Войти в систему';
+          return;
+        }
+        if (profile.active === false) {
+          showMessage('Ваш аккаунт заблокирован. Свяжитесь с администратором.', 'error');
+          await window.FB.logout().catch(() => {});
+          btn.disabled = false;
+          btn.textContent = 'Войти в систему';
+          return;
+        }
+        showMessage('Успешно! Перенаправляем...', 'success');
+        setTimeout(() => window.FB.redirectByRole(profile), 400);
+      } catch (err) {
+        console.error('[login]', err);
+        let msg = 'Ошибка входа. Попробуйте ещё раз.';
+        if (err.message === 'ACCOUNT_DISABLED') msg = 'Аккаунт заблокирован.';
+        else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') msg = 'Неверный email или пароль.';
+        else if (err.code === 'auth/user-not-found') msg = 'Пользователь не найден.';
+        else if (err.code === 'auth/too-many-requests') msg = 'Слишком много попыток. Подождите минуту.';
+        showMessage(msg, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Войти в систему';
+      }
+    });
+
+    // ---------- Регистрация ----------
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors(registerForm);
+      clearMessage();
+
+      const companyName = $('#regCompany').value.trim();
+      const displayName = $('#regName').value.trim();
+      const email = $('#regEmail').value.trim();
+      const password = $('#regPassword').value;
+      let ok = true;
+
+      if (companyName.length < 2) { setError('regCompany', 'Минимум 2 символа'); ok = false; }
+      if (displayName.length < 2) { setError('regName', 'Минимум 2 символа'); ok = false; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('regEmail', 'Введите корректный email'); ok = false; }
+      if (password.length < 6) { setError('regPassword', 'Минимум 6 символов'); ok = false; }
+      if (!ok) return;
+
+      const btn = $('#registerBtn');
+      btn.disabled = true;
+      btn.textContent = 'Создаём аккаунт...';
+
+      try {
+        await window.FB.registerOwner({ email, password, displayName, companyName });
+        showMessage('Аккаунт создан! Перенаправляем...', 'success');
+        setTimeout(() => (window.location.href = './index.html'), 600);
+      } catch (err) {
+        console.error('[register]', err);
+        let msg = 'Не удалось создать аккаунт.';
+        if (err.code === 'auth/email-already-in-use') msg = 'Этот email уже зарегистрирован.';
+        else if (err.code === 'auth/weak-password') msg = 'Пароль слишком простой.';
+        showMessage(msg, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Создать аккаунт бизнеса';
+      }
+    });
+
+    // ---------- Забыли пароль ----------
+    $('#forgotLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      const email = $('#loginEmail').value.trim();
+      if (!email) {
+        showMessage('Сначала введите email, затем нажмите «Забыли пароль»', 'error');
+        return;
+      }
+      // Firebase умеет отправлять письмо сброса — требуется функция sendPasswordResetEmail
+      showMessage('Функция сброса пароля будет доступна в следующем обновлении. Обратитесь к администратору.', 'error');
+    });
+
+    // ---------- Автоматический редирект, если пользователь уже вошёл ----------
+    (async () => {
+      const { profile } = await window.FB.waitForAuth();
+      if (profile && profile.active !== false) {
+        window.FB.redirectByRole(profile);
+      }
+    })();
+  </script>
+</body>
+</html>
