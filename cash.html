@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — модуль продаж и кассы для малого бизнеса Кыргызстана.">
+  <meta name="description" content="КУТ: БИЗНЕС — касса и быстрые продажи для малого бизнеса Кыргызстана.">
   <title>Касса — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Глобальная дизайн-система проекта -->
   <link rel="stylesheet" href="./css/style.css">
 
-  <!-- Локальные стили только для модуля «Касса» -->
+  <!-- 📷 Сканер штрихкодов — библиотека html5-qrcode -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+
   <style>
-    /* ====== Токены с фоллбэками (на случай, если style.css не задал их) ====== */
     :root {
       --kut-green: #005F40;
       --kut-green-dark: #003F2A;
@@ -36,10 +36,9 @@
       --shadow-md: 0 6px 18px rgba(16,32,25,.08);
       --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
     }
-
     *, *::before, *::after { box-sizing: border-box; }
-
     html, body { height: 100%; }
+
     body.page-cash {
       margin: 0;
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -51,7 +50,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ===================== Верхняя навигация ===================== */
+    /* ========== Верхняя навигация ========== */
     .topbar {
       background: var(--kut-green);
       color: #fff;
@@ -90,7 +89,6 @@
       box-shadow: inset 0 -2px 0 rgba(0,0,0,.12);
     }
     .brand__name { font-size: 15px; }
-
     .topbar__nav {
       display: flex;
       gap: 6px;
@@ -115,7 +113,7 @@
       font-weight: 600;
     }
 
-    /* ===================== Каркас POS ===================== */
+    /* ========== POS-каркас ========== */
     .pos {
       flex: 1;
       width: 100%;
@@ -134,17 +132,82 @@
       }
     }
 
-    /* ===================== Каталог ===================== */
+    /* ========== Каталог ========== */
     .pos__catalog {
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
       min-width: 0;
     }
 
-    .search {
-      position: relative;
+    /* --- Блок сканирования --- */
+    .scan-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 4px;
     }
+    .scan-btn {
+      width: 100%;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #005F40, #003F2A);
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,95,64,.28);
+      transition: transform .12s ease, box-shadow .18s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .scan-btn:hover { box-shadow: 0 10px 24px rgba(0,95,64,.36); }
+    .scan-btn:active { transform: scale(.98); }
+
+    .scan-manual {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .scan-manual input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--kut-border);
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--kut-text);
+      outline: none;
+      background: #fff;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .scan-manual input:focus {
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .scan-manual__btn {
+      padding: 0 16px;
+      border: 1px solid var(--kut-border);
+      background: #fff;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--kut-text);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .18s ease;
+    }
+    .scan-manual__btn:hover {
+      background: var(--kut-green-soft);
+      border-color: var(--kut-green);
+      color: var(--kut-green);
+    }
+
+    /* --- Поиск --- */
+    .search { position: relative; }
     .search input {
       width: 100%;
       padding: 14px 16px 14px 44px;
@@ -173,6 +236,7 @@
       pointer-events: none;
     }
 
+    /* --- Категории --- */
     .categories {
       display: flex;
       gap: 8px;
@@ -202,6 +266,7 @@
       box-shadow: 0 4px 10px rgba(0,95,64,.22);
     }
 
+    /* --- Товары --- */
     .products {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -268,7 +333,7 @@
       font-size: 14px;
     }
 
-    /* ===================== Корзина / Чек ===================== */
+    /* ========== Корзина / Чек ========== */
     .cart {
       background: var(--kut-surface);
       border-radius: var(--radius-lg);
@@ -475,7 +540,7 @@
       margin-left: 4px;
     }
 
-    /* ===================== Основные кнопки ===================== */
+    /* ========== Основные кнопки ========== */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -518,7 +583,7 @@
     }
     .btn--ghost:hover { background: var(--kut-green-soft); border-color: var(--kut-green); color: var(--kut-green); }
 
-    /* ===================== Плавающая кнопка чека (мобильный) ===================== */
+    /* ========== Плавающая кнопка чека ========== */
     .cart-toggle {
       position: fixed;
       left: 12px;
@@ -580,7 +645,7 @@
       .cart__head { position: relative; padding-top: 20px; }
     }
 
-    /* ===================== Модальные окна ===================== */
+    /* ========== Модальные окна ========== */
     .modal[hidden] { display: none; }
     .modal {
       position: fixed;
@@ -628,7 +693,7 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* Способы оплаты */
+    /* --- Способы оплаты --- */
     .pay-methods {
       display: grid;
       grid-template-columns: 1fr;
@@ -671,7 +736,7 @@
       box-shadow: 0 4px 10px rgba(212,175,55,.35);
     }
 
-    /* Блок «В долг» */
+    /* --- Блок «В долг» --- */
     .debt-block {
       margin-top: 14px;
       padding: 14px;
@@ -717,7 +782,7 @@
     }
     .modal__actions .btn { flex: 1; }
 
-    /* Успех */
+    /* --- Успех --- */
     .success-icon {
       width: 76px; height: 76px;
       margin: 4px auto 14px;
@@ -742,7 +807,6 @@
     }
     .modal__dialog--center p strong { color: var(--kut-green); font-weight: 700; }
 
-    /* Скроллбар и мелкие правки */
     ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
     button { -webkit-tap-highlight-color: transparent; }
   </style>
@@ -759,8 +823,8 @@
       <nav class="topbar__nav" aria-label="Основная навигация">
         <a href="./index.html">Дашборд</a>
         <a href="./cash.html" class="active" aria-current="page">Касса</a>
-        <a href="./products.html">Товары</a>
-        <a href="./reports.html">Отчёты</a>
+        <a href="./stock.html">Склад</a>
+        <a href="./debts.html">Несие</a>
       </nav>
     </div>
   </header>
@@ -769,6 +833,27 @@
   <main class="pos">
     <!-- Каталог -->
     <section class="pos__catalog" aria-label="Каталог товаров">
+
+      <!-- 📷 Блок сканирования штрихкода -->
+      <div class="scan-controls">
+        <button id="cashScanBtn" type="button" class="scan-btn">
+          📷 Сканировать штрихкод
+        </button>
+        <div class="scan-manual">
+          <input
+            type="text"
+            id="cashBarcodeInput"
+            inputmode="numeric"
+            placeholder="Введите штрихкод вручную"
+            autocomplete="off"
+            aria-label="Штрихкод товара">
+          <button type="button" id="cashBarcodeSearchBtn" class="scan-manual__btn">
+            Поиск
+          </button>
+        </div>
+      </div>
+
+      <!-- Поиск по названию -->
       <div class="search">
         <input
           type="search"
@@ -778,8 +863,10 @@
           autocomplete="off">
       </div>
 
+      <!-- Категории -->
       <div class="categories" id="categories" role="tablist" aria-label="Категории товаров"></div>
 
+      <!-- Товары -->
       <div class="products" id="productsGrid" aria-live="polite"></div>
     </section>
 
@@ -872,8 +959,72 @@
     </div>
   </div>
 
-  <script type="module" src="./js/cash.js"></script>
-  <script type="module" src="./js/app.js"></script>
-<script src="./js/lang.js"></script>   <!-- ← добавить -->
+  <!-- ============ Скрипты ============ -->
+  <!-- Ядро системы — должно идти первым, чтобы window.KUT был доступен -->
+  <script src="./js/app.js"></script>
+  <script src="./js/lang.js"></script>
+  <script src="./js/cash.js"></script>
+
+  <!-- Провязка кнопок сканера с функциями из cash.js -->
+  <script>
+    (function () {
+      'use strict';
+
+      function wireScannerUI() {
+        var scanBtn = document.getElementById('cashScanBtn');
+        var manualInput = document.getElementById('cashBarcodeInput');
+        var manualBtn = document.getElementById('cashBarcodeSearchBtn');
+
+        // Кнопка «Сканировать штрихкод» — открывает камеру
+        if (scanBtn && !scanBtn.dataset.kutWired) {
+          scanBtn.dataset.kutWired = '1';
+          scanBtn.addEventListener('click', function () {
+            if (typeof window.openScanner === 'function') {
+              window.openScanner();
+            } else {
+              alert('Сканер не готов. Обновите страницу.');
+            }
+          });
+        }
+
+        // Ручной ввод: кнопка «Поиск» + Enter
+        if (manualInput && manualBtn && !manualBtn.dataset.kutWired) {
+          manualBtn.dataset.kutWired = '1';
+
+          var doSearch = function () {
+            var code = (manualInput.value || '').trim();
+            if (!code) return;
+            if (typeof window.handleDecodedBarcode === 'function') {
+              // Сбрасываем cooldown — ручной ввод осознанный
+              try { window.__kutResetScanCooldown && window.__kutResetScanCooldown(); } catch (_) {}
+              window.handleDecodedBarcode(code, false);
+            } else {
+              alert('Касса не готова. Обновите страницу.');
+            }
+            manualInput.value = '';
+          };
+
+          manualBtn.addEventListener('click', doSearch);
+          manualInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              doSearch();
+            }
+          });
+        }
+      }
+
+      // Если cash.js уже загрузился (скрипт выше), просто провяжем сразу.
+      // Если по какой-то причине функции ещё нет — подождём DOMContentLoaded.
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireScannerUI);
+      } else {
+        wireScannerUI();
+      }
+
+      // Страховка: если cash.js загрузился позже — перепроверим ещё раз.
+      window.addEventListener('load', wireScannerUI);
+    })();
+  </script>
 </body>
 </html>
