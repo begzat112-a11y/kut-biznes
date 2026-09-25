@@ -1,14 +1,11 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v1.0
+   КУТ: БИЗНЕС — Ядро системы (app.js) · v3.0 (WhatsApp OTP)
    Что делает:
-   • Проверяет авторизацию (onAuthStateChanged)
-   • Загружает профиль пользователя (роль, businessId)
-   • Редиректит: не авторизован → login.html, super_admin → admin.html
-   • Считает агрегаты дашборда из Firestore:
-     - выручка   = Σ sales.total
-     - склад     = Σ products.qty × products.costPrice
-     - долги     = Σ debts.amount (status ≠ 'paid')
-   • Отдаёт window.KUT для совместимости с cash.js / stock.js / debts.js
+   • Проверяет авторизацию через Firebase Auth
+   • Проверяет наличие phone в профиле — если нет, редирект на login.html
+   • Редирект super_admin → admin.html
+   • Загружает данные бизнеса из Firestore
+   • Отдаёт window.KUT для cash.js / stock.js / debts.js
    ========================================================= */
 
 import './firebase-config.js';
@@ -18,8 +15,7 @@ import './firebase-config.js';
 // =========================================================
 
 const fmt = (n) =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
-    .format(Number(n) || 0);
+  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 const fmtMoney = (n) => fmt(n) + ' KGS';
 
@@ -55,6 +51,14 @@ function normalizePhone(raw) {
   return '+996' + d;
 }
 
+function toDate(ts) {
+  if (!ts) return null;
+  if (typeof ts.toDate === 'function') return ts.toDate();
+  if (ts.seconds) return new Date(ts.seconds * 1000);
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // =========================================================
 // 2. ТОСТ
 // =========================================================
@@ -80,7 +84,7 @@ function toast(message, isError) {
 // 3. СОСТОЯНИЕ ДАШБОРДА
 // =========================================================
 
-let state = {
+const state = {
   businessId: null,
   profile: null,
   products: [],
@@ -196,8 +200,8 @@ function renderRecentSales() {
   const sales = (state.sales || [])
     .slice()
     .sort((a, b) => {
-      const ta = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt).getTime() || 0;
-      const tb = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt).getTime() || 0;
+      const ta = toDate(a.createdAt)?.getTime() || 0;
+      const tb = toDate(b.createdAt)?.getTime() || 0;
       return tb - ta;
     })
     .slice(0, 5);
@@ -251,12 +255,8 @@ function methodTitle(m, customer) {
 }
 
 function formatSaleDate(ts) {
-  if (!ts) return '—';
-  let d;
-  if (typeof ts.toDate === 'function') d = ts.toDate();
-  else if (ts.seconds) d = new Date(ts.seconds * 1000);
-  else d = new Date(ts);
-  if (isNaN(d.getTime())) return '—';
+  const d = toDate(ts);
+  if (!d) return '—';
 
   const now = new Date();
   const z = (n) => String(n).padStart(2, '0');
@@ -308,7 +308,7 @@ function setupSidebar() {
 }
 
 // =========================================================
-// 7. PUBLIC API ДЛЯ cash.js / stock.js / debts.js
+// 7. PUBLIC API
 // =========================================================
 
 const KEYS = {
@@ -318,12 +318,10 @@ const KEYS = {
   customers: 'kut:customers',
 };
 
-/** Синхронные геттеры для обратной совместимости (данные в кэше модуля) */
 function getProducts() { return state.products || []; }
 function getSales()    { return state.sales || []; }
 function getDebts()    { return state.debts || []; }
 
-/** Асинхронная перезагрузка данных из Firestore */
 async function reloadAll() {
   if (!state.businessId) return;
   const [products, sales, debts] = await Promise.all([
@@ -336,18 +334,11 @@ async function reloadAll() {
   state.debts = debts;
 }
 
-/**
- * Сквозная продажа через Firestore (атомарно):
- * 1) Пишем продажу в sales
- * 2) Списываем qty в products
- * 3) Если несие — создаём debts
- */
 async function registerSale({ cart, total, paymentMethod, customer, customerPhone }) {
   if (!state.businessId) {
     return { ok: false, error: 'no_business' };
   }
 
-  // 1. Проверка остатков
   for (const item of cart) {
     const p = state.products.find((x) => x.id === item.id);
     if (!p) return { ok: false, error: 'stock', reason: 'missing',
@@ -365,7 +356,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
   try {
     const batch = writeBatch(db);
 
-    // 1) sale
     const saleRef = doc(collection(db, 'businesses', bizId, 'sales'));
     batch.set(saleRef, {
       items: cart.map((i) => ({ ...i })),
@@ -375,7 +365,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       createdAt: serverTimestamp(),
     });
 
-    // 2) списание со склада
     for (const item of cart) {
       const p = state.products.find((x) => x.id === item.id);
       if (!p) continue;
@@ -387,7 +376,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       });
     }
 
-    // 3) долг при «Несие»
     if (paymentMethod === 'debt') {
       const debtRef = doc(collection(db, 'businesses', bizId, 'debts'));
       batch.set(debtRef, {
@@ -408,8 +396,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
     }
 
     await batch.commit();
-
-    // локально перезагружаем кэш
     await reloadAll();
     renderDashboard();
 
@@ -419,10 +405,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
     return { ok: false, error: 'firestore', message: err.message };
   }
 }
-
-// =========================================================
-// 8. ЭКСПОРТ window.KUT
-// =========================================================
 
 window.KUT = {
   keys: KEYS,
@@ -434,21 +416,19 @@ window.KUT = {
   aggregateRevenue, aggregateStock, aggregateDebts,
   renderDashboard,
   getState: () => state,
-  // Заглушки для обратной совместимости — модули работают через Firestore
   read: () => null,
   write: () => false,
   onStorage: () => {},
 };
 
 // =========================================================
-// 9. АВТОЗАПУСК: проверка авторизации + загрузка данных
+// 8. АВТОЗАПУСК
 // =========================================================
 
 async function boot() {
-  // Ждём готовности Auth и профиля
   const { user, profile } = await window.FB.waitForAuth();
 
-  // 1. Не авторизован — на вход
+  // 1. Не авторизован → на вход
   if (!user || !profile) {
     window.location.href = './login.html';
     return;
@@ -461,13 +441,21 @@ async function boot() {
     return;
   }
 
-  // 3. Super admin — отдельная панель
+  // 3. Проверяем наличие phone — если нет, отправляем на login
+  if (!profile.phone || !/^\+996\d{9}$/.test(profile.phone)) {
+    console.warn('[KUT] Профиль без валидного phone — редирект на login.html');
+    await window.FB.logout().catch(() => {});
+    window.location.href = './login.html';
+    return;
+  }
+
+  // 4. Super admin → отдельная панель
   if (profile.role === 'super_admin') {
     window.location.href = './admin.html';
     return;
   }
 
-  // 4. Бизнес-пользователь
+  // 5. Бизнес-пользователь
   state.profile = profile;
   state.businessId = profile.businessId;
   if (!state.businessId) {
@@ -476,10 +464,8 @@ async function boot() {
     return;
   }
 
-  // 5. Первичная загрузка
   await reloadAll();
 
-  // 6. Рендер дашборда, если на странице есть виджеты
   const hasDashboard =
     document.getElementById('dashboard-total-sales') ||
     document.getElementById('dashboard-stock-value') ||
@@ -489,7 +475,6 @@ async function boot() {
   if (hasDashboard) {
     renderDashboard();
 
-    // 7. Реалтайм-подписки: любые изменения → перерисовка
     window.FB.subscribeCollection('products', (items) => {
       state.products = items;
       if (hasDashboard) renderDashboard();
@@ -504,12 +489,10 @@ async function boot() {
     });
   }
 
-  // 8. Сайдбар и год в подвале
   setupSidebar();
   const yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  // 9. Кнопка «Выйти» в сайдбаре (если есть)
   document.querySelectorAll('[data-kut-logout]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -517,13 +500,12 @@ async function boot() {
     });
   });
 
-  // 10. Перерисовка при смене языка
   window.addEventListener('kut:lang', () => {
     if (hasDashboard) renderDashboard();
   });
 
   console.info(
-    '%cКУТ: БИЗНЕС — дашборд загружен · бизнес: ' + state.businessId,
+    '%cКУТ: БИЗНЕС — сессия активна · телефон: ' + profile.phone + ' · бизнес: ' + state.businessId,
     'color:#005F40; font-weight:700'
   );
 }
