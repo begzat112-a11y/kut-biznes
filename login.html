@@ -281,7 +281,6 @@
 
     <div class="auth-message" id="authMessage"></div>
 
-    <!-- ========== ВКЛАДКА 1: ВХОД ПО НОМЕРУ (WhatsApp OTP) ========== -->
     <div id="phoneTab">
       <form id="phoneForm" novalidate>
         <div class="form-field">
@@ -334,7 +333,6 @@
       </form>
     </div>
 
-    <!-- ========== ВКЛАДКА 2: ВХОД ПО EMAIL (Админ / Владелец) ========== -->
     <div id="emailTab" class="hidden">
       <form id="emailForm" novalidate>
         <div class="form-field">
@@ -375,9 +373,6 @@
   </div>
 
   <script type="module">
-    // =========================================================
-    // ИМПОРТЫ FIREBASE SDK v10 (modular, CDN)
-    // =========================================================
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
     import {
       getAuth,
@@ -396,9 +391,6 @@
       serverTimestamp,
     } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-    // =========================================================
-    // FIREBASE CONFIG
-    // =========================================================
     const firebaseConfig = {
       apiKey:            "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
       authDomain:        "kut-biznes.firebaseapp.com",
@@ -409,9 +401,6 @@
       measurementId:     "G-VTZ49G265B"
     };
 
-    // =========================================================
-    // GREEN-API CONFIG (WhatsApp OTP)
-    // =========================================================
     const WA_CONFIG = {
       idInstance: '720122747171',
       apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
@@ -420,31 +409,20 @@
       },
     };
 
-    // =========================================================
-    // ИНИЦИАЛИЗАЦИЯ
-    // =========================================================
     let app, auth, db;
     try {
       app  = initializeApp(firebaseConfig);
       auth = getAuth(app);
       db   = getFirestore(app);
-
-      console.log('[KUT] Firebase инициализирован');
-      console.log('[KUT] projectId:', firebaseConfig.projectId);
-      console.log('[KUT] authDomain:', firebaseConfig.authDomain);
-      console.log('[KUT] apiKey:', firebaseConfig.apiKey);
-      console.log('[KUT] apiKey длина:', firebaseConfig.apiKey.length);
-      console.log('[KUT] appId:', firebaseConfig.appId);
+      console.log('[KUT] Firebase инициализирован:', firebaseConfig.projectId);
+      console.log('[KUT] apiKey:', firebaseConfig.apiKey, '(длина ' + firebaseConfig.apiKey.length + ')');
     } catch (initErr) {
-      console.error('[KUT] Ошибка инициализации Firebase:', initErr);
+      console.error('[KUT] Ошибка инициализации:', initErr);
       alert('Ошибка инициализации Firebase: ' + initErr.message);
     }
 
     const $ = (s) => document.querySelector(s);
 
-    // =========================================================
-    // УТИЛИТЫ
-    // =========================================================
     function showMessage(text, kind) {
       const box = $('#authMessage');
       box.textContent = text;
@@ -466,15 +444,11 @@
       form.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
     }
 
-    // =========================================================
-    // МАСКА ТЕЛЕФОНА +996
-    // =========================================================
     function maskPhone(raw) {
       let d = String(raw || '').replace(/\D/g, '');
       if (d.startsWith('996')) d = d.slice(3);
       else if (d.startsWith('0')) d = d.slice(1);
       d = d.slice(0, 9);
-
       if (d.length === 0) return '';
       let out = '+996 ';
       if (d.length <= 3) return out + d;
@@ -497,27 +471,20 @@
       return /^\+996\d{9}$/.test(normalized);
     }
 
-    // =========================================================
-    // РЕДИРЕКТ ПО РОЛИ
-    // =========================================================
     function redirectByRole(profile) {
       if (!profile) {
         alert('Ошибка роли: профиль не найден');
         window.location.href = './login.html';
         return;
       }
-
       if (profile.active === false) {
         alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
         signOut(auth);
         return;
       }
-
       const role = profile.role;
-      console.log('[KUT] Роль пользователя:', role);
-
+      console.log('[KUT] Роль:', role);
       if (role === 'super_admin') {
-        alert('Роль super_admin подтверждена. Переходим в admin.html');
         window.location.href = './admin.html';
         return;
       }
@@ -529,13 +496,9 @@
         window.location.href = './cash.html';
         return;
       }
-      alert('Неизвестная роль: ' + role + '. Переходим на главную.');
       window.location.href = './index.html';
     }
 
-    // =========================================================
-    // ПЕРЕКЛЮЧЕНИЕ ТАБОВ
-    // =========================================================
     const phoneTab = $('#phoneTab');
     const emailTab = $('#emailTab');
 
@@ -554,9 +517,6 @@
       });
     });
 
-    // =========================================================
-    // ВХОД ПО EMAIL И ПАРОЛЮ — С ДЕТАЛЬНОЙ ОТЛАДКОЙ
-    // =========================================================
     const emailForm = $('#emailForm');
 
     emailForm.addEventListener('submit', async (e) => {
@@ -584,15 +544,13 @@
 
       let user = null;
 
-      // ---------- ШАГ 1: Аутентификация ----------
       try {
-        console.log('[KUT Login] Попытка входа:', email);
-        console.log('[KUT Login] Используется apiKey:', firebaseConfig.apiKey);
+        console.log('[KUT] Вход:', email, '| apiKey:', firebaseConfig.apiKey);
         const cred = await signInWithEmailAndPassword(auth, email, password);
         user = cred.user;
-        console.log('[KUT Login] Аутентификация OK. UID:', user.uid);
+        console.log('[KUT] Auth OK. UID:', user.uid);
       } catch (error) {
-        console.error('[KUT Login] Ошибка аутентификации:', error.code, error.message);
+        console.error('[KUT] Ошибка Auth:', error.code, error.message);
         alert("Код ошибки от Google: " + error.code + " | Сообщение: " + error.message);
         showMessage('Ошибка входа: ' + (error.code || error.message), 'error');
         btn.disabled = false;
@@ -600,37 +558,32 @@
         return;
       }
 
-      // ---------- ШАГ 2: Чтение профиля из Firestore ----------
       let profile = null;
       try {
-        console.log('[KUT Login] Читаем users/' + user.uid);
+        console.log('[KUT] Читаем users/' + user.uid);
         const snap = await getDoc(doc(db, 'users', user.uid));
         if (!snap.exists()) {
-          console.error('[KUT Login] Документ users/' + user.uid + ' не найден');
-          alert("Ошибка роли: в Firestore нет документа для этого UID или поле role не равно super_admin\n\nUID: " + user.uid);
+          alert("Ошибка роли: в Firestore нет документа для UID: " + user.uid);
           await signOut(auth).catch(() => {});
           btn.disabled = false;
           btn.textContent = 'Войти';
           return;
         }
         profile = { uid: user.uid, ...snap.data() };
-        console.log('[KUT Login] Профиль получен:', profile);
+        console.log('[KUT] Профиль:', profile);
       } catch (err) {
-        console.error('[KUT Login] Ошибка чтения профиля:', err);
-        alert("Ошибка чтения профиля: " + err.code + " | " + err.message +
-              "\n\nПроверьте Firestore Rules — они могут блокировать чтение.");
+        console.error('[KUT] Ошибка чтения профиля:', err);
+        alert("Ошибка чтения профиля: " + err.code + " | " + err.message);
         await signOut(auth).catch(() => {});
         btn.disabled = false;
         btn.textContent = 'Войти';
         return;
       }
 
-      // ---------- ШАГ 3: Успех — отладка + редирект ----------
-      alert("Авторизация успешна! Ищем роль для UID: " + user.uid +
-            "\n\nНайдена роль: " + (profile.role || '(пусто)'));
+      alert("Авторизация успешна!\nUID: " + user.uid + "\nРоль: " + (profile.role || '(пусто)'));
 
       if (!profile.role) {
-        alert("Ошибка роли: в Firestore нет документа для этого UID или поле role не равно super_admin");
+        alert("Ошибка роли: поле role пустое в Firestore");
         await signOut(auth).catch(() => {});
         btn.disabled = false;
         btn.textContent = 'Войти';
@@ -644,7 +597,6 @@
       btn.textContent = 'Войти';
     });
 
-    // ---------- Забыли пароль ----------
     $('#forgotBtn').addEventListener('click', async () => {
       const email = $('#emailInput').value.trim();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -656,15 +608,10 @@
         await sendPasswordResetEmail(auth, email);
         showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
       } catch (err) {
-        console.error('[KUT] reset password failed:', err);
         alert("Ошибка сброса пароля: " + err.code + " | " + err.message);
         showMessage('Не удалось отправить письмо.', 'error');
       }
     });
-
-    // =========================================================
-    // ВХОД ПО НОМЕРУ + WHATSAPP OTP
-    // =========================================================
 
     function generateOtpCode() {
       return String(Math.floor(1000 + Math.random() * 9000));
@@ -757,7 +704,6 @@
 
       const uid = cred.user.uid;
       let profileSnap = await getDoc(doc(db, 'users', uid));
-      let profile;
 
       if (!profileSnap.exists()) {
         await setDoc(doc(db, 'users', uid), {
@@ -772,7 +718,7 @@
         profileSnap = await getDoc(doc(db, 'users', uid));
       }
 
-      profile = { uid, ...profileSnap.data() };
+      const profile = { uid, ...profileSnap.data() };
       return { user: cred.user, profile };
     }
 
@@ -900,29 +846,27 @@
       }
     }
 
-    // =========================================================
-    // АВТО-РЕДИРЕКТ, ЕСЛИ УЖЕ АВТОРИЗОВАН
-    // =========================================================
     onAuthStateChanged(auth, async (user) => {
       if (!user) return;
-
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
         if (!snap.exists()) return;
-
         const profile = { uid: user.uid, ...snap.data() };
         if (profile.active === false) {
           await signOut(auth).catch(() => {});
           return;
         }
-        console.log('[KUT] Уже авторизован, редирект по роли:', profile.role);
+        console.log('[KUT] Уже авторизован, роль:', profile.role);
         redirectByRole(profile);
       } catch (err) {
         console.warn('[KUT] Ошибка авто-редиректа:', err.message);
       }
     });
 
-    console.info('[KUT] login.html загружен · apiKey:', firebaseConfig.apiKey);
+    console.info('[KUT] login.html загружен');
+    console.info('[KUT] apiKey:', firebaseConfig.apiKey);
+    console.info('[KUT] appId:', firebaseConfig.appId);
+    console.info('[KUT] Green-API instance:', WA_CONFIG.idInstance);
   </script>
 </body>
 </html>
