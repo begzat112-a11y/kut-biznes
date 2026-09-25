@@ -88,7 +88,6 @@
       margin-top: 2px;
     }
 
-    /* ========== Табы входа ========== */
     .auth-tabs {
       display: flex;
       gap: 4px;
@@ -278,7 +277,6 @@
       </div>
     </div>
 
-    <!-- ========== Табы ========== -->
     <div class="auth-tabs" role="tablist">
       <button class="auth-tab is-active" type="button" data-tab="phone" role="tab" aria-selected="true">
         <span aria-hidden="true">📱</span> По телефону
@@ -292,7 +290,6 @@
 
     <!-- ========== ВКЛАДКА 1: ВХОД ПО ТЕЛЕФОНУ ========== -->
     <div id="phoneTab">
-      <!-- ШАГ 1: Ввод номера -->
       <form id="phoneForm" novalidate>
         <div class="form-field">
           <label for="phoneInput">Номер телефона <span class="req">*</span></label>
@@ -315,7 +312,6 @@
         </div>
       </form>
 
-      <!-- ШАГ 2: Ввод OTP -->
       <form id="otpForm" class="hidden" novalidate>
         <div class="form-field">
           <label for="otpInput">Введи 4-значный код <span class="req">*</span></label>
@@ -447,9 +443,6 @@
 
     // =========================================================
     // РЕДИРЕКТ ПО РОЛИ
-    // super_admin → admin.html
-    // owner       → index.html
-    // cashier     → cash.html
     // =========================================================
     function redirectByRole(profile) {
       if (!profile) { window.location.href = './login.html'; return; }
@@ -542,7 +535,17 @@
         startOtpTimer(300);
       } catch (err) {
         console.error('[login] send OTP failed:', err);
-        showMessage('Не удалось отправить код. Попробуйте ещё раз.', 'error');
+        let msg = 'Не удалось отправить код. Попробуйте ещё раз.';
+        if (err.message === 'WHATSAPP_NOT_CONFIGURED') {
+          msg = 'WhatsApp-шлюз не настроен. Обратитесь к администратору.';
+        } else if (err.message === 'WHATSAPP_NETWORK') {
+          msg = 'Проблемы с сетью. Проверьте интернет.';
+        } else if (err.message === 'WHATSAPP_FAILED') {
+          msg = 'Шлюз WhatsApp не смог отправить код. Попробуйте позже.';
+        } else if (err.message === 'INVALID_PHONE') {
+          msg = 'Некорректный номер телефона.';
+        }
+        showMessage(msg, 'error');
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<span aria-hidden="true">💬</span> Получить код в WhatsApp';
@@ -607,7 +610,6 @@
       phoneInput.focus();
     });
 
-    // ---------- Таймер OTP ----------
     function startOtpTimer(seconds) {
       stopOtpTimer();
       const el = $('#otpTimer');
@@ -635,7 +637,7 @@
     }
 
     // =========================================================
-    // ВХОД ПО EMAIL И ПАРОЛЮ
+    // ВХОД ПО EMAIL
     // =========================================================
     const emailForm = $('#emailForm');
 
@@ -701,7 +703,6 @@
       }
     });
 
-    // ---------- Забыли пароль ----------
     $('#forgotBtn').addEventListener('click', async () => {
       const email = $('#emailInput').value.trim();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
