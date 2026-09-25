@@ -1,17 +1,27 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Service Worker (минимальный, installable)
-   Задача: гарантированно пройти проверку Chrome на Android.
-   Кэширование — опционально, установка от него не зависит.
+   КУТ: БИЗНЕС — Service Worker (sw.js)
+   Версия кэша: kut-biznes-v3.2.0
+   Стратегия:
+   • HTML — network-first (всегда свежие данные)
+   • Остальное — cache-first с фоллбэком на сеть
    ========================================================= */
 
-const CACHE_NAME = 'kut-biznes-v3.0.0';
+const CACHE_NAME = 'kut-biznes-v3.2.0';
 
 const CORE_ASSETS = [
   './',
   './index.html',
+  './login.html',
+  './cash.html',
+  './stock.html',
+  './debts.html',
   './css/style.css',
+  './js/firebase-config.js',
   './js/app.js',
   './js/lang.js',
+  './js/cash.js',
+  './js/stock.js',
+  './js/debts.js',
   './manifest.json',
 ];
 
@@ -19,7 +29,13 @@ const CORE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(CORE_ASSETS).catch(() => {}))
+      .then((cache) => Promise.allSettled(
+        CORE_ASSETS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn('[SW] Не удалось закэшировать:', url, err);
+          })
+        )
+      ))
       .then(() => self.skipWaiting())
   );
 });
@@ -35,28 +51,53 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ---------- Обработчик fetch — обязателен для Android ----------
-// Chrome на Android по-прежнему требует наличия обработчика fetch,
-// даже если он просто передаёт запрос в сеть.
-// https://developer.chrome.com/blog/update-install-criteria
+// ---------- Fetch ----------
 self.addEventListener('fetch', (event) => {
-  // Пропускаем не-GET запросы
-  if (event.request.method !== 'GET') return;
+  const req = event.request;
+
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
 
   // Пропускаем запросы на чужие домены
-  const url = new URL(event.request.url);
+  // (Firebase, Google Fonts, Green-API и т.п. — они идут напрямую в сеть)
   if (url.origin !== self.location.origin) return;
 
+  // HTML — network-first
+  if (req.mode === 'navigate' ||
+      (req.headers.get('accept') || '').includes('text/html')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+          return res;
+        })
+        .catch(() =>
+          caches.match(req).then((hit) => hit || caches.match('./index.html'))
+        )
+    );
+    return;
+  }
+
+  // Остальное — cache-first
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).catch(() => {
-        // Офлайн-фоллбэк для навигации
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
+    caches.match(req).then((hit) => {
+      if (hit) return hit;
+      return fetch(req).then((res) => {
+        if (!res || res.status !== 200 || res.type !== 'basic') return res;
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
+        return res;
+      }).catch(() => {
+        if (req.mode === 'navigate') return caches.match('./index.html');
         return new Response('', { status: 503, statusText: 'Offline' });
       });
     })
   );
+});
+
+// ---------- Сообщения от страницы ----------
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
