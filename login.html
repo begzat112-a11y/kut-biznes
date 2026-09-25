@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <title>Вход по WhatsApp — КУТ: БИЗНЕС</title>
+  <meta name="description" content="КУТ: БИЗНЕС — вход по номеру телефона через WhatsApp.">
+  <title>Вход — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,9 +25,6 @@
       --kut-muted: #64776E;
       --kut-danger: #C0392B;
       --kut-whatsapp: #25D366;
-      --radius-sm: 10px;
-      --radius: 14px;
-      --radius-lg: 22px;
       --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
     }
     *, *::before, *::after { box-sizing: border-box; }
@@ -97,6 +95,7 @@
       font-weight: 500;
       margin-bottom: 16px;
       display: none;
+      line-height: 1.4;
     }
     .auth-message.is-error {
       display: block;
@@ -151,10 +150,10 @@
     }
     .form-field input.otp-input {
       text-align: center;
-      letter-spacing: 12px;
-      font-size: 24px;
+      letter-spacing: 14px;
+      font-size: 26px;
       font-weight: 700;
-      padding-left: 20px;
+      padding: 16px 20px 16px 30px;
     }
     .form-error {
       font-size: 12px;
@@ -204,6 +203,7 @@
       margin-top: 18px;
       font-size: 13px;
       color: var(--kut-muted);
+      line-height: 1.4;
     }
     .auth-footer a {
       color: var(--kut-green);
@@ -248,7 +248,7 @@
       </button>
 
       <div class="auth-footer">
-        Нажимая кнопку, вы соглашаетесь с условиями сервиса.
+        Мы отправим 4-значный код в WhatsApp. Никому не сообщайте его.
       </div>
     </form>
 
@@ -287,7 +287,9 @@
 
     const $ = (s) => document.querySelector(s);
 
-    // ---------- Утилиты ----------
+    // =========================================================
+    // УТИЛИТЫ
+    // =========================================================
     function showMessage(text, kind) {
       const box = $('#authMessage');
       box.textContent = text;
@@ -309,7 +311,9 @@
       form.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
     }
 
-    // ---------- Маска телефона +996 ----------
+    // =========================================================
+    // МАСКА ТЕЛЕФОНА +996
+    // =========================================================
     function maskPhone(raw) {
       let d = String(raw || '').replace(/\D/g, '');
       if (d.startsWith('996')) d = d.slice(3);
@@ -338,11 +342,15 @@
       return /^\+996\d{9}$/.test(normalized);
     }
 
-    // ---------- Состояние ----------
+    // =========================================================
+    // СОСТОЯНИЕ
+    // =========================================================
     let currentPhone = '';
     let otpTimerInterval = null;
 
-    // ---------- Форма 1: запрос OTP ----------
+    // =========================================================
+    // ФОРМА 1: ЗАПРОС OTP
+    // =========================================================
     const phoneForm = $('#phoneForm');
     const otpForm = $('#otpForm');
     const phoneInput = $('#phoneInput');
@@ -362,14 +370,17 @@
         return;
       }
 
+      if (!window.FB || typeof window.FB.sendWhatsAppOtp !== 'function') {
+        showMessage('Сервис авторизации не загружен. Обновите страницу.', 'error');
+        return;
+      }
+
       const btn = $('#sendOtpBtn');
       btn.disabled = true;
       btn.innerHTML = '<span>⏳</span> Отправляем код...';
 
       try {
-        const ok = await window.FB.sendWhatsAppOtp(phoneNorm);
-        if (!ok) throw new Error('SEND_FAILED');
-
+        await window.FB.sendWhatsAppOtp(phoneNorm);
         currentPhone = phoneNorm;
         showMessage('Код отправлен в WhatsApp на ' + phoneNorm, 'success');
         phoneForm.classList.add('hidden');
@@ -385,7 +396,9 @@
       }
     });
 
-    // ---------- Форма 2: проверка OTP ----------
+    // =========================================================
+    // ФОРМА 2: ПРОВЕРКА OTP
+    // =========================================================
     otpForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       clearErrors(otpForm);
@@ -394,6 +407,11 @@
       const code = $('#otpInput').value.trim();
       if (!/^\d{4}$/.test(code)) {
         setError('otpInput', 'Введите 4-значный код');
+        return;
+      }
+
+      if (!window.FB || typeof window.FB.verifyWhatsAppOtp !== 'function') {
+        showMessage('Сервис авторизации не загружен. Обновите страницу.', 'error');
         return;
       }
 
@@ -439,7 +457,9 @@
       phoneInput.focus();
     });
 
-    // ---------- Таймер обратного отсчёта ----------
+    // =========================================================
+    // ТАЙМЕР ОБРАТНОГО ОТСЧЁТА
+    // =========================================================
     function startOtpTimer(seconds) {
       stopOtpTimer();
       const el = $('#otpTimer');
@@ -466,12 +486,16 @@
       }
     }
 
-    // ---------- Авто-редирект, если уже авторизован ----------
+    // =========================================================
+    // АВТО-РЕДИРЕКТ, ЕСЛИ УЖЕ АВТОРИЗОВАН
+    // =========================================================
     (async () => {
-      const { profile } = await window.FB.waitForAuth();
-      if (profile && profile.active !== false) {
-        window.FB.redirectByRole(profile);
-      }
+      try {
+        const { profile } = await window.FB.waitForAuth();
+        if (profile && profile.active !== false && profile.phone) {
+          window.FB.redirectByRole(profile);
+        }
+      } catch (_) {}
     })();
   </script>
 </body>
