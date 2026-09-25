@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <title>Вход — КУТ: БИЗНЕС</title>
+  <title>Вход по WhatsApp — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,11 +23,11 @@
       --kut-text: #14211C;
       --kut-muted: #64776E;
       --kut-danger: #C0392B;
+      --kut-whatsapp: #25D366;
       --radius-sm: 10px;
       --radius: 14px;
       --radius-lg: 22px;
       --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
-      --shadow-md: 0 6px 18px rgba(16,32,25,.08);
     }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
@@ -90,31 +90,31 @@
       margin-top: 2px;
     }
 
-    .auth-tabs {
-      display: flex;
-      gap: 4px;
+    .auth-message {
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .auth-message.is-error {
+      display: block;
+      background: rgba(192,57,43,.08);
+      color: var(--kut-danger);
+      border: 1px solid rgba(192,57,43,.20);
+    }
+    .auth-message.is-success {
+      display: block;
+      background: rgba(30,190,90,.08);
+      color: #0F7F3A;
+      border: 1px solid rgba(30,190,90,.20);
+    }
+    .auth-message.is-info {
+      display: block;
       background: var(--kut-green-soft);
-      padding: 4px;
-      border-radius: 14px;
-      margin-bottom: 22px;
-    }
-    .auth-tab {
-      flex: 1;
-      padding: 10px 12px;
-      border: none;
-      background: transparent;
-      border-radius: 10px;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--kut-muted);
-      cursor: pointer;
-      transition: all .18s ease;
-    }
-    .auth-tab.is-active {
-      background: #fff;
       color: var(--kut-green);
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      border: 1px solid rgba(0,95,64,.20);
     }
 
     .form-field {
@@ -131,11 +131,11 @@
     .form-field label .req { color: var(--kut-danger); margin-left: 2px; }
     .form-field input {
       width: 100%;
-      padding: 13px 15px;
+      padding: 14px 15px;
       border: 1.5px solid var(--kut-border);
       border-radius: 12px;
       font-family: inherit;
-      font-size: 15px;
+      font-size: 16px;
       color: var(--kut-text);
       outline: none;
       background: #fff;
@@ -148,6 +148,13 @@
     .form-field input.is-invalid {
       border-color: var(--kut-danger);
       box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+    .form-field input.otp-input {
+      text-align: center;
+      letter-spacing: 12px;
+      font-size: 24px;
+      font-weight: 700;
+      padding-left: 20px;
     }
     .form-error {
       font-size: 12px;
@@ -170,10 +177,27 @@
       box-shadow: 0 8px 20px rgba(0,95,64,.28);
       transition: background .18s ease, transform .12s ease;
       margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
     .auth-btn:hover { background: var(--kut-green-dark); }
     .auth-btn:active { transform: translateY(1px); }
     .auth-btn:disabled { opacity: .7; cursor: wait; }
+    .auth-btn--whatsapp {
+      background: var(--kut-whatsapp);
+      box-shadow: 0 8px 20px rgba(37,211,102,.35);
+    }
+    .auth-btn--whatsapp:hover { background: #1EBE5A; }
+    .auth-btn--ghost {
+      background: transparent;
+      color: var(--kut-green);
+      border: 1.5px solid var(--kut-border);
+      box-shadow: none;
+      margin-top: 10px;
+    }
+    .auth-btn--ghost:hover { background: var(--kut-green-soft); }
 
     .auth-footer {
       text-align: center;
@@ -188,27 +212,6 @@
     }
     .auth-footer a:hover { text-decoration: underline; }
 
-    .auth-message {
-      padding: 12px 14px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 16px;
-      display: none;
-    }
-    .auth-message.is-error {
-      display: block;
-      background: rgba(192,57,43,.08);
-      color: var(--kut-danger);
-      border: 1px solid rgba(192,57,43,.20);
-    }
-    .auth-message.is-success {
-      display: block;
-      background: rgba(30,190,90,.08);
-      color: #0F7F3A;
-      border: 1px solid rgba(30,190,90,.20);
-    }
-
     .hidden { display: none !important; }
     ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
   </style>
@@ -220,89 +223,75 @@
       <div class="auth-brand__mark">К</div>
       <div class="auth-brand__text">
         <strong>КУТ: БИЗНЕС</strong>
-        <small>Облачная система учёта</small>
+        <small>Вход по номеру телефона</small>
       </div>
     </div>
 
-    <!-- Табы: Вход / Регистрация -->
-    <div class="auth-tabs" role="tablist">
-      <button class="auth-tab is-active" type="button" data-tab="login" role="tab" aria-selected="true">
-        Вход
-      </button>
-      <button class="auth-tab" type="button" data-tab="register" role="tab" aria-selected="false">
-        Регистрация для бизнеса
-      </button>
-    </div>
-
-    <!-- Сообщение -->
     <div class="auth-message" id="authMessage"></div>
 
-    <!-- ============ ФОРМА ВХОДА ============ -->
-    <form id="loginForm" novalidate>
+    <!-- ============ ШАГ 1: Ввод номера ============ -->
+    <form id="phoneForm" novalidate>
       <div class="form-field">
-        <label for="loginEmail">Email <span class="req">*</span></label>
-        <input type="email" id="loginEmail" placeholder="owner@shop.kg" autocomplete="email" required>
-        <div class="form-error" data-for="loginEmail"></div>
+        <label for="phoneInput">Номер телефона <span class="req">*</span></label>
+        <input
+          type="tel"
+          id="phoneInput"
+          placeholder="+996 700 123 456"
+          inputmode="tel"
+          autocomplete="tel"
+          required>
+        <div class="form-error" data-for="phoneInput"></div>
       </div>
 
-      <div class="form-field">
-        <label for="loginPassword">Пароль <span class="req">*</span></label>
-        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" required>
-        <div class="form-error" data-for="loginPassword"></div>
-      </div>
-
-      <button class="auth-btn" type="submit" id="loginBtn">Войти в систему</button>
+      <button class="auth-btn auth-btn--whatsapp" type="submit" id="sendOtpBtn">
+        <span aria-hidden="true">💬</span> Получить код в WhatsApp
+      </button>
 
       <div class="auth-footer">
-        <a href="#" id="forgotLink">Забыли пароль?</a>
+        Нажимая кнопку, вы соглашаетесь с условиями сервиса.
       </div>
     </form>
 
-    <!-- ============ ФОРМА РЕГИСТРАЦИИ ============ -->
-    <form id="registerForm" class="hidden" novalidate>
+    <!-- ============ ШАГ 2: Ввод OTP ============ -->
+    <form id="otpForm" class="hidden" novalidate>
       <div class="form-field">
-        <label for="regCompany">Название компании <span class="req">*</span></label>
-        <input type="text" id="regCompany" placeholder="Магазин «Береке»" maxlength="80" autocomplete="organization" required>
-        <div class="form-error" data-for="regCompany"></div>
+        <label for="otpInput">Введи 4-значный код <span class="req">*</span></label>
+        <input
+          type="text"
+          id="otpInput"
+          class="otp-input"
+          placeholder="0000"
+          inputmode="numeric"
+          maxlength="4"
+          autocomplete="one-time-code"
+          required>
+        <div class="form-error" data-for="otpInput"></div>
       </div>
 
-      <div class="form-field">
-        <label for="regName">Ваше имя <span class="req">*</span></label>
-        <input type="text" id="regName" placeholder="Азамат" maxlength="60" autocomplete="name" required>
-        <div class="form-error" data-for="regName"></div>
-      </div>
+      <button class="auth-btn" type="submit" id="verifyOtpBtn">
+        Войти в систему
+      </button>
 
-      <div class="form-field">
-        <label for="regEmail">Email <span class="req">*</span></label>
-        <input type="email" id="regEmail" placeholder="owner@shop.kg" autocomplete="email" required>
-        <div class="form-error" data-for="regEmail"></div>
-      </div>
+      <button class="auth-btn auth-btn--ghost" type="button" id="backBtn">
+        ← Изменить номер
+      </button>
 
-      <div class="form-field">
-        <label for="regPassword">Пароль <span class="req">*</span></label>
-        <input type="password" id="regPassword" placeholder="Минимум 6 символов" autocomplete="new-password" required>
-        <div class="form-error" data-for="regPassword"></div>
-      </div>
-
-      <button class="auth-btn" type="submit" id="registerBtn">Создать аккаунт бизнеса</button>
-
-      <div class="auth-footer">
-        Регистрируясь, вы соглашаетесь с условиями сервиса.
+      <div class="auth-footer" id="otpTimerWrap">
+        Код действителен ещё <strong id="otpTimer">05:00</strong>
       </div>
     </form>
   </div>
 
-  <!-- ============ СКРИПТЫ ============ -->
   <script type="module">
     import './js/firebase-config.js';
 
-    // ---------- Утилиты ----------
     const $ = (s) => document.querySelector(s);
 
+    // ---------- Утилиты ----------
     function showMessage(text, kind) {
       const box = $('#authMessage');
       box.textContent = text;
-      box.className = 'auth-message ' + (kind === 'error' ? 'is-error' : 'is-success');
+      box.className = 'auth-message ' + (kind ? 'is-' + kind : '');
     }
     function clearMessage() {
       const box = $('#authMessage');
@@ -320,125 +309,164 @@
       form.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
     }
 
-    // ---------- Табы ----------
-    const loginForm = $('#loginForm');
-    const registerForm = $('#registerForm');
-    document.querySelectorAll('.auth-tab').forEach((tab) => {
-      tab.addEventListener('click', () => {
-        const target = tab.dataset.tab;
-        document.querySelectorAll('.auth-tab').forEach((t) => {
-          const active = t.dataset.tab === target;
-          t.classList.toggle('is-active', active);
-          t.setAttribute('aria-selected', String(active));
-        });
-        loginForm.classList.toggle('hidden', target !== 'login');
-        registerForm.classList.toggle('hidden', target !== 'register');
-        clearMessage();
-      });
+    // ---------- Маска телефона +996 ----------
+    function maskPhone(raw) {
+      let d = String(raw || '').replace(/\D/g, '');
+      if (d.startsWith('996')) d = d.slice(3);
+      else if (d.startsWith('0')) d = d.slice(1);
+      d = d.slice(0, 9);
+
+      if (d.length === 0) return '';
+      let out = '+996 ';
+      if (d.length <= 3) return out + d;
+      out += d.slice(0, 3) + ' ';
+      if (d.length <= 6) return out + d.slice(3);
+      out += d.slice(3, 6) + ' ';
+      out += d.slice(6);
+      return out;
+    }
+
+    function normalizePhone(raw) {
+      let d = String(raw || '').replace(/\D/g, '');
+      if (d.startsWith('996')) d = d.slice(3);
+      else if (d.startsWith('0')) d = d.slice(1);
+      d = d.slice(0, 9);
+      return '+996' + d;
+    }
+
+    function isValidPhone(normalized) {
+      return /^\+996\d{9}$/.test(normalized);
+    }
+
+    // ---------- Состояние ----------
+    let currentPhone = '';
+    let otpTimerInterval = null;
+
+    // ---------- Форма 1: запрос OTP ----------
+    const phoneForm = $('#phoneForm');
+    const otpForm = $('#otpForm');
+    const phoneInput = $('#phoneInput');
+
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = maskPhone(e.target.value);
     });
 
-    // ---------- Вход ----------
-    loginForm.addEventListener('submit', async (e) => {
+    phoneForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      clearErrors(loginForm);
+      clearErrors(phoneForm);
       clearMessage();
 
-      const email = $('#loginEmail').value.trim();
-      const password = $('#loginPassword').value;
-      let ok = true;
-
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setError('loginEmail', 'Введите корректный email'); ok = false;
+      const phoneNorm = normalizePhone(phoneInput.value);
+      if (!isValidPhone(phoneNorm)) {
+        setError('phoneInput', 'Введите корректный номер (например +996 700 123 456)');
+        return;
       }
-      if (password.length < 6) {
-        setError('loginPassword', 'Пароль минимум 6 символов'); ok = false;
-      }
-      if (!ok) return;
 
-      const btn = $('#loginBtn');
+      const btn = $('#sendOtpBtn');
       btn.disabled = true;
-      btn.textContent = 'Входим...';
+      btn.innerHTML = '<span>⏳</span> Отправляем код...';
 
       try {
-        const { profile } = await window.FB.login(email, password);
+        const ok = await window.FB.sendWhatsAppOtp(phoneNorm);
+        if (!ok) throw new Error('SEND_FAILED');
+
+        currentPhone = phoneNorm;
+        showMessage('Код отправлен в WhatsApp на ' + phoneNorm, 'success');
+        phoneForm.classList.add('hidden');
+        otpForm.classList.remove('hidden');
+        $('#otpInput').focus();
+        startOtpTimer(300);
+      } catch (err) {
+        console.error('[login] send OTP failed:', err);
+        showMessage('Не удалось отправить код. Попробуйте ещё раз.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span aria-hidden="true">💬</span> Получить код в WhatsApp';
+      }
+    });
+
+    // ---------- Форма 2: проверка OTP ----------
+    otpForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors(otpForm);
+      clearMessage();
+
+      const code = $('#otpInput').value.trim();
+      if (!/^\d{4}$/.test(code)) {
+        setError('otpInput', 'Введите 4-значный код');
+        return;
+      }
+
+      const btn = $('#verifyOtpBtn');
+      btn.disabled = true;
+      btn.textContent = 'Проверяем...';
+
+      try {
+        const { profile } = await window.FB.verifyWhatsAppOtp(currentPhone, code);
+
         if (!profile) {
           showMessage('Профиль не найден. Обратитесь к администратору.', 'error');
-          btn.disabled = false;
-          btn.textContent = 'Войти в систему';
           return;
         }
         if (profile.active === false) {
           showMessage('Ваш аккаунт заблокирован. Свяжитесь с администратором.', 'error');
           await window.FB.logout().catch(() => {});
-          btn.disabled = false;
-          btn.textContent = 'Войти в систему';
           return;
         }
+
         showMessage('Успешно! Перенаправляем...', 'success');
         setTimeout(() => window.FB.redirectByRole(profile), 400);
       } catch (err) {
-        console.error('[login]', err);
-        let msg = 'Ошибка входа. Попробуйте ещё раз.';
-        if (err.message === 'ACCOUNT_DISABLED') msg = 'Аккаунт заблокирован.';
-        else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') msg = 'Неверный email или пароль.';
-        else if (err.code === 'auth/user-not-found') msg = 'Пользователь не найден.';
-        else if (err.code === 'auth/too-many-requests') msg = 'Слишком много попыток. Подождите минуту.';
+        console.error('[login] verify OTP failed:', err);
+        let msg = 'Неверный код. Попробуйте ещё раз.';
+        if (err.message === 'OTP_EXPIRED') msg = 'Код истёк. Запросите новый.';
+        else if (err.message === 'OTP_NOT_FOUND') msg = 'Код не найден. Запросите новый.';
+        else if (err.message === 'OTP_MISMATCH') msg = 'Неверный код.';
         showMessage(msg, 'error');
+      } finally {
         btn.disabled = false;
         btn.textContent = 'Войти в систему';
       }
     });
 
-    // ---------- Регистрация ----------
-    registerForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearErrors(registerForm);
+    $('#backBtn').addEventListener('click', () => {
+      stopOtpTimer();
+      otpForm.classList.add('hidden');
+      phoneForm.classList.remove('hidden');
+      $('#otpInput').value = '';
+      clearErrors(otpForm);
       clearMessage();
-
-      const companyName = $('#regCompany').value.trim();
-      const displayName = $('#regName').value.trim();
-      const email = $('#regEmail').value.trim();
-      const password = $('#regPassword').value;
-      let ok = true;
-
-      if (companyName.length < 2) { setError('regCompany', 'Минимум 2 символа'); ok = false; }
-      if (displayName.length < 2) { setError('regName', 'Минимум 2 символа'); ok = false; }
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('regEmail', 'Введите корректный email'); ok = false; }
-      if (password.length < 6) { setError('regPassword', 'Минимум 6 символов'); ok = false; }
-      if (!ok) return;
-
-      const btn = $('#registerBtn');
-      btn.disabled = true;
-      btn.textContent = 'Создаём аккаунт...';
-
-      try {
-        await window.FB.registerOwner({ email, password, displayName, companyName });
-        showMessage('Аккаунт создан! Перенаправляем...', 'success');
-        setTimeout(() => (window.location.href = './index.html'), 600);
-      } catch (err) {
-        console.error('[register]', err);
-        let msg = 'Не удалось создать аккаунт.';
-        if (err.code === 'auth/email-already-in-use') msg = 'Этот email уже зарегистрирован.';
-        else if (err.code === 'auth/weak-password') msg = 'Пароль слишком простой.';
-        showMessage(msg, 'error');
-        btn.disabled = false;
-        btn.textContent = 'Создать аккаунт бизнеса';
-      }
+      phoneInput.focus();
     });
 
-    // ---------- Забыли пароль ----------
-    $('#forgotLink').addEventListener('click', (e) => {
-      e.preventDefault();
-      const email = $('#loginEmail').value.trim();
-      if (!email) {
-        showMessage('Сначала введите email, затем нажмите «Забыли пароль»', 'error');
-        return;
-      }
-      // Firebase умеет отправлять письмо сброса — требуется функция sendPasswordResetEmail
-      showMessage('Функция сброса пароля будет доступна в следующем обновлении. Обратитесь к администратору.', 'error');
-    });
+    // ---------- Таймер обратного отсчёта ----------
+    function startOtpTimer(seconds) {
+      stopOtpTimer();
+      const el = $('#otpTimer');
+      let left = seconds;
 
-    // ---------- Автоматический редирект, если пользователь уже вошёл ----------
+      const tick = () => {
+        const m = String(Math.floor(left / 60)).padStart(2, '0');
+        const s = String(left % 60).padStart(2, '0');
+        el.textContent = `${m}:${s}`;
+        if (left <= 0) {
+          stopOtpTimer();
+          el.textContent = '00:00';
+          showMessage('Код истёк. Запросите новый.', 'error');
+        }
+        left--;
+      };
+      tick();
+      otpTimerInterval = setInterval(tick, 1000);
+    }
+    function stopOtpTimer() {
+      if (otpTimerInterval) {
+        clearInterval(otpTimerInterval);
+        otpTimerInterval = null;
+      }
+    }
+
+    // ---------- Авто-редирект, если уже авторизован ----------
     (async () => {
       const { profile } = await window.FB.waitForAuth();
       if (profile && profile.active !== false) {
