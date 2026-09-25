@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — вход по WhatsApp или Email.">
+  <meta name="description" content="КУТ: БИЗНЕС — вход в систему.">
   <title>Вход — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,8 +18,6 @@
       --kut-green-soft: #E6F1ED;
       --kut-gold: #D4AF37;
       --kut-gold-dark: #B8952A;
-      --kut-bg: #F4F7F5;
-      --kut-surface: #FFFFFF;
       --kut-border: #E3EAE6;
       --kut-text: #14211C;
       --kut-muted: #64776E;
@@ -129,6 +127,7 @@
       margin-bottom: 16px;
       display: none;
       line-height: 1.4;
+      word-break: break-word;
     }
     .auth-message.is-error {
       display: block;
@@ -238,12 +237,6 @@
       color: var(--kut-muted);
       line-height: 1.4;
     }
-    .auth-footer a {
-      color: var(--kut-green);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .auth-footer a:hover { text-decoration: underline; }
 
     .forgot-link {
       text-align: right;
@@ -288,7 +281,7 @@
 
     <div class="auth-message" id="authMessage"></div>
 
-    <!-- ========== ВКЛАДКА 1: ВХОД ПО НОМЕРУ (КАССИРЫ) ========== -->
+    <!-- ========== ВКЛАДКА 1: ВХОД ПО НОМЕРУ (WhatsApp OTP) ========== -->
     <div id="phoneTab">
       <form id="phoneForm" novalidate>
         <div class="form-field">
@@ -341,7 +334,7 @@
       </form>
     </div>
 
-    <!-- ========== ВКЛАДКА 2: ВХОД ПО EMAIL ========== -->
+    <!-- ========== ВКЛАДКА 2: ВХОД ПО EMAIL (Админ / Владелец) ========== -->
     <div id="emailTab" class="hidden">
       <form id="emailForm" novalidate>
         <div class="form-field">
@@ -349,7 +342,7 @@
           <input
             type="email"
             id="emailInput"
-            placeholder="owner@shop.kg"
+            placeholder="admin@kut.local"
             autocomplete="email"
             required>
           <div class="form-error" data-for="emailInput"></div>
@@ -382,7 +375,67 @@
   </div>
 
   <script type="module">
-    import './js/firebase-config.js';
+    // =========================================================
+    // ИМПОРТЫ FIREBASE SDK v10 (modular, CDN)
+    // =========================================================
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged,
+      sendPasswordResetEmail,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      deleteDoc,
+      serverTimestamp,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    // =========================================================
+    // FIREBASE CONFIG (внутри файла, без внешних импортов)
+    // =========================================================
+    const firebaseConfig = {
+      apiKey:            "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
+      authDomain:        "kut-biznes.firebaseapp.com",
+      projectId:         "kut-biznes",
+      storageBucket:     "kut-biznes.firebasestorage.app",
+      messagingSenderId: "699153181693",
+      appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
+      measurementId:     "G-VTZ49G265B"
+    };
+
+    // =========================================================
+    // GREEN-API CONFIG (WhatsApp OTP)
+    // =========================================================
+    const WA_CONFIG = {
+      idInstance: '720122747171',
+      apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
+      buildUrl() {
+        return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
+      },
+    };
+
+    // =========================================================
+    // ИНИЦИАЛИЗАЦИЯ
+    // =========================================================
+    let app, auth, db;
+    try {
+      app  = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db   = getFirestore(app);
+      console.log('[KUT] Firebase инициализирован');
+      console.log('[KUT] projectId:', firebaseConfig.projectId);
+      console.log('[KUT] apiKey (первые 10):', firebaseConfig.apiKey.slice(0, 10) + '...');
+      console.log('[KUT] appId:', firebaseConfig.appId);
+    } catch (initErr) {
+      console.error('[KUT] Ошибка инициализации Firebase:', initErr);
+      alert('Ошибка инициализации Firebase: ' + initErr.message);
+    }
 
     const $ = (s) => document.querySelector(s);
 
@@ -445,17 +498,23 @@
     // РЕДИРЕКТ ПО РОЛИ
     // =========================================================
     function redirectByRole(profile) {
-      if (!profile) { window.location.href = './login.html'; return; }
+      if (!profile) {
+        alert('Ошибка роли: профиль не найден');
+        window.location.href = './login.html';
+        return;
+      }
 
       if (profile.active === false) {
-        showMessage('Ваш аккаунт заблокирован. Свяжитесь с администратором.', 'error');
-        window.FB.logout().catch(() => {});
+        alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
+        signOut(auth);
         return;
       }
 
       const role = profile.role;
+      console.log('[KUT] Роль пользователя:', role);
 
       if (role === 'super_admin') {
+        alert('Роль super_admin подтверждена. Переходим в admin.html');
         window.location.href = './admin.html';
         return;
       }
@@ -467,6 +526,7 @@
         window.location.href = './cash.html';
         return;
       }
+      alert('Неизвестная роль: ' + role + '. Переходим на главную.');
       window.location.href = './index.html';
     }
 
@@ -492,8 +552,226 @@
     });
 
     // =========================================================
-    // ВХОД ПО НОМЕРУ
+    // ВХОД ПО EMAIL И ПАРОЛЮ — С ДЕТАЛЬНОЙ ОТЛАДКОЙ
     // =========================================================
+    const emailForm = $('#emailForm');
+
+    emailForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors(emailForm);
+      clearMessage();
+
+      const email = $('#emailInput').value.trim();
+      const password = $('#passwordInput').value;
+      let ok = true;
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setError('emailInput', 'Введите корректный email');
+        ok = false;
+      }
+      if (password.length < 6) {
+        setError('passwordInput', 'Пароль минимум 6 символов');
+        ok = false;
+      }
+      if (!ok) return;
+
+      const btn = $('#emailLoginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Входим...';
+
+      let user = null;
+
+      // ---------- ШАГ 1: Аутентификация ----------
+      try {
+        console.log('[KUT Login] Попытка входа:', email);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        user = cred.user;
+        console.log('[KUT Login] Аутентификация OK. UID:', user.uid);
+      } catch (error) {
+        console.error('[KUT Login] Ошибка аутентификации:', error.code, error.message);
+        alert("Код ошибки от Google: " + error.code + " | Сообщение: " + error.message);
+        showMessage('Ошибка входа: ' + (error.code || error.message), 'error');
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+        return;
+      }
+
+      // ---------- ШАГ 2: Чтение профиля из Firestore ----------
+      let profile = null;
+      try {
+        console.log('[KUT Login] Читаем users/' + user.uid);
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (!snap.exists()) {
+          console.error('[KUT Login] Документ users/' + user.uid + ' не найден');
+          alert("Ошибка роли: в Firestore нет документа для этого UID или поле role не равно super_admin\n\nUID: " + user.uid);
+          await signOut(auth).catch(() => {});
+          btn.disabled = false;
+          btn.textContent = 'Войти';
+          return;
+        }
+        profile = { uid: user.uid, ...snap.data() };
+        console.log('[KUT Login] Профиль получен:', profile);
+      } catch (err) {
+        console.error('[KUT Login] Ошибка чтения профиля:', err);
+        alert("Ошибка чтения профиля: " + err.code + " | " + err.message +
+              "\n\nПроверьте Firestore Rules — они могут блокировать чтение.");
+        await signOut(auth).catch(() => {});
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+        return;
+      }
+
+      // ---------- ШАГ 3: Успех — отладка + редирект ----------
+      alert("Авторизация успешна! Ищем роль для UID: " + user.uid +
+            "\n\nНайдена роль: " + (profile.role || '(пусто)'));
+
+      if (!profile.role) {
+        alert("Ошибка роли: в Firestore нет документа для этого UID или поле role не равно super_admin");
+        await signOut(auth).catch(() => {});
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+        return;
+      }
+
+      showMessage('Успешно! Перенаправляем...', 'success');
+      setTimeout(() => redirectByRole(profile), 300);
+
+      btn.disabled = false;
+      btn.textContent = 'Войти';
+    });
+
+    // ---------- Забыли пароль ----------
+    $('#forgotBtn').addEventListener('click', async () => {
+      const email = $('#emailInput').value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showMessage('Введите email — мы отправим ссылку для сброса пароля.', 'info');
+        $('#emailInput').focus();
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
+      } catch (err) {
+        console.error('[KUT] reset password failed:', err);
+        alert("Ошибка сброса пароля: " + err.code + " | " + err.message);
+        showMessage('Не удалось отправить письмо.', 'error');
+      }
+    });
+
+    // =========================================================
+    // ВХОД ПО НОМЕРУ + WHATSAPP OTP
+    // =========================================================
+
+    function generateOtpCode() {
+      return String(Math.floor(1000 + Math.random() * 9000));
+    }
+
+    async function sendWhatsAppOtp(rawPhone) {
+      const phone = normalizePhone(rawPhone);
+      if (!isValidPhone(phone)) {
+        throw new Error('INVALID_PHONE');
+      }
+
+      const code = generateOtpCode();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      await setDoc(doc(db, 'otp_sessions', phone.replace(/\D/g, '')), {
+        phone,
+        code,
+        expiresAt,
+        createdAt: serverTimestamp(),
+        attempts: 0,
+      });
+
+      const phoneDigits = phone.replace(/\D/g, '');
+      const message =
+        `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\n` +
+        `Никому не сообщайте этот код. Действителен 5 минут.`;
+
+      const res = await fetch(WA_CONFIG.buildUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: `${phoneDigits}@c.us`,
+          message: message,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error('[KUT OTP] Green-API ошибка:', res.status, errText);
+        throw new Error('WHATSAPP_FAILED');
+      }
+
+      console.info('[KUT OTP] Код', code, 'отправлен на', phone);
+      return true;
+    }
+
+    async function verifyWhatsAppOtp(rawPhone, code) {
+      const phone = normalizePhone(rawPhone);
+      const ref = doc(db, 'otp_sessions', phone.replace(/\D/g, ''));
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()) throw new Error('OTP_NOT_FOUND');
+
+      const data = snap.data();
+      let expiresAt = data.expiresAt;
+      if (expiresAt && typeof expiresAt.toDate === 'function') {
+        expiresAt = expiresAt.toDate();
+      } else if (expiresAt && expiresAt.seconds) {
+        expiresAt = new Date(expiresAt.seconds * 1000);
+      } else {
+        expiresAt = new Date(expiresAt);
+      }
+
+      if (!expiresAt || Date.now() > expiresAt.getTime()) {
+        await deleteDoc(ref).catch(() => {});
+        throw new Error('OTP_EXPIRED');
+      }
+
+      if (String(data.code) !== String(code)) {
+        throw new Error('OTP_MISMATCH');
+      }
+
+      await deleteDoc(ref).catch(() => {});
+
+      const fakeEmail = phone.replace(/\D/g, '') + '@kut.local';
+      const fakePassword = 'kut_' + phone.replace(/\D/g, '') + '_secret';
+
+      let cred;
+      try {
+        cred = await signInWithEmailAndPassword(auth, fakeEmail, fakePassword);
+      } catch (err) {
+        if (err.code === 'auth/user-not-found' ||
+            err.code === 'auth/invalid-credential' ||
+            err.code === 'auth/invalid-login-credentials') {
+          cred = await createUserWithEmailAndPassword(auth, fakeEmail, fakePassword);
+        } else {
+          throw err;
+        }
+      }
+
+      const uid = cred.user.uid;
+      let profileSnap = await getDoc(doc(db, 'users', uid));
+      let profile;
+
+      if (!profileSnap.exists()) {
+        await setDoc(doc(db, 'users', uid), {
+          email: fakeEmail,
+          displayName: '',
+          phone: phone,
+          role: 'cashier',
+          businessId: null,
+          active: true,
+          createdAt: serverTimestamp(),
+        });
+        profileSnap = await getDoc(doc(db, 'users', uid));
+      }
+
+      profile = { uid, ...profileSnap.data() };
+      return { user: cred.user, profile };
+    }
+
     let currentPhone = '';
     let otpTimerInterval = null;
 
@@ -516,17 +794,12 @@
         return;
       }
 
-      if (!window.FB || typeof window.FB.sendWhatsAppOtp !== 'function') {
-        showMessage('Сервис авторизации не загружен. Обновите страницу.', 'error');
-        return;
-      }
-
       const btn = $('#sendOtpBtn');
       btn.disabled = true;
       btn.innerHTML = '<span>⏳</span> Отправляем код...';
 
       try {
-        await window.FB.sendWhatsAppOtp(phoneNorm);
+        await sendWhatsAppOtp(phoneNorm);
         currentPhone = phoneNorm;
         showMessage('Код отправлен в WhatsApp на ' + phoneNorm, 'success');
         phoneForm.classList.add('hidden');
@@ -536,15 +809,8 @@
       } catch (err) {
         console.error('[login] send OTP failed:', err);
         let msg = 'Не удалось отправить код. Попробуйте ещё раз.';
-        if (err.message === 'WHATSAPP_NOT_CONFIGURED') {
-          msg = 'WhatsApp-шлюз не настроен. Обратитесь к администратору.';
-        } else if (err.message === 'WHATSAPP_NETWORK') {
-          msg = 'Проблемы с сетью. Проверьте интернет.';
-        } else if (err.message === 'WHATSAPP_FAILED') {
-          msg = 'Шлюз WhatsApp не смог отправить код. Попробуйте позже.';
-        } else if (err.message === 'INVALID_PHONE') {
-          msg = 'Некорректный номер телефона.';
-        }
+        if (err.message === 'INVALID_PHONE') msg = 'Некорректный номер телефона.';
+        else if (err.message === 'WHATSAPP_FAILED') msg = 'WhatsApp-шлюз не смог отправить код.';
         showMessage(msg, 'error');
       } finally {
         btn.disabled = false;
@@ -563,25 +829,20 @@
         return;
       }
 
-      if (!window.FB || typeof window.FB.verifyWhatsAppOtp !== 'function') {
-        showMessage('Сервис авторизации не загружен. Обновите страницу.', 'error');
-        return;
-      }
-
       const btn = $('#verifyOtpBtn');
       btn.disabled = true;
       btn.textContent = 'Проверяем...';
 
       try {
-        const { profile } = await window.FB.verifyWhatsAppOtp(currentPhone, code);
+        const { profile } = await verifyWhatsAppOtp(currentPhone, code);
 
         if (!profile) {
-          showMessage('Профиль не найден. Обратитесь к администратору.', 'error');
+          showMessage('Профиль не найден.', 'error');
           return;
         }
         if (profile.active === false) {
-          showMessage('Ваш аккаунт заблокирован. Свяжитесь с администратором.', 'error');
-          await window.FB.logout().catch(() => {});
+          showMessage('Ваш аккаунт заблокирован.', 'error');
+          await signOut(auth).catch(() => {});
           return;
         }
 
@@ -622,7 +883,6 @@
         if (left <= 0) {
           stopOtpTimer();
           el.textContent = '00:00';
-          showMessage('Код истёк. Запросите новый.', 'error');
         }
         left--;
       };
@@ -637,103 +897,28 @@
     }
 
     // =========================================================
-    // ВХОД ПО EMAIL
-    // =========================================================
-    const emailForm = $('#emailForm');
-
-    emailForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearErrors(emailForm);
-      clearMessage();
-
-      const email = $('#emailInput').value.trim();
-      const password = $('#passwordInput').value;
-      let ok = true;
-
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setError('emailInput', 'Введите корректный email');
-        ok = false;
-      }
-      if (password.length < 6) {
-        setError('passwordInput', 'Пароль минимум 6 символов');
-        ok = false;
-      }
-      if (!ok) return;
-
-      if (!window.FB || typeof window.FB.login !== 'function') {
-        showMessage('Сервис авторизации не загружен. Обновите страницу.', 'error');
-        return;
-      }
-
-      const btn = $('#emailLoginBtn');
-      btn.disabled = true;
-      btn.textContent = 'Входим...';
-
-      try {
-        const { profile } = await window.FB.login(email, password);
-
-        if (!profile) {
-          showMessage('Профиль не найден. Обратитесь к администратору.', 'error');
-          return;
-        }
-        if (profile.active === false) {
-          showMessage('Ваш аккаунт заблокирован. Свяжитесь с администратором.', 'error');
-          await window.FB.logout().catch(() => {});
-          return;
-        }
-
-        showMessage('Успешно! Перенаправляем...', 'success');
-        setTimeout(() => redirectByRole(profile), 400);
-      } catch (err) {
-        console.error('[login] email login failed:', err);
-        let msg = 'Ошибка входа. Попробуйте ещё раз.';
-        if (err.message === 'ACCOUNT_DISABLED') msg = 'Аккаунт заблокирован.';
-        else if (err.code === 'auth/invalid-credential' ||
-                 err.code === 'auth/wrong-password' ||
-                 err.code === 'auth/invalid-login-credentials') {
-          msg = 'Неверный email или пароль.';
-        }
-        else if (err.code === 'auth/user-not-found') msg = 'Пользователь не найден.';
-        else if (err.code === 'auth/too-many-requests') msg = 'Слишком много попыток. Подождите минуту.';
-        else if (err.code === 'auth/invalid-email') msg = 'Некорректный email.';
-        showMessage(msg, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Войти';
-      }
-    });
-
-    $('#forgotBtn').addEventListener('click', async () => {
-      const email = $('#emailInput').value.trim();
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showMessage('Введите email — мы отправим ссылку для сброса пароля.', 'info');
-        $('#emailInput').focus();
-        return;
-      }
-      if (!window.FB || typeof window.FB.resetPassword !== 'function') {
-        showMessage('Функция сброса пароля недоступна.', 'error');
-        return;
-      }
-      try {
-        await window.FB.resetPassword(email);
-        showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
-      } catch (err) {
-        console.error('[login] reset password failed:', err);
-        showMessage('Не удалось отправить письмо. Проверьте email.', 'error');
-      }
-    });
-
-    // =========================================================
     // АВТО-РЕДИРЕКТ, ЕСЛИ УЖЕ АВТОРИЗОВАН
     // =========================================================
-    (async () => {
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+
       try {
-        const { profile } = await window.FB.waitForAuth();
-        if (profile && profile.active !== false) {
-          redirectByRole(profile);
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (!snap.exists()) return;
+
+        const profile = { uid: user.uid, ...snap.data() };
+        if (profile.active === false) {
+          await signOut(auth).catch(() => {});
+          return;
         }
-      } catch (_) {}
-    })();
+        console.log('[KUT] Уже авторизован, редирект по роли:', profile.role);
+        redirectByRole(profile);
+      } catch (err) {
+        console.warn('[KUT] Ошибка авто-редиректа:', err.message);
+      }
+    });
+
+    console.info('[KUT] login.html загружен · все ключи внутри файла');
   </script>
 </body>
 </html>
