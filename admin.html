@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#005F40">
+  <title>Супер-Администратор — КУТ: БИЗНЕС</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --kut-green: #005F40;
+      --kut-green-dark: #003F2A;
+      --kut-green-soft: #E6F1ED;
+      --kut-gold: #D4AF37;
+      --kut-gold-dark: #B8952A;
+      --kut-bg: #F4F7F5;
+      --kut-surface: #FFFFFF;
+      --kut-border: #E3EAE6;
+      --kut-text: #14211C;
+      --kut-muted: #64776E;
+      --kut-danger: #C0392B;
+      --kut-success: #1EBE5A;
+      --radius-sm: 10px;
+      --radius: 14px;
+      --radius-lg: 22px;
+      --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
+      --shadow-md: 0 6px 18px rgba(16,32,25,.08);
+      --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--kut-bg);
+      color: var(--kut-text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .topbar {
+      background: var(--kut-green);
+      color: #fff;
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .topbar__inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .topbar__brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .brand__mark {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: var(--kut-gold);
+      color: var(--kut-green-dark);
+      display: grid; place-items: center;
+      font-weight: 800;
+      font-size: 17px;
+    }
+    .topbar__brand-text {
+      font-size: 15px;
+      letter-spacing: .2px;
+    }
+    .topbar__badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      background: rgba(212,175,55,.20);
+      color: var(--kut-gold);
+      border-radius: 999px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+    .topbar__user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: rgba(255,255,255,.85);
+      font-size: 13px;
+    }
+    .topbar__logout {
+      padding: 8px 14px;
+      border: 1px solid rgba(255,255,255,.25);
+      background: transparent;
+      color: #fff;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s ease;
+    }
+    .topbar__logout:hover { background: rgba(255,255,255,.12); }
+
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+
+    .page-head {
+      margin-bottom: 20px;
+    }
+    .page-head h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -.4px;
+    }
+    .page-head p {
+      margin: 6px 0 0;
+      color: var(--kut-muted);
+      font-size: 14px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    @media (min-width: 640px) { .stats { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+
+    .stat {
+      background: #fff;
+      border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat__icon {
+      width: 46px; height: 46px;
+      border-radius: 12px;
+      background: var(--kut-green-soft);
+      color: var(--kut-green);
+      display: grid; place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .stat--gold .stat__icon { background: #FFF8E1; color: var(--kut-gold-dark); }
+    .stat--warn .stat__icon { background: #FFF2DE; color: #E08A1E; }
+    .stat__label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      font-weight: 700;
+      color: var(--kut-muted);
+      margin-bottom: 4px;
+    }
+    .stat__value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--kut-text);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat__value small {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--kut-muted);
+      margin-left: 4px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    .card__head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--kut-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card__head h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .card__search {
+      position: relative;
+      min-width: 220px;
+      flex: 1;
+      max-width: 320px;
+    }
+    .card__search input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border: 1px solid var(--kut-border);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      background: #FBFDFC;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .card__search input:focus {
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .card__search::before {
+      content: "🔍";
+      position: absolute;
+      left: 13px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      opacity: .6;
+      pointer-events: none;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .admin-table thead th {
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--kut-muted);
+      font-weight: 700;
+      padding: 14px 20px;
+      background: #FBFDFC;
+      border-bottom: 1px solid var(--kut-border);
+      white-space: nowrap;
+    }
+    .admin-table tbody td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--kut-border);
+      vertical-align: middle;
+    }
+    .admin-table tbody tr:last-child td { border-bottom: none; }
+    .admin-table tbody tr:hover { background: #FAFCFB; }
+
+    .biz-name {
+      font-weight: 700;
+      color: var(--kut-text);
+    }
+    .biz-email {
+      font-size: 13px;
+      color: var(--kut-muted);
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-badge--active {
+      background: rgba(30,190,90,.12);
+      color: #0F7F3A;
+    }
+    .status-badge--blocked {
+      background: rgba(192,57,43,.10);
+      color: var(--kut-danger);
+    }
+    .status-badge__dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .toggle-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--kut-border);
+      background: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s ease;
+      white-space: nowrap;
+    }
+    .toggle-btn--block {
+      color: var(--kut-danger);
+      border-color: rgba(192,57,43,.25);
+    }
+    .toggle-btn--block:hover { background: rgba(192,57,43,.08); border-color: var(--kut-danger); }
+    .toggle-btn--activate {
+      color: #0F7F3A;
+      border-color: rgba(30,190,90,.25);
+    }
+    .toggle-btn--activate:hover { background: rgba(30,190,90,.08); border-color: var(--kut-success); }
+    .toggle-btn:disabled { opacity: .5; cursor: wait; }
+
+    .empty-row {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--kut-muted);
+      font-size: 14px;
+    }
+
+    .loading-row {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--kut-muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .admin-table thead { display: none; }
+      .admin-table,
+      .admin-table tbody,
+      .admin-table tr,
+      .admin-table td { display: block; width: 100%; }
+      .admin-table tr {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--kut-border);
+      }
+      .admin-table tr:last-child { border-bottom: none; }
+      .admin-table td {
+        padding: 4px 0;
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .admin-table td::before {
+        content: attr(data-label);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        font-weight: 700;
+        color: var(--kut-muted);
+        flex-shrink: 0;
+      }
+      .admin-table td[data-label="Компания"] { display: block; padding-bottom: 10px; }
+      .admin-table td[data-label="Компания"]::before { display: none; }
+    }
+
+    .no-access {
+      text-align: center;
+      padding: 100px 20px;
+      color: var(--kut-muted);
+      font-size: 15px;
+    }
+    .no-access h2 {
+      margin: 0 0 8px;
+      color: var(--kut-text);
+      font-size: 22px;
+    }
+
+    .hidden { display: none !important; }
+    ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
+  </style>
+</head>
+<body>
+
+  <!-- ============ Верхняя навигация ============ -->
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a href="./admin.html" class="topbar__brand">
+        <span class="brand__mark">К</span>
+        <span class="topbar__brand-text">
+          КУТ: БИЗНЕС
+          <span class="topbar__badge">SUPER ADMIN</span>
+        </span>
+      </a>
+      <div class="topbar__user">
+        <span id="adminEmail">—</span>
+        <button class="topbar__logout" type="button" id="logoutBtn">Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ Контент ============ -->
+  <main class="wrap" id="adminContent" hidden>
+
+    <div class="page-head">
+      <h1>Панель супер-администратора</h1>
+      <p>Управление всеми зарегистрированными бизнесами системы</p>
+    </div>
+
+    <!-- Статистика -->
+    <section class="stats" aria-label="Общая статистика">
+      <div class="stat">
+        <div class="stat__icon" aria-hidden="true">🏢</div>
+        <div>
+          <div class="stat__label">Всего бизнесов</div>
+          <div class="stat__value" id="statTotalBiz">0<small>комп.</small></div>
+        </div>
+      </div>
+      <div class="stat stat--gold">
+        <div class="stat__icon" aria-hidden="true">✅</div>
+        <div>
+          <div class="stat__label">Активных</div>
+          <div class="stat__value" id="statActiveBiz">0<small>комп.</small></div>
+        </div>
+      </div>
+      <div class="stat stat--warn">
+        <div class="stat__icon" aria-hidden="true">🚫</div>
+        <div>
+          <div class="stat__label">Заблокированных</div>
+          <div class="stat__value" id="statBlockedBiz">0<small>комп.</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Таблица бизнесов -->
+    <section class="card">
+      <div class="card__head">
+        <h2>Зарегистрированные бизнесы</h2>
+        <div class="card__search">
+          <input type="search" id="searchBiz" placeholder="Поиск по названию или email..." aria-label="Поиск бизнеса">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Компания</th>
+              <th>Email владельца</th>
+              <th>Дата регистрации</th>
+              <th>Статус</th>
+              <th aria-label="Действия"></th>
+            </tr>
+          </thead>
+          <tbody id="bizTableBody">
+            <tr><td colspan="5" class="loading-row">Загрузка данных...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Экран «нет доступа» -->
+  <div class="no-access hidden" id="noAccess">
+    <h2>Доступ запрещён</h2>
+    <p>Эта страница доступна только супер-администратору.</p>
+    <a href="./login.html" style="display:inline-block; margin-top:16px; padding:12px 22px;
+       background:#005F40; color:#fff; border-radius:12px; text-decoration:none; font-weight:600;">
+      Перейти к входу
+    </a>
+  </div>
+
+  <!-- ============ СКРИПТЫ ============ -->
+  <script type="module">
+    import './js/firebase-config.js';
+
+    const $ = (s) => document.querySelector(s);
+
+    // ---------- Проверка роли ----------
+    (async () => {
+      const { user, profile } = await window.FB.waitForAuth();
+
+      if (!user || !profile) {
+        window.location.href = './login.html';
+        return;
+      }
+      if (profile.active === false) {
+        alert('Ваш аккаунт заблокирован.');
+        await window.FB.logout();
+        return;
+      }
+      if (profile.role !== 'super_admin') {
+        $('#noAccess').classList.remove('hidden');
+        return;
+      }
+
+      $('#adminEmail').textContent = profile.email || user.email || '—';
+      $('#adminContent').classList.remove('hidden');
+      loadBusinesses();
+    })();
+
+    // ---------- Загрузка бизнесов ----------
+    let allBusinesses = [];
+
+    async function loadBusinesses() {
+      const tbody = $('#bizTableBody');
+      tbody.innerHTML = '<tr><td colspan="5" class="loading-row">Загрузка данных...</td></tr>';
+
+      try {
+        allBusinesses = await window.FB.adminGetAllBusinesses();
+        renderBusinesses();
+        renderStats();
+      } catch (err) {
+        console.error('[admin] load failed:', err);
+        tbody.innerHTML = '<tr><td colspan="5" class="loading-row">Не удалось загрузить данные.</td></tr>';
+      }
+    }
+
+    function renderStats() {
+      const total = allBusinesses.length;
+      const active = allBusinesses.filter((b) => b.active !== false).length;
+      const blocked = total - active;
+
+      $('#statTotalBiz').innerHTML = total + '<small>комп.</small>';
+      $('#statActiveBiz').innerHTML = active + '<small>комп.</small>';
+      $('#statBlockedBiz').innerHTML = blocked + '<small>комп.</small>';
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '—';
+      let d;
+      if (typeof ts.toDate === 'function') d = ts.toDate();
+      else d = new Date(ts);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[ch]));
+    }
+
+    function renderBusinesses() {
+      const q = ($('#searchBiz').value || '').trim().toLowerCase();
+      const tbody = $('#bizTableBody');
+
+      const items = allBusinesses.filter((b) => {
+        if (!q) return true;
+        const name = String(b.name || '').toLowerCase();
+        const email = String(b.ownerEmail || '').toLowerCase();
+        return name.includes(q) || email.includes(q);
+      });
+
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-row">Ничего не найдено.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = items.map((b) => {
+        const isActive = b.active !== false;
+        const statusCls = isActive ? 'status-badge--active' : 'status-badge--blocked';
+        const statusText = isActive ? 'Активен' : 'Заблокирован';
+        const btnCls = isActive ? 'toggle-btn--block' : 'toggle-btn--activate';
+        const btnText = isActive ? 'Заблокировать' : 'Активировать';
+
+        return `
+          <tr data-biz-id="${escapeHtml(b.id)}">
+            <td data-label="Компания">
+              <div class="biz-name">${escapeHtml(b.name || 'Без названия')}</div>
+              <div class="biz-email">ID: ${escapeHtml(b.id)}</div>
+            </td>
+            <td data-label="Email владельца">${escapeHtml(b.ownerEmail || '—')}</td>
+            <td data-label="Дата регистрации">${formatDate(b.createdAt)}</td>
+            <td data-label="Статус">
+              <span class="status-badge ${statusCls}">
+                <span class="status-badge__dot"></span>
+                ${statusText}
+              </span>
+            </td>
+            <td data-label="Действия">
+              <button class="toggle-btn ${btnCls}" type="button" data-toggle-biz="${escapeHtml(b.id)}"
+                      data-current="${isActive ? 'active' : 'blocked'}">
+                ${btnText}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ---------- Переключение статуса ----------
+    $('#bizTableBody').addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-toggle-biz]');
+      if (!btn) return;
+
+      const bizId = btn.dataset.toggleBiz;
+      const current = btn.dataset.current;
+      const newActive = current !== 'active';
+
+      if (newActive) {
+        if (!confirm('Активировать этот бизнес? Пользователи смогут снова войти.')) return;
+      } else {
+        if (!confirm('Заблокировать этот бизнес? Все пользователи компании потеряют доступ.')) return;
+      }
+
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = 'Обновление...';
+
+      try {
+        await window.FB.adminToggleBusinessStatus(bizId, newActive);
+
+        // Обновляем локальный массив
+        const item = allBusinesses.find((b) => b.id === bizId);
+        if (item) item.active = newActive;
+
+        renderBusinesses();
+        renderStats();
+      } catch (err) {
+        console.error('[admin] toggle failed:', err);
+        alert('Не удалось изменить статус: ' + (err.message || 'неизвестная ошибка'));
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+
+    // ---------- Поиск ----------
+    $('#searchBiz').addEventListener('input', renderBusinesses);
+
+    // ---------- Выход ----------
+    $('#logoutBtn').addEventListener('click', () => {
+      window.FB.logout();
+    });
+  </script>
+</body>
+</html>
