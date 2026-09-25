@@ -1059,3 +1059,183 @@
     boot();
   }
 })();
+
+/* =========================================================
+   КУТ i18n — ФИНАЛЬНЫЙ АКТИВАТОР ПЕРЕКЛЮЧАТЕЛЯ ЯЗЫКА
+   Патч-страховка: делегирование событий на document,
+   чтобы клики по KG/RU/EN работали всегда — даже если
+   основная часть lang.js не успела привязать обработчики.
+   ========================================================= */
+(function () {
+  'use strict';
+
+  // ---------- Константы ----------
+  const STORAGE_KEY = 'kut_lang';
+  const SUPPORTED = ['ru', 'kg', 'en'];
+  const DEFAULT_LANG = 'ru';
+  const FLAGS = { ru: '🇷🇺', kg: '🇰🇬', en: '🇬🇧' };
+  const CODES = { ru: 'RU', kg: 'KG', en: 'EN' };
+
+  // Защита от двойной инициализации
+  if (window.__kutLangActivatorAttached) return;
+  window.__kutLangActivatorAttached = true;
+
+  // ---------- Работа с localStorage ----------
+  function readSaved() {
+    try {
+      const v = localStorage.getItem(STORAGE_KEY);
+      return (v && SUPPORTED.includes(v)) ? v : null;
+    } catch (_) { return null; }
+  }
+
+  function saveLang(lang) {
+    try { localStorage.setItem(STORAGE_KEY, lang); } catch (_) {}
+  }
+
+  // ---------- Применение языка ----------
+  function applyLang(lang) {
+    if (!SUPPORTED.includes(lang)) lang = DEFAULT_LANG;
+
+    // 1) Сохраняем выбор
+    saveLang(lang);
+
+    // 2) Запускаем перевод через API ядра, если он есть
+    if (window.KUT_LANG && typeof window.KUT_LANG.setLang === 'function') {
+      window.KUT_LANG.setLang(lang);
+    } else {
+      // Фоллбэк: как минимум корректный <html lang="...">
+      document.documentElement.lang = lang;
+      // Ручной проход по data-i18n, если ядро по какой-то причине недоступно
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        const key = el.getAttribute('data-i18n');
+        // Нет словаря — не подменяем, просто оставляем как есть
+        void key;
+      });
+    }
+
+    // 3) Обновляем визуал кнопки в шапке
+    updateSwitcherVisual(lang);
+
+    // 4) Оповещаем модули (app.js, cash.js, stock.js, debts.js)
+    window.dispatchEvent(new CustomEvent('kut:lang', { detail: { lang: lang } }));
+
+    console.info('[KUT i18n] Язык переключён на:', lang.toUpperCase());
+  }
+
+  // ---------- Обновление флага и галочек ----------
+  function updateSwitcherVisual(lang) {
+    // Флаг + код в кнопке-триггере
+    document.querySelectorAll('.kut-lang__btn').forEach(function (btn) {
+      const flagEl = btn.querySelector('.kut-lang__flag');
+      const codeEl = btn.querySelector('.kut-lang__code');
+      if (flagEl) flagEl.textContent = FLAGS[lang] || '';
+      if (codeEl) codeEl.textContent = CODES[lang] || '';
+      btn.setAttribute('aria-expanded', 'false');
+    });
+
+    // Галочки в выпадающем меню
+    document.querySelectorAll('.kut-lang__menu [data-lang]').forEach(function (opt) {
+      const isActive = opt.dataset.lang === lang;
+      opt.classList.toggle('is-active', isActive);
+      const tick = opt.querySelector('.kut-lang__tick');
+      if (tick) tick.textContent = isActive ? '✓' : '';
+    });
+  }
+
+  // ---------- Закрытие всех меню ----------
+  function closeAllMenus() {
+    document.querySelectorAll('.kut-lang__menu').forEach(function (m) {
+      m.hidden = true;
+    });
+    document.querySelectorAll('.kut-lang').forEach(function (w) {
+      w.classList.remove('is-open');
+      const b = w.querySelector('.kut-lang__btn');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  // ---------- Делегированный обработчик КЛИКА ----------
+  document.addEventListener('click', function (e) {
+    // 1) Клик по пункту меню (KG / RU / EN)
+    const option = e.target.closest('.kut-lang__menu [data-lang]');
+    if (option) {
+      e.preventDefault();
+      e.stopPropagation();
+      const lang = option.getAttribute('data-lang');
+      applyLang(lang);
+      closeAllMenus();
+      return;
+    }
+
+    // 2) Клик по кнопке-триггеру (открыть/закрыть меню)
+    const trigger = e.target.closest('.kut-lang__btn');
+    if (trigger) {
+      e.preventDefault();
+      e.stopPropagation();
+      const wrap = trigger.closest('.kut-lang');
+      if (!wrap) return;
+      const menu = wrap.querySelector('.kut-lang__menu');
+      if (!menu) return;
+      const willOpen = menu.hidden;
+      // Сначала закроем все остальные
+      closeAllMenus();
+      // Затем откроем нужное
+      if (willOpen) {
+        menu.hidden = false;
+        wrap.classList.add('is-open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+      return;
+    }
+
+    // 3) Клик мимо — всё закрываем
+    if (!e.target.closest('.kut-lang')) {
+      closeAllMenus();
+    }
+  }, true); // ← фаза перехвата (capture), чтобы опередить любые stopPropagation
+
+  // ---------- Escape закрывает меню ----------
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeAllMenus();
+  });
+
+  // ---------- Резерв: <select> вместо кнопок ----------
+  document.querySelectorAll('select[data-kut-lang], select#kut-lang, select.kut-lang-select').forEach(function (sel) {
+    sel.addEventListener('change', function (e) {
+      applyLang(e.target.value);
+    });
+  });
+
+  // ---------- Стартовое применение ----------
+  function boot() {
+    const saved = readSaved();
+
+    if (saved) {
+      // У пользователя уже сохранён выбор — применяем сразу.
+      // setLang у ядра сам запишет в localStorage (перезапись тем же значением безвредна).
+      applyLang(saved);
+    } else {
+      // Первый заход — берём текущий язык ядра (по умолчанию ru) и обновляем только визуал.
+      const current = (window.KUT_LANG && window.KUT_LANG.getLang && window.KUT_LANG.getLang()) || DEFAULT_LANG;
+      updateSwitcherVisual(current);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  // Экспорт для отладки из консоли
+  window.KUT_LANG_CTRL = {
+    apply: applyLang,
+    saved: readSaved,
+    refresh: updateSwitcherVisual
+  };
+
+  console.info(
+    '%cКУТ i18n: активатор переключателя подключён',
+    'color:#005F40; font-weight:700'
+  );
+})();
