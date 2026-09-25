@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#005F40"/>
+  <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle"
+        font-family="Inter, system-ui, sans-serif" font-weight="800"
+        font-size="220" fill="#D4AF37">К</text>
+</svg>
