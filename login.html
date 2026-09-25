@@ -474,7 +474,6 @@
         window.location.href = './cash.html';
         return;
       }
-      // На случай неизвестной роли — на дашборд
       window.location.href = './index.html';
     }
 
@@ -730,7 +729,6 @@
       try {
         const { profile } = await window.FB.waitForAuth();
         if (profile && profile.active !== false) {
-          // Пользователь уже вошёл — редиректим по роли
           redirectByRole(profile);
         }
       } catch (_) {}
