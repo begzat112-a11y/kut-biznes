@@ -392,13 +392,13 @@
     } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
     const firebaseConfig = {
-      apiKey:            "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
-      authDomain:        "kut-biznes.firebaseapp.com",
-      projectId:         "kut-biznes",
-      storageBucket:     "kut-biznes.firebasestorage.app",
+      apiKey: "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
+      authDomain: "kut-biznes.firebaseapp.com",
+      projectId: "kut-biznes",
+      storageBucket: "kut-biznes.firebasestorage.app",
       messagingSenderId: "699153181693",
-      appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
-      measurementId:     "G-VTZ49G265B"
+      appId: "1:699153181693:web:2f10e57664e8a0cefc4794",
+      measurementId: "G-VTZ49G26SB"
     };
 
     const WA_CONFIG = {
@@ -416,6 +416,7 @@
       db   = getFirestore(app);
       console.log('[KUT] Firebase инициализирован:', firebaseConfig.projectId);
       console.log('[KUT] apiKey:', firebaseConfig.apiKey, '(длина ' + firebaseConfig.apiKey.length + ')');
+      console.log('[KUT] authDomain:', firebaseConfig.authDomain);
     } catch (initErr) {
       console.error('[KUT] Ошибка инициализации:', initErr);
       alert('Ошибка инициализации Firebase: ' + initErr.message);
@@ -865,6 +866,7 @@
 
     console.info('[KUT] login.html загружен');
     console.info('[KUT] apiKey:', firebaseConfig.apiKey);
+    console.info('[KUT] authDomain:', firebaseConfig.authDomain);
     console.info('[KUT] appId:', firebaseConfig.appId);
     console.info('[KUT] Green-API instance:', WA_CONFIG.idInstance);
   </script>
