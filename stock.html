@@ -13,8 +13,10 @@
 
   <link rel="stylesheet" href="./css/style.css">
 
+  <!-- 📷 Сканер штрихкодов — библиотека html5-qrcode -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+
   <style>
-    /* ====== Токены с фоллбэками ====== */
     :root {
       --kut-green: #005F40;
       --kut-green-dark: #003F2A;
@@ -50,7 +52,7 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ===================== Верхняя навигация ===================== */
+    /* ========== Верхняя навигация ========== */
     .topbar {
       background: var(--kut-green);
       color: #fff;
@@ -111,7 +113,7 @@
       font-weight: 600;
     }
 
-    /* ===================== Контейнер ===================== */
+    /* ========== Контейнер ========== */
     .wrap {
       width: 100%;
       max-width: 1400px;
@@ -145,7 +147,7 @@
       font-size: 14px;
     }
 
-    /* ===================== Статистика ===================== */
+    /* ========== Статистика ========== */
     .stats {
       display: grid;
       grid-template-columns: 1fr;
@@ -184,14 +186,8 @@
       color: var(--kut-green);
       flex-shrink: 0;
     }
-    .stat--warn .stat__icon {
-      background: #FFF2DE;
-      color: var(--kut-warn);
-    }
-    .stat--money .stat__icon {
-      background: #FFF8E1;
-      color: var(--kut-gold-dark);
-    }
+    .stat--warn .stat__icon { background: #FFF2DE; color: var(--kut-warn); }
+    .stat--money .stat__icon { background: #FFF8E1; color: var(--kut-gold-dark); }
     .stat__body { min-width: 0; }
     .stat__label {
       font-size: 12px;
@@ -217,7 +213,7 @@
       letter-spacing: 0;
     }
 
-    /* ===================== Тулбар ===================== */
+    /* ========== Тулбар ========== */
     .toolbar {
       background: var(--kut-surface);
       border: 1px solid var(--kut-border);
@@ -299,7 +295,7 @@
       box-shadow: 0 4px 10px rgba(0,95,64,.22);
     }
 
-    /* ===================== Кнопки ===================== */
+    /* ========== Кнопки ========== */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -348,7 +344,7 @@
       transform: none;
     }
 
-    /* ===================== Таблица / карточки ===================== */
+    /* ========== Таблица ========== */
     .stock-card {
       background: var(--kut-surface);
       border: 1px solid var(--kut-border);
@@ -380,9 +376,7 @@
       vertical-align: middle;
     }
     .stock-table tbody tr:last-child td { border-bottom: none; }
-    .stock-table tbody tr {
-      transition: background .15s ease;
-    }
+    .stock-table tbody tr { transition: background .15s ease; }
     .stock-table tbody tr:hover { background: #FAFCFB; }
 
     .cell-name {
@@ -425,8 +419,6 @@
       color: var(--kut-green);
       white-space: nowrap;
     }
-    .badge--warn { background: #FFF2DE; color: var(--kut-warn); }
-    .badge--danger { background: #FDE7E4; color: var(--kut-danger); }
 
     .price {
       font-variant-numeric: tabular-nums;
@@ -497,7 +489,6 @@
     .empty h3 { margin: 0 0 6px; color: var(--kut-text); font-size: 17px; }
     .empty p { margin: 0 0 18px; font-size: 14px; }
 
-    /* --- Мобильная трансформация таблицы в карточки --- */
     @media (max-width: 860px) {
       .stock-table thead { display: none; }
       .stock-table,
@@ -534,7 +525,7 @@
       .row-actions { gap: 8px; }
     }
 
-    /* ===================== Модальное окно ===================== */
+    /* ========== Модальное окно ========== */
     .modal[hidden] { display: none; }
     .modal {
       position: fixed;
@@ -648,6 +639,59 @@
       border-color: var(--kut-green);
     }
 
+    /* 📷 Поле штрихкода — красивый блок с кнопкой сканера */
+    .barcode-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .barcode-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--kut-border);
+      background: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--kut-text);
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .barcode-row input:focus {
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .barcode-row input.is-invalid {
+      border-color: var(--kut-danger);
+      box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+    .barcode-row__btn {
+      flex-shrink: 0;
+      padding: 0 14px;
+      border: 1.5px solid var(--kut-green);
+      background: var(--kut-green-soft);
+      color: var(--kut-green);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .18s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .barcode-row__btn:hover {
+      background: var(--kut-green);
+      color: #fff;
+    }
+    @media (max-width: 480px) {
+      .barcode-row { flex-wrap: wrap; }
+      .barcode-row__btn { width: 100%; justify-content: center; padding: 12px; }
+    }
+
     .margin-preview {
       margin-top: 6px;
       padding: 12px 14px;
@@ -687,7 +731,7 @@
     }
     .modal__actions .btn { flex: 1; }
 
-    /* Тост */
+    /* ========== Тост ========== */
     .toast {
       position: fixed;
       left: 50%;
@@ -725,7 +769,7 @@
         <a href="./index.html">Дашборд</a>
         <a href="./cash.html">Касса</a>
         <a href="./stock.html" class="active" aria-current="page">Склад</a>
-        <a href="./reports.html">Отчёты</a>
+        <a href="./debts.html">Несие</a>
       </nav>
     </div>
   </header>
@@ -775,7 +819,7 @@
         <input
           type="search"
           id="searchInput"
-          placeholder="Поиск по названию или категории..."
+          placeholder="Поиск по названию, категории или штрихкоду..."
           aria-label="Поиск товара"
           autocomplete="off">
       </div>
@@ -893,6 +937,23 @@
             <div class="field__hint" data-for="fSale"></div>
           </div>
 
+          <!-- 📷 Штрихкод с кнопкой сканера -->
+          <div class="field field--full">
+            <label for="fBarcode">Штрихкод (Barcode)</label>
+            <div class="barcode-row">
+              <input
+                type="text"
+                id="fBarcode"
+                inputmode="numeric"
+                placeholder="Введите цифры или отсканируйте"
+                autocomplete="off">
+              <button type="button" id="barcodeScanBtn" class="barcode-row__btn">
+                <span aria-hidden="true">📷</span> Считать штрихкод
+              </button>
+            </div>
+            <div class="field__hint" data-for="fBarcode">Введите вручную или отсканируйте с упаковки товара.</div>
+          </div>
+
           <div class="field field--full">
             <div class="margin-preview" aria-live="polite">
               <div class="margin-preview__item">
@@ -938,8 +999,10 @@
   <!-- Тост -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script type="module" src="./js/stock.js"></script>
-  <script type="module" src="./js/app.js"></script>
-<script src="./js/lang.js"></script>   <!-- ← добавить -->
+  <!-- ============ Скрипты ============ -->
+  <!-- Ядро системы — должно идти первым, чтобы window.KUT был доступен -->
+  <script src="./js/app.js"></script>
+  <script src="./js/lang.js"></script>
+  <script src="./js/stock.js"></script>
 </body>
 </html>
