@@ -1,0 +1,68 @@
+{
+  "name": "КУТ: БИЗНЕС",
+  "short_name": "КУТ",
+  "description": "Простая система учёта для малого бизнеса Кыргызстана: касса, склад, долги (Несие).",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F6F8",
+  "theme_color": "#005F40",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "https://placehold.co/192x192/005F40/FFFFFF/png?text=KUT",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://placehold.co/512x512/005F40/FFFFFF/png?text=KUT",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://placehold.co/192x192/D4AF37/005F40/png?text=KUT",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "https://placehold.co/512x512/D4AF37/005F40/png?text=KUT",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Открыть кассу",
+      "short_name": "Касса",
+      "description": "Быстрая продажа",
+      "url": "./cash.html",
+      "icons": [
+        {
+          "src": "https://placehold.co/192x192/005F40/FFFFFF/png?text=%2B",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Несие (долги)",
+      "short_name": "Несие",
+      "description": "Тетрадь долгов",
+      "url": "./debts.html",
+      "icons": [
+        {
+          "src": "https://placehold.co/192x192/D4AF37/005F40/png?text=KGS",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
