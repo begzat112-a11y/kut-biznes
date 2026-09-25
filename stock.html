@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#005F40">
+  <meta name="description" content="КУТ: БИЗНЕС — склад и товары. Учёт остатков, себестоимости и цен продажи.">
+  <title>Склад и товары — КУТ: БИЗНЕС</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./css/style.css">
+
+  <style>
+    /* ====== Токены с фоллбэками ====== */
+    :root {
+      --kut-green: #005F40;
+      --kut-green-dark: #003F2A;
+      --kut-green-soft: #E6F1ED;
+      --kut-gold: #D4AF37;
+      --kut-gold-dark: #B8952A;
+      --kut-bg: #F4F7F5;
+      --kut-surface: #FFFFFF;
+      --kut-border: #E3EAE6;
+      --kut-text: #14211C;
+      --kut-muted: #64776E;
+      --kut-danger: #C0392B;
+      --kut-warn: #E08A1E;
+      --radius-sm: 10px;
+      --radius: 14px;
+      --radius-lg: 22px;
+      --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
+      --shadow-md: 0 6px 18px rgba(16,32,25,.08);
+      --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body.page-stock {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--kut-bg);
+      color: var(--kut-text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===================== Верхняя навигация ===================== */
+    .topbar {
+      background: var(--kut-green);
+      color: #fff;
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .topbar__inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      justify-content: space-between;
+    }
+    .topbar__brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .brand__mark {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      background: var(--kut-gold);
+      color: var(--kut-green-dark);
+      display: grid; place-items: center;
+      font-weight: 800;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,.12);
+    }
+    .brand__name { font-size: 15px; }
+
+    .topbar__nav {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .topbar__nav::-webkit-scrollbar { display: none; }
+    .topbar__nav a {
+      color: rgba(255,255,255,.85);
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: background .18s ease, color .18s ease;
+    }
+    .topbar__nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .topbar__nav a.active {
+      background: var(--kut-gold);
+      color: var(--kut-green-dark);
+      font-weight: 600;
+    }
+
+    /* ===================== Контейнер ===================== */
+    .wrap {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    @media (min-width: 980px) { .wrap { padding: 20px; } }
+
+    .page-head {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 720px) {
+      .page-head {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+    .page-head h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+    }
+    .page-head p {
+      margin: 4px 0 0;
+      color: var(--kut-muted);
+      font-size: 14px;
+    }
+
+    /* ===================== Статистика ===================== */
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 640px) { .stats { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
+
+    .stat {
+      background: var(--kut-surface);
+      border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat::after {
+      content: "";
+      position: absolute;
+      right: -20px; bottom: -30px;
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212,175,55,.16), transparent 70%);
+      pointer-events: none;
+    }
+    .stat__icon {
+      width: 46px; height: 46px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      font-size: 22px;
+      background: var(--kut-green-soft);
+      color: var(--kut-green);
+      flex-shrink: 0;
+    }
+    .stat--warn .stat__icon {
+      background: #FFF2DE;
+      color: var(--kut-warn);
+    }
+    .stat--money .stat__icon {
+      background: #FFF8E1;
+      color: var(--kut-gold-dark);
+    }
+    .stat__body { min-width: 0; }
+    .stat__label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      font-weight: 600;
+      color: var(--kut-muted);
+      margin-bottom: 4px;
+    }
+    .stat__value {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--kut-text);
+      letter-spacing: -.4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat__value small {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--kut-muted);
+      margin-left: 4px;
+      letter-spacing: 0;
+    }
+
+    /* ===================== Тулбар ===================== */
+    .toolbar {
+      background: var(--kut-surface);
+      border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    @media (min-width: 720px) {
+      .toolbar {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+      }
+    }
+
+    .search { position: relative; flex: 1; min-width: 200px; }
+    .search input {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      border: 1px solid var(--kut-border);
+      background: #FBFDFC;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--kut-text);
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .search input::placeholder { color: var(--kut-muted); }
+    .search input:focus {
+      background: #fff;
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .search::before {
+      content: "🔍";
+      position: absolute;
+      left: 14px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      opacity: .65;
+      pointer-events: none;
+    }
+
+    .chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+      flex-wrap: nowrap;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    @media (min-width: 720px) {
+      .chips { flex-wrap: nowrap; overflow: visible; }
+    }
+    .chip {
+      border: 1px solid var(--kut-border);
+      background: #fff;
+      color: var(--kut-text);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      transition: all .18s ease;
+    }
+    .chip:hover { border-color: var(--kut-green); color: var(--kut-green); }
+    .chip.is-active {
+      background: var(--kut-green);
+      color: #fff;
+      border-color: var(--kut-green);
+      box-shadow: 0 4px 10px rgba(0,95,64,.22);
+    }
+
+    /* ===================== Кнопки ===================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: transform .12s ease, box-shadow .18s ease, background .18s ease, opacity .18s ease, color .18s ease;
+      white-space: nowrap;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn--primary {
+      background: var(--kut-green);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(0,95,64,.24);
+    }
+    .btn--primary:hover { background: var(--kut-green-dark); }
+    .btn--gold {
+      background: var(--kut-gold);
+      color: var(--kut-green-dark);
+      box-shadow: 0 8px 18px rgba(212,175,55,.32);
+    }
+    .btn--gold:hover { background: var(--kut-gold-dark); }
+    .btn--ghost {
+      background: transparent;
+      border-color: var(--kut-border);
+      color: var(--kut-text);
+    }
+    .btn--ghost:hover { background: var(--kut-green-soft); border-color: var(--kut-green); color: var(--kut-green); }
+    .btn--danger {
+      background: transparent;
+      color: var(--kut-danger);
+      border-color: rgba(192,57,43,.25);
+    }
+    .btn--danger:hover { background: rgba(192,57,43,.08); border-color: var(--kut-danger); }
+    .btn--block { width: 100%; }
+    .btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* ===================== Таблица / карточки ===================== */
+    .stock-card {
+      background: var(--kut-surface);
+      border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    .stock-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .stock-table thead th {
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--kut-muted);
+      font-weight: 700;
+      padding: 14px 16px;
+      background: #FBFDFC;
+      border-bottom: 1px solid var(--kut-border);
+      white-space: nowrap;
+    }
+    .stock-table tbody td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--kut-border);
+      vertical-align: middle;
+    }
+    .stock-table tbody tr:last-child td { border-bottom: none; }
+    .stock-table tbody tr {
+      transition: background .15s ease;
+    }
+    .stock-table tbody tr:hover { background: #FAFCFB; }
+
+    .cell-name {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 200px;
+    }
+    .cell-name__emoji {
+      width: 40px; height: 40px;
+      display: grid; place-items: center;
+      background: var(--kut-green-soft);
+      border-radius: 10px;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .cell-name__text { min-width: 0; }
+    .cell-name__title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--kut-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 260px;
+    }
+    .cell-name__sub {
+      font-size: 12px;
+      color: var(--kut-muted);
+      margin-top: 2px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 999px;
+      background: var(--kut-green-soft);
+      color: var(--kut-green);
+      white-space: nowrap;
+    }
+    .badge--warn { background: #FFF2DE; color: var(--kut-warn); }
+    .badge--danger { background: #FDE7E4; color: var(--kut-danger); }
+
+    .price {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .price--cost { color: var(--kut-muted); }
+    .price--sale { color: var(--kut-green); font-weight: 700; }
+
+    .qty-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--kut-green-soft);
+      border-radius: 10px;
+      padding: 3px;
+    }
+    .qty-btn {
+      width: 30px; height: 30px;
+      display: grid; place-items: center;
+      border: none;
+      background: transparent;
+      color: var(--kut-green);
+      font-size: 17px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1;
+      transition: background .15s ease;
+    }
+    .qty-btn:hover { background: #fff; }
+    .qty-btn:active { transform: scale(.94); }
+    .qty-value {
+      min-width: 40px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--kut-text);
+      font-variant-numeric: tabular-nums;
+    }
+    .qty-value small { font-size: 11px; color: var(--kut-muted); font-weight: 500; margin-left: 2px; }
+
+    .row-actions {
+      display: inline-flex;
+      gap: 4px;
+    }
+    .icon-btn {
+      width: 34px; height: 34px;
+      display: grid; place-items: center;
+      border: 1px solid var(--kut-border);
+      background: #fff;
+      color: var(--kut-muted);
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 15px;
+      transition: all .15s ease;
+    }
+    .icon-btn:hover { color: var(--kut-green); border-color: var(--kut-green); background: var(--kut-green-soft); }
+    .icon-btn--danger:hover { color: var(--kut-danger); border-color: var(--kut-danger); background: rgba(192,57,43,.06); }
+
+    .empty {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--kut-muted);
+    }
+    .empty__icon { font-size: 40px; margin-bottom: 10px; opacity: .8; }
+    .empty h3 { margin: 0 0 6px; color: var(--kut-text); font-size: 17px; }
+    .empty p { margin: 0 0 18px; font-size: 14px; }
+
+    /* --- Мобильная трансформация таблицы в карточки --- */
+    @media (max-width: 860px) {
+      .stock-table thead { display: none; }
+      .stock-table,
+      .stock-table tbody,
+      .stock-table tr,
+      .stock-table td { display: block; width: 100%; }
+      .stock-table tr {
+        border-bottom: 1px solid var(--kut-border);
+        padding: 14px 14px 12px;
+        position: relative;
+      }
+      .stock-table tr:last-child { border-bottom: none; }
+      .stock-table td {
+        border: none;
+        padding: 4px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .stock-table td::before {
+        content: attr(data-label);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        font-weight: 700;
+        color: var(--kut-muted);
+        flex-shrink: 0;
+      }
+      .stock-table td[data-label="Товар"] { display: block; padding-bottom: 10px; }
+      .stock-table td[data-label="Товар"]::before { display: none; }
+      .cell-name { min-width: 0; }
+      .cell-name__title { max-width: none; white-space: normal; }
+      .row-actions { gap: 8px; }
+    }
+
+    /* ===================== Модальное окно ===================== */
+    .modal[hidden] { display: none; }
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+    .modal__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 30, 24, .5);
+      backdrop-filter: blur(4px);
+      animation: fadeIn .2s ease;
+    }
+    .modal__dialog {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: var(--kut-surface);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      box-shadow: var(--shadow-lg);
+      animation: popIn .22s cubic-bezier(.2,.9,.3,1.2);
+      max-height: 92dvh;
+      overflow-y: auto;
+    }
+    .modal__dialog h3 {
+      margin: 0 0 4px;
+      font-size: 19px;
+      font-weight: 700;
+    }
+    .modal__subtitle {
+      margin: 0 0 18px;
+      color: var(--kut-muted);
+      font-size: 13px;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(12px) scale(.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field--full { grid-column: 1 / -1; }
+    .field label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--kut-text);
+    }
+    .field label .req { color: var(--kut-danger); margin-left: 2px; }
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--kut-border);
+      background: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--kut-text);
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .field input.is-invalid,
+    .field select.is-invalid {
+      border-color: var(--kut-danger);
+      box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+    .field__hint {
+      font-size: 12px;
+      color: var(--kut-muted);
+      min-height: 14px;
+    }
+    .field__hint.is-error { color: var(--kut-danger); font-weight: 500; }
+
+    .input-group {
+      display: flex;
+      align-items: stretch;
+    }
+    .input-group input {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-right: none;
+    }
+    .input-group__suffix {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 12px;
+      background: #FBFDFC;
+      border: 1.5px solid var(--kut-border);
+      border-left: none;
+      border-top-right-radius: 10px;
+      border-bottom-right-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--kut-muted);
+    }
+    .input-group input:focus + .input-group__suffix {
+      border-color: var(--kut-green);
+    }
+
+    .margin-preview {
+      margin-top: 6px;
+      padding: 12px 14px;
+      background: var(--kut-green-soft);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .margin-preview__item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .margin-preview__label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--kut-muted);
+      font-weight: 600;
+    }
+    .margin-preview__value {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--kut-green);
+      font-variant-numeric: tabular-nums;
+    }
+    .margin-preview__value.is-negative { color: var(--kut-danger); }
+
+    .modal__actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal__actions .btn { flex: 1; }
+
+    /* Тост */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      transform: translate(-50%, 120%);
+      background: var(--kut-green);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      z-index: 200;
+      transition: transform .3s cubic-bezier(.2,.8,.2,1);
+      max-width: 90vw;
+      text-align: center;
+    }
+    .toast.is-visible { transform: translate(-50%, 0); }
+    .toast--error { background: var(--kut-danger); }
+
+    ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
+    button { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body class="page-stock">
+
+  <!-- ============ Верхняя навигация ============ -->
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a href="./index.html" class="topbar__brand" aria-label="КУТ: БИЗНЕС — на главную">
+        <span class="brand__mark" aria-hidden="true">К</span>
+        <span class="brand__name">КУТ: БИЗНЕС</span>
+      </a>
+      <nav class="topbar__nav" aria-label="Основная навигация">
+        <a href="./index.html">Дашборд</a>
+        <a href="./cash.html">Касса</a>
+        <a href="./stock.html" class="active" aria-current="page">Склад</a>
+        <a href="./reports.html">Отчёты</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ====== Заголовок страницы ====== -->
+    <div class="page-head">
+      <div>
+        <h1>Склад и товары</h1>
+        <p>Учёт остатков, себестоимости и цен продажи — всё в одном месте</p>
+      </div>
+      <button class="btn btn--primary" id="openAddBtn" type="button">
+        <span aria-hidden="true">＋</span> Добавить новый товар
+      </button>
+    </div>
+
+    <!-- ====== Виджет статистики ====== -->
+    <section class="stats" aria-label="Статистика склада">
+      <div class="stat">
+        <div class="stat__icon" aria-hidden="true">📦</div>
+        <div class="stat__body">
+          <div class="stat__label">Всего наименований</div>
+          <div class="stat__value" id="statTotalItems">0<small>поз.</small></div>
+        </div>
+      </div>
+
+      <div class="stat stat--money">
+        <div class="stat__icon" aria-hidden="true">💰</div>
+        <div class="stat__body">
+          <div class="stat__label">Склад в закупке</div>
+          <div class="stat__value" id="statStockValue">0<small>KGS</small></div>
+        </div>
+      </div>
+
+      <div class="stat stat--warn">
+        <div class="stat__icon" aria-hidden="true">⚠️</div>
+        <div class="stat__body">
+          <div class="stat__label">Заканчивается (&lt; 5)</div>
+          <div class="stat__value" id="statLowStock">0<small>поз.</small></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====== Тулбар: поиск + фильтры ====== -->
+    <section class="toolbar" aria-label="Поиск и фильтры">
+      <div class="search">
+        <input
+          type="search"
+          id="searchInput"
+          placeholder="Поиск по названию или категории..."
+          aria-label="Поиск товара"
+          autocomplete="off">
+      </div>
+      <div class="chips" id="categoryChips" role="tablist" aria-label="Фильтр по категориям"></div>
+    </section>
+
+    <!-- ====== Таблица товаров ====== -->
+    <section class="stock-card" aria-label="Список товаров">
+      <table class="stock-table" id="stockTable">
+        <thead>
+          <tr>
+            <th>Товар</th>
+            <th>Категория</th>
+            <th>Остаток</th>
+            <th>Закупка</th>
+            <th>Продажа</th>
+            <th>Маржа</th>
+            <th aria-label="Действия"></th>
+          </tr>
+        </thead>
+        <tbody id="stockBody"></tbody>
+      </table>
+      <div id="stockEmpty" class="empty" hidden>
+        <div class="empty__icon" aria-hidden="true">🗃️</div>
+        <h3>Пока ничего нет</h3>
+        <p>Добавьте первый товар — и он сразу появится здесь.</p>
+        <button class="btn btn--gold" type="button" id="emptyAddBtn">＋ Добавить товар</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ Модалка: товар (добавить/редактировать) ============ -->
+  <div class="modal" id="productModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+      <h3 id="productModalTitle">Новый товар</h3>
+      <p class="modal__subtitle" id="productModalSub">Заполните данные — они сохранятся в вашем складе.</p>
+
+      <form id="productForm" novalidate>
+        <input type="hidden" id="productId">
+
+        <div class="form-grid">
+          <div class="field field--full">
+            <label for="fName">Название товара <span class="req">*</span></label>
+            <input
+              type="text"
+              id="fName"
+              placeholder="Например: Джинсы Турция / Лепёшка"
+              maxlength="80"
+              autocomplete="off"
+              required>
+            <div class="field__hint" data-for="fName"></div>
+          </div>
+
+          <div class="field">
+            <label for="fCategory">Категория <span class="req">*</span></label>
+            <select id="fCategory" required></select>
+            <div class="field__hint" data-for="fCategory"></div>
+          </div>
+
+          <div class="field">
+            <label for="fUnit">Единица измерения <span class="req">*</span></label>
+            <select id="fUnit" required>
+              <option value="шт">шт</option>
+              <option value="кг">кг</option>
+              <option value="л">л</option>
+              <option value="порц.">порц.</option>
+              <option value="усл.">усл.</option>
+            </select>
+            <div class="field__hint" data-for="fUnit"></div>
+          </div>
+
+          <div class="field">
+            <label for="fQty">Количество в наличии <span class="req">*</span></label>
+            <input
+              type="number"
+              id="fQty"
+              inputmode="decimal"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              required>
+            <div class="field__hint" data-for="fQty"></div>
+          </div>
+
+          <div class="field">
+            <label for="fCost">Цена закупки <span class="req">*</span></label>
+            <div class="input-group">
+              <input
+                type="number"
+                id="fCost"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                required>
+              <span class="input-group__suffix">KGS</span>
+            </div>
+            <div class="field__hint" data-for="fCost"></div>
+          </div>
+
+          <div class="field">
+            <label for="fSale">Цена продажи <span class="req">*</span></label>
+            <div class="input-group">
+              <input
+                type="number"
+                id="fSale"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                required>
+              <span class="input-group__suffix">KGS</span>
+            </div>
+            <div class="field__hint" data-for="fSale"></div>
+          </div>
+
+          <div class="field field--full">
+            <div class="margin-preview" aria-live="polite">
+              <div class="margin-preview__item">
+                <span class="margin-preview__label">Прибыль с единицы</span>
+                <span class="margin-preview__value" id="previewProfit">0 KGS</span>
+              </div>
+              <div class="margin-preview__item">
+                <span class="margin-preview__label">Наценка</span>
+                <span class="margin-preview__value" id="previewMarkup">0 %</span>
+              </div>
+              <div class="margin-preview__item">
+                <span class="margin-preview__label">Сумма по остатку</span>
+                <span class="margin-preview__value" id="previewStockValue">0 KGS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+          <button class="btn btn--primary" type="submit" id="saveBtn">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ Модалка подтверждения удаления ============ -->
+  <div class="modal" id="deleteModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+      <h3 id="deleteTitle">Удалить товар?</h3>
+      <p class="modal__subtitle" id="deleteName"></p>
+      <p style="color:var(--kut-muted); font-size:13px; margin:0 0 4px;">
+        Действие нельзя отменить. История продаж этого товара останется в отчётах.
+      </p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+        <button class="btn btn--danger" type="button" id="confirmDeleteBtn" style="border-color:var(--kut-danger); color:#fff; background:var(--kut-danger);">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Тост -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./js/stock.js"></script>
+</body>
+</html>
