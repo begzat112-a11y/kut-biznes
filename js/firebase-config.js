@@ -1,7 +1,8 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Configuration (v10+ modular)
-   Подключение Auth + Firestore через CDN.
+   КУТ: БИЗНЕС — Firebase Configuration
+   Подключение Auth + Firestore + Analytics через CDN v10.
    Экспортирует: window.FB — единый API для всех модулей.
+   Также экспортирует модульные хэндлы через export {}.
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -11,6 +12,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import {
   getFirestore,
@@ -25,43 +27,54 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   onSnapshot,
+  writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js';
 
 // =========================================================
-// 1. КОНФИГУРАЦИЯ
-// Замените значения на свои из Firebase Console → Project settings
+// 1. КОНФИГУРАЦИЯ — ваши реальные ключи
 // =========================================================
 const firebaseConfig = {
-  apiKey:            "AIzaSy...ВАШ_КЛЮЧ",
+  apiKey:            "AIzaSyAO1MniEwNBKhcEs64XMMPVN0GDEZFpxPg",
   authDomain:        "kut-biznes.firebaseapp.com",
   projectId:         "kut-biznes",
-  storageBucket:     "kut-biznes.appspot.com",
-  messagingSenderId: "000000000000",
-  appId:             "1:000000000000:web:xxxxxxxxxxxx"
+  storageBucket:     "kut-biznes.firebasestorage.app",
+  messagingSenderId: "699153181693",
+  appId:             "1:699153181693:web:2f10e57664a8a0cefc4794",
+  measurementId:     "G-VTZ49G265B"
 };
 
+// =========================================================
+// 2. ИНИЦИАЛИЗАЦИЯ
+// =========================================================
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// =========================================================
-// 2. УТИЛИТЫ
-// =========================================================
+let analytics = null;
+try { analytics = getAnalytics(app); }
+catch (e) { console.warn('[KUT FB] Analytics не подключён:', e.message); }
 
-/** Текущий пользователь и его профиль из Firestore */
-let currentUser   = null;
+// =========================================================
+// 3. ВНУТРЕННЕЕ СОСТОЯНИЕ
+// =========================================================
+let currentUser = null;
 let currentProfile = null;
+
+// =========================================================
+// 4. УТИЛИТЫ
+// =========================================================
 
 /** Получить профиль пользователя по uid */
 async function fetchProfile(uid) {
-  const ref = doc(db, 'users', uid);
-  const snap = await getDoc(ref);
+  const snap = await getDoc(doc(db, 'users', uid));
   return snap.exists() ? { uid, ...snap.data() } : null;
 }
 
-/** Дождаться готовности Auth и профиля (для страниц) */
+/** Дождаться готовности Auth и профиля */
 function waitForAuth() {
   return new Promise((resolve) => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -87,26 +100,22 @@ function redirectByRole(profile) {
   if (!profile) { window.location.href = './login.html'; return; }
   if (profile.active === false) {
     alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
-    auth.signOut();
+    signOut(auth);
     return;
   }
-  if (profile.role === 'super_admin') {
-    window.location.href = './admin.html';
-  } else {
-    window.location.href = './index.html';
-  }
+  if (profile.role === 'super_admin') window.location.href = './admin.html';
+  else window.location.href = './index.html';
 }
 
-/** Генерация уникального ID бизнеса */
+/** Уникальный businessId */
 function makeBusinessId() {
   return 'biz_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 // =========================================================
-// 3. АУТЕНТИФИКАЦИЯ
+// 5. АУТЕНТИФИКАЦИЯ
 // =========================================================
 
-/** Вход по email + пароль */
 async function login(email, password) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
   const profile = await fetchProfile(cred.user.uid);
@@ -117,13 +126,11 @@ async function login(email, password) {
   return { user: cred.user, profile };
 }
 
-/** Регистрация владельца бизнеса */
 async function registerOwner({ email, password, displayName, companyName }) {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   const uid = cred.user.uid;
   const businessId = makeBusinessId();
 
-  // 1. Профиль пользователя
   await setDoc(doc(db, 'users', uid), {
     email,
     displayName,
@@ -133,7 +140,6 @@ async function registerOwner({ email, password, displayName, companyName }) {
     createdAt: serverTimestamp(),
   });
 
-  // 2. Документ бизнеса
   await setDoc(doc(db, 'businesses', businessId), {
     name: companyName,
     ownerId: uid,
@@ -145,22 +151,24 @@ async function registerOwner({ email, password, displayName, companyName }) {
   return { user: cred.user, businessId };
 }
 
-/** Выход */
 async function logout() {
   await signOut(auth);
   window.location.href = './login.html';
 }
 
+async function resetPassword(email) {
+  return sendPasswordResetEmail(auth, email);
+}
+
 // =========================================================
-// 4. FIRESTORE CRUD — МУЛЬТИТЕНАНТНЫЙ (через businessId)
+// 6. FIRESTORE — CRUD для текущего бизнеса
 // =========================================================
 
-/** Получить businessId текущего пользователя */
 function getBusinessId() {
   return currentProfile ? currentProfile.businessId : null;
 }
 
-/** Чтение коллекции бизнеса */
+/** Чтение всей коллекции текущего бизнеса */
 async function getCollection(name) {
   const bizId = getBusinessId();
   if (!bizId) return [];
@@ -176,10 +184,11 @@ function subscribeCollection(name, callback) {
   const ref = collection(db, 'businesses', bizId, name);
   return onSnapshot(ref, (snap) => {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  }, (err) => {
+    console.error('[KUT FB] subscribe error:', name, err);
   });
 }
 
-/** Создать документ */
 async function addItem(name, data) {
   const bizId = getBusinessId();
   if (!bizId) throw new Error('NO_BUSINESS');
@@ -187,7 +196,6 @@ async function addItem(name, data) {
   return addDoc(ref, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 }
 
-/** Обновить документ */
 async function updateItem(name, id, data) {
   const bizId = getBusinessId();
   if (!bizId) throw new Error('NO_BUSINESS');
@@ -195,7 +203,6 @@ async function updateItem(name, id, data) {
   return updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
 }
 
-/** Удалить документ */
 async function deleteItem(name, id) {
   const bizId = getBusinessId();
   if (!bizId) throw new Error('NO_BUSINESS');
@@ -204,38 +211,34 @@ async function deleteItem(name, id) {
 }
 
 // =========================================================
-// 5. SUPER ADMIN API
+// 7. SUPER ADMIN API
 // =========================================================
 
-/** Список всех бизнесов (только super_admin) */
 async function adminGetAllBusinesses() {
-  const ref = collection(db, 'businesses');
-  const snap = await getDocs(ref);
+  const snap = await getDocs(collection(db, 'businesses'));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-/** Переключить статус бизнеса */
 async function adminToggleBusinessStatus(bizId, active) {
   await updateDoc(doc(db, 'businesses', bizId), { active });
 }
 
-/** Переключить статус пользователя */
 async function adminToggleUserStatus(uid, active) {
   await updateDoc(doc(db, 'users', uid), { active });
 }
 
 // =========================================================
-// 6. ЭКСПОРТ
+// 8. ЭКСПОРТ (двойной: window.FB + ES-модульный)
 // =========================================================
 window.FB = {
   // Служебное
-  app, auth, db,
+  app, auth, db, analytics,
   currentUser: () => currentUser,
   currentProfile: () => currentProfile,
-  waitForAuth, fetchProfile, redirectByRole,
+  waitForAuth, fetchProfile, redirectByRole, makeBusinessId,
 
   // Auth
-  login, registerOwner, logout,
+  login, registerOwner, logout, resetPassword,
 
   // Firestore
   getBusinessId,
@@ -243,13 +246,23 @@ window.FB = {
   addItem, updateItem, deleteItem,
 
   // Admin
-  adminGetAllBusinesses,
-  adminToggleBusinessStatus,
-  adminToggleUserStatus,
+  adminGetAllBusinesses, adminToggleBusinessStatus, adminToggleUserStatus,
 
-  // Firebase-примитивы (для сложных запросов)
+  // Примитивы Firebase (для сложных запросов)
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, serverTimestamp,
+  query, where, orderBy, limit, serverTimestamp, onSnapshot, writeBatch,
 };
 
-console.info('[KUT FB] Firebase SDK v10 подключён');
+export {
+  app, auth, db, analytics,
+  waitForAuth, fetchProfile, redirectByRole, makeBusinessId,
+  login, registerOwner, logout, resetPassword,
+  getBusinessId,
+  getCollection, subscribeCollection,
+  addItem, updateItem, deleteItem,
+  adminGetAllBusinesses, adminToggleBusinessStatus, adminToggleUserStatus,
+  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
+  query, where, orderBy, limit, serverTimestamp, onSnapshot, writeBatch,
+};
+
+console.info('[KUT FB] Firebase v10 инициализирован · проект:', firebaseConfig.projectId);
