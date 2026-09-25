@@ -57,6 +57,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
+      flex-wrap: wrap;
     }
     .topbar__brand {
       display: inline-flex;
@@ -75,10 +76,7 @@
       font-weight: 800;
       font-size: 17px;
     }
-    .topbar__brand-text {
-      font-size: 15px;
-      letter-spacing: .2px;
-    }
+    .topbar__brand-text { font-size: 15px; letter-spacing: .2px; }
     .topbar__badge {
       font-size: 11px;
       padding: 3px 8px;
@@ -115,20 +113,9 @@
       padding: 24px 20px 40px;
     }
 
-    .page-head {
-      margin-bottom: 20px;
-    }
-    .page-head h1 {
-      margin: 0;
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -.4px;
-    }
-    .page-head p {
-      margin: 6px 0 0;
-      color: var(--kut-muted);
-      font-size: 14px;
-    }
+    .page-head { margin-bottom: 20px; }
+    .page-head h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
+    .page-head p { margin: 6px 0 0; color: var(--kut-muted); font-size: 14px; }
 
     .stats {
       display: grid;
@@ -187,6 +174,7 @@
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-md);
       overflow: hidden;
+      margin-bottom: 22px;
     }
 
     .card__head {
@@ -268,7 +256,7 @@
       font-weight: 700;
       color: var(--kut-text);
     }
-    .biz-email {
+    .biz-sub {
       font-size: 13px;
       color: var(--kut-muted);
       margin-top: 2px;
@@ -298,8 +286,13 @@
       background: currentColor;
     }
 
+    .row-actions {
+      display: inline-flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
     .toggle-btn {
-      padding: 8px 14px;
+      padding: 8px 12px;
       border-radius: 10px;
       border: 1px solid var(--kut-border);
       background: #fff;
@@ -320,6 +313,11 @@
       border-color: rgba(30,190,90,.25);
     }
     .toggle-btn--activate:hover { background: rgba(30,190,90,.08); border-color: var(--kut-success); }
+    .toggle-btn--edit {
+      color: var(--kut-green);
+      border-color: rgba(0,95,64,.25);
+    }
+    .toggle-btn--edit:hover { background: var(--kut-green-soft); border-color: var(--kut-green); }
     .toggle-btn:disabled { opacity: .5; cursor: wait; }
 
     .empty-row {
@@ -328,7 +326,6 @@
       color: var(--kut-muted);
       font-size: 14px;
     }
-
     .loading-row {
       text-align: center;
       padding: 40px 20px;
@@ -380,13 +377,115 @@
       font-size: 22px;
     }
 
+    .modal[hidden] { display: none; }
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+    .modal__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 30, 24, .5);
+      backdrop-filter: blur(4px);
+    }
+    .modal__dialog {
+      position: relative;
+      width: 100%;
+      max-width: 460px;
+      background: #fff;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-lg);
+      max-height: 92dvh;
+      overflow-y: auto;
+    }
+    .modal__dialog h3 {
+      margin: 0 0 6px;
+      font-size: 19px;
+      font-weight: 700;
+    }
+    .modal__dialog p {
+      margin: 0 0 16px;
+      color: var(--kut-muted);
+      font-size: 13px;
+    }
+    .modal__actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .modal__actions .btn { flex: 1; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all .18s ease;
+    }
+    .btn--primary {
+      background: var(--kut-green);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(0,95,64,.24);
+    }
+    .btn--primary:hover { background: var(--kut-green-dark); }
+    .btn--ghost {
+      background: transparent;
+      border-color: var(--kut-border);
+      color: var(--kut-text);
+    }
+    .btn--ghost:hover { background: var(--kut-green-soft); border-color: var(--kut-green); color: var(--kut-green); }
+    .btn:disabled { opacity: .55; cursor: wait; }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .form-field label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--kut-text);
+    }
+    .form-field input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--kut-border);
+      font-family: inherit;
+      font-size: 15px;
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .form-field input:focus {
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .form-error {
+      font-size: 12px;
+      color: var(--kut-danger);
+      min-height: 14px;
+      font-weight: 500;
+    }
+
     .hidden { display: none !important; }
     ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
   </style>
 </head>
 <body>
 
-  <!-- ============ Верхняя навигация ============ -->
   <header class="topbar">
     <div class="topbar__inner">
       <a href="./admin.html" class="topbar__brand">
@@ -397,21 +496,18 @@
         </span>
       </a>
       <div class="topbar__user">
-        <span id="adminEmail">—</span>
+        <span id="adminPhone">—</span>
         <button class="topbar__logout" type="button" id="logoutBtn">Выйти</button>
       </div>
     </div>
   </header>
 
-  <!-- ============ Контент ============ -->
   <main class="wrap" id="adminContent" hidden>
-
     <div class="page-head">
       <h1>Панель супер-администратора</h1>
-      <p>Управление всеми зарегистрированными бизнесами системы</p>
+      <p>Управление бизнесами, владельцами и сотрудниками</p>
     </div>
 
-    <!-- Статистика -->
     <section class="stats" aria-label="Общая статистика">
       <div class="stat">
         <div class="stat__icon" aria-hidden="true">🏢</div>
@@ -436,21 +532,20 @@
       </div>
     </section>
 
-    <!-- Таблица бизнесов -->
     <section class="card">
       <div class="card__head">
-        <h2>Зарегистрированные бизнесы</h2>
+        <h2>Бизнесы и пользователи</h2>
         <div class="card__search">
-          <input type="search" id="searchBiz" placeholder="Поиск по названию или email..." aria-label="Поиск бизнеса">
+          <input type="search" id="searchBiz" placeholder="Поиск по компании, email или телефону..." aria-label="Поиск">
         </div>
       </div>
       <div class="table-wrap">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Компания</th>
-              <th>Email владельца</th>
-              <th>Дата регистрации</th>
+              <th>Компания / Пользователь</th>
+              <th>Роль</th>
+              <th>Телефон</th>
               <th>Статус</th>
               <th aria-label="Действия"></th>
             </tr>
@@ -463,7 +558,6 @@
     </section>
   </main>
 
-  <!-- Экран «нет доступа» -->
   <div class="no-access hidden" id="noAccess">
     <h2>Доступ запрещён</h2>
     <p>Эта страница доступна только супер-администратору.</p>
@@ -473,13 +567,91 @@
     </a>
   </div>
 
-  <!-- ============ СКРИПТЫ ============ -->
+  <!-- ============ Модалка: смена телефона ============ -->
+  <div class="modal" id="phoneModal" hidden>
+    <div class="modal__backdrop" data-close-phone></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Сменить номер телефона</h3>
+      <p id="phoneModalInfo">—</p>
+
+      <form id="phoneForm" novalidate>
+        <div class="form-field">
+          <label for="newPhoneInput">Новый номер</label>
+          <input
+            type="tel"
+            id="newPhoneInput"
+            placeholder="+996 700 123 456"
+            inputmode="tel"
+            autocomplete="off"
+            required>
+          <div class="form-error" id="phoneError"></div>
+        </div>
+
+        <div class="modal__actions">
+          <button class="btn btn--ghost" type="button" data-close-phone>Отмена</button>
+          <button class="btn btn--primary" type="submit" id="savePhoneBtn">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module">
     import './js/firebase-config.js';
 
     const $ = (s) => document.querySelector(s);
 
-    // ---------- Проверка роли ----------
+    // =========================================================
+    // СОСТОЯНИЕ
+    // =========================================================
+    let allBusinesses = [];
+    let allUsers = [];
+    let editingUid = null;
+
+    // =========================================================
+    // МАСКА ТЕЛЕФОНА
+    // =========================================================
+    function maskPhone(raw) {
+      let d = String(raw || '').replace(/\D/g, '');
+      if (d.startsWith('996')) d = d.slice(3);
+      else if (d.startsWith('0')) d = d.slice(1);
+      d = d.slice(0, 9);
+      if (d.length === 0) return '';
+      let out = '+996 ';
+      if (d.length <= 3) return out + d;
+      out += d.slice(0, 3) + ' ';
+      if (d.length <= 6) return out + d.slice(3);
+      out += d.slice(3, 6) + ' ';
+      out += d.slice(6);
+      return out;
+    }
+    function normalizePhone(raw) {
+      let d = String(raw || '').replace(/\D/g, '');
+      if (d.startsWith('996')) d = d.slice(3);
+      else if (d.startsWith('0')) d = d.slice(1);
+      d = d.slice(0, 9);
+      return '+996' + d;
+    }
+    function isValidPhone(n) { return /^\+996\d{9}$/.test(n); }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[ch]));
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '—';
+      let d;
+      if (typeof ts.toDate === 'function') d = ts.toDate();
+      else if (ts.seconds) d = new Date(ts.seconds * 1000);
+      else d = new Date(ts);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    // =========================================================
+    // ПРОВЕРКА РОЛИ И ЗАГРУЗКА
+    // =========================================================
     (async () => {
       const { user, profile } = await window.FB.waitForAuth();
 
@@ -497,25 +669,33 @@
         return;
       }
 
-      $('#adminEmail').textContent = profile.email || user.email || '—';
+      $('#adminPhone').textContent = profile.phone || user.email || '—';
       $('#adminContent').classList.remove('hidden');
-      loadBusinesses();
+
+      await loadAll();
     })();
 
-    // ---------- Загрузка бизнесов ----------
-    let allBusinesses = [];
-
-    async function loadBusinesses() {
+    // =========================================================
+    // ЗАГРУЗКА ДАННЫХ
+    // =========================================================
+    async function loadAll() {
       const tbody = $('#bizTableBody');
       tbody.innerHTML = '<tr><td colspan="5" class="loading-row">Загрузка данных...</td></tr>';
 
       try {
+        // Бизнесы
         allBusinesses = await window.FB.adminGetAllBusinesses();
-        renderBusinesses();
+
+        // Пользователи — прямое чтение коллекции
+        const { collection, getDocs } = window.FB;
+        const usersSnap = await getDocs(collection(window.FB.db, 'users'));
+        allUsers = usersSnap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+
+        renderAll();
         renderStats();
       } catch (err) {
         console.error('[admin] load failed:', err);
-        tbody.innerHTML = '<tr><td colspan="5" class="loading-row">Не удалось загрузить данные.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="loading-row">Не удалось загрузить данные. Проверьте правила Firestore.</td></tr>';
       }
     }
 
@@ -529,52 +709,89 @@
       $('#statBlockedBiz').innerHTML = blocked + '<small>комп.</small>';
     }
 
-    function formatDate(ts) {
-      if (!ts) return '—';
-      let d;
-      if (typeof ts.toDate === 'function') d = ts.toDate();
-      else d = new Date(ts);
-      if (isNaN(d.getTime())) return '—';
-      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-
-    function escapeHtml(str) {
-      return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-      }[ch]));
-    }
-
-    function renderBusinesses() {
+    function renderAll() {
       const q = ($('#searchBiz').value || '').trim().toLowerCase();
       const tbody = $('#bizTableBody');
 
-      const items = allBusinesses.filter((b) => {
-        if (!q) return true;
-        const name = String(b.name || '').toLowerCase();
-        const email = String(b.ownerEmail || '').toLowerCase();
-        return name.includes(q) || email.includes(q);
+      // Строим единый список строк: для каждого бизнеса — владелец,
+      // плюс все его сотрудники (cashier) отдельными строками.
+      const rows = [];
+
+      allBusinesses.forEach((biz) => {
+        const owner = allUsers.find((u) => u.uid === biz.ownerId)
+                   || allUsers.find((u) => u.businessId === biz.id && u.role === 'owner');
+
+        rows.push({
+          kind: 'business',
+          biz,
+          user: owner || null,
+          roleLabel: 'Владелец',
+        });
+
+        // Сотрудники этого бизнеса
+        const employees = allUsers.filter((u) => u.businessId === biz.id && u.role !== 'owner' && u.role !== 'super_admin');
+        employees.forEach((emp) => {
+          rows.push({
+            kind: 'employee',
+            biz,
+            user: emp,
+            roleLabel: 'Кассир',
+          });
+        });
       });
 
-      if (items.length === 0) {
+      // Фильтр
+      const filtered = rows.filter((r) => {
+        if (!q) return true;
+        const bizName = String(r.biz.name || '').toLowerCase();
+        const bizEmail = String(r.biz.ownerEmail || '').toLowerCase();
+        const userName = String(r.user?.displayName || '').toLowerCase();
+        const userPhone = String(r.user?.phone || '').toLowerCase();
+        return bizName.includes(q) || bizEmail.includes(q) || userName.includes(q) || userPhone.includes(q);
+      });
+
+      if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty-row">Ничего не найдено.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = items.map((b) => {
-        const isActive = b.active !== false;
+      tbody.innerHTML = filtered.map((r) => {
+        const isActive = r.biz.active !== false && (r.user ? r.user.active !== false : true);
         const statusCls = isActive ? 'status-badge--active' : 'status-badge--blocked';
         const statusText = isActive ? 'Активен' : 'Заблокирован';
-        const btnCls = isActive ? 'toggle-btn--block' : 'toggle-btn--activate';
-        const btnText = isActive ? 'Заблокировать' : 'Активировать';
+
+        const bizBlock = r.kind === 'business'
+          ? `<div class="biz-name">${escapeHtml(r.biz.name || 'Без названия')}</div>
+             <div class="biz-sub">${escapeHtml(r.biz.ownerEmail || '—')} · ID: ${escapeHtml(r.biz.id)}</div>`
+          : `<div class="biz-name">${escapeHtml(r.user?.displayName || 'Сотрудник')}</div>
+             <div class="biz-sub">${escapeHtml(r.biz.name || '')} · UID: ${escapeHtml(r.user?.uid || '—')}</div>`;
+
+        const roleBadge = r.roleLabel === 'Владелец'
+          ? '<span class="status-badge" style="background:#FFF8E1;color:#B8952A;">Владелец</span>'
+          : '<span class="status-badge" style="background:#E6F1ED;color:#005F40;">Кассир</span>';
+
+        const phone = r.user?.phone || '—';
+
+        const actions = [];
+        // Кнопка блокировки бизнеса — только для владельца
+        if (r.kind === 'business') {
+          if (isActive) {
+            actions.push(`<button class="toggle-btn toggle-btn--block" type="button" data-toggle-biz="${escapeHtml(r.biz.id)}" data-current="active">Заблокировать</button>`);
+          } else {
+            actions.push(`<button class="toggle-btn toggle-btn--activate" type="button" data-toggle-biz="${escapeHtml(r.biz.id)}" data-current="blocked">Активировать</button>`);
+          }
+        }
+
+        // Смена телефона — для любого пользователя
+        if (r.user) {
+          actions.push(`<button class="toggle-btn toggle-btn--edit" type="button" data-edit-phone="${escapeHtml(r.user.uid)}" data-current-phone="${escapeHtml(phone)}" data-user-name="${escapeHtml(r.user.displayName || r.biz.name || '')}">📱 Телефон</button>`);
+        }
 
         return `
-          <tr data-biz-id="${escapeHtml(b.id)}">
-            <td data-label="Компания">
-              <div class="biz-name">${escapeHtml(b.name || 'Без названия')}</div>
-              <div class="biz-email">ID: ${escapeHtml(b.id)}</div>
-            </td>
-            <td data-label="Email владельца">${escapeHtml(b.ownerEmail || '—')}</td>
-            <td data-label="Дата регистрации">${formatDate(b.createdAt)}</td>
+          <tr>
+            <td data-label="Компания / Пользователь">${bizBlock}</td>
+            <td data-label="Роль">${roleBadge}</td>
+            <td data-label="Телефон">${escapeHtml(phone)}</td>
             <td data-label="Статус">
               <span class="status-badge ${statusCls}">
                 <span class="status-badge__dot"></span>
@@ -582,56 +799,113 @@
               </span>
             </td>
             <td data-label="Действия">
-              <button class="toggle-btn ${btnCls}" type="button" data-toggle-biz="${escapeHtml(b.id)}"
-                      data-current="${isActive ? 'active' : 'blocked'}">
-                ${btnText}
-              </button>
+              <div class="row-actions">${actions.join(' ')}</div>
             </td>
           </tr>
         `;
       }).join('');
     }
 
-    // ---------- Переключение статуса ----------
+    // =========================================================
+    // ОБРАБОТЧИКИ ТАБЛИЦЫ
+    // =========================================================
     $('#bizTableBody').addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-toggle-biz]');
-      if (!btn) return;
+      const toggleBtn = e.target.closest('[data-toggle-biz]');
+      if (toggleBtn) {
+        const bizId = toggleBtn.dataset.toggleBiz;
+        const current = toggleBtn.dataset.current;
+        const newActive = current !== 'active';
 
-      const bizId = btn.dataset.toggleBiz;
-      const current = btn.dataset.current;
-      const newActive = current !== 'active';
+        if (!confirm(newActive ? 'Активировать бизнес?' : 'Заблокировать бизнес? Пользователи потеряют доступ.')) return;
 
-      if (newActive) {
-        if (!confirm('Активировать этот бизнес? Пользователи смогут снова войти.')) return;
-      } else {
-        if (!confirm('Заблокировать этот бизнес? Все пользователи компании потеряют доступ.')) return;
+        toggleBtn.disabled = true;
+        const original = toggleBtn.textContent;
+        toggleBtn.textContent = 'Обновление...';
+
+        try {
+          await window.FB.adminToggleBusinessStatus(bizId, newActive);
+          const item = allBusinesses.find((b) => b.id === bizId);
+          if (item) item.active = newActive;
+          renderAll();
+          renderStats();
+        } catch (err) {
+          console.error('[admin] toggle failed:', err);
+          alert('Не удалось изменить статус: ' + (err.message || 'ошибка'));
+          toggleBtn.disabled = false;
+          toggleBtn.textContent = original;
+        }
+        return;
       }
 
-      btn.disabled = true;
-      const originalText = btn.textContent;
-      btn.textContent = 'Обновление...';
+      const phoneBtn = e.target.closest('[data-edit-phone]');
+      if (phoneBtn) {
+        editingUid = phoneBtn.dataset.editPhone;
+        const currentPhone = phoneBtn.dataset.currentPhone || '';
+        const userName = phoneBtn.dataset.userName || '';
 
-      try {
-        await window.FB.adminToggleBusinessStatus(bizId, newActive);
-
-        // Обновляем локальный массив
-        const item = allBusinesses.find((b) => b.id === bizId);
-        if (item) item.active = newActive;
-
-        renderBusinesses();
-        renderStats();
-      } catch (err) {
-        console.error('[admin] toggle failed:', err);
-        alert('Не удалось изменить статус: ' + (err.message || 'неизвестная ошибка'));
-        btn.disabled = false;
-        btn.textContent = originalText;
+        $('#phoneModalInfo').innerHTML = `Пользователь: <strong>${escapeHtml(userName)}</strong>`;
+        $('#newPhoneInput').value = currentPhone === '—' ? '' : maskPhone(currentPhone);
+        $('#phoneError').textContent = '';
+        $('#phoneModal').hidden = false;
+        document.body.style.overflow = 'hidden';
+        return;
       }
     });
 
-    // ---------- Поиск ----------
-    $('#searchBiz').addEventListener('input', renderBusinesses);
+    // =========================================================
+    // МОДАЛКА СМЕНЫ ТЕЛЕФОНА
+    // =========================================================
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('[data-close-phone]')) {
+        $('#phoneModal').hidden = true;
+        document.body.style.overflow = '';
+        editingUid = null;
+      }
+    });
 
-    // ---------- Выход ----------
+    $('#newPhoneInput').addEventListener('input', (e) => {
+      e.target.value = maskPhone(e.target.value);
+    });
+
+    $('#phoneForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!editingUid) return;
+
+      const phoneNorm = normalizePhone($('#newPhoneInput').value);
+      if (!isValidPhone(phoneNorm)) {
+        $('#phoneError').textContent = 'Введите корректный номер';
+        return;
+      }
+
+      const btn = $('#savePhoneBtn');
+      btn.disabled = true;
+      btn.textContent = 'Сохраняем...';
+
+      try {
+        await window.FB.updateEmployeePhone(editingUid, phoneNorm);
+        alert('Телефон обновлён: ' + phoneNorm);
+        $('#phoneModal').hidden = true;
+        document.body.style.overflow = '';
+        editingUid = null;
+        await loadAll();
+      } catch (err) {
+        console.error('[admin] phone update failed:', err);
+        let msg = 'Ошибка обновления';
+        if (err.message === 'PERMISSION_DENIED') msg = 'Нет прав на изменение';
+        else if (err.message === 'INVALID_PHONE') msg = 'Некорректный номер';
+        else if (err.message === 'USER_NOT_FOUND') msg = 'Пользователь не найден';
+        $('#phoneError').textContent = msg;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Сохранить';
+      }
+    });
+
+    // =========================================================
+    // ПОИСК И ВЫХОД
+    // =========================================================
+    $('#searchBiz').addEventListener('input', renderAll);
+
     $('#logoutBtn').addEventListener('click', () => {
       window.FB.logout();
     });
