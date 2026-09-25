@@ -397,7 +397,7 @@
     } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
     // =========================================================
-    // FIREBASE CONFIG (внутри файла, без внешних импортов)
+    // FIREBASE CONFIG
     // =========================================================
     const firebaseConfig = {
       apiKey:            "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
@@ -428,9 +428,12 @@
       app  = initializeApp(firebaseConfig);
       auth = getAuth(app);
       db   = getFirestore(app);
+
       console.log('[KUT] Firebase инициализирован');
       console.log('[KUT] projectId:', firebaseConfig.projectId);
-      console.log('[KUT] apiKey (первые 10):', firebaseConfig.apiKey.slice(0, 10) + '...');
+      console.log('[KUT] authDomain:', firebaseConfig.authDomain);
+      console.log('[KUT] apiKey:', firebaseConfig.apiKey);
+      console.log('[KUT] apiKey длина:', firebaseConfig.apiKey.length);
       console.log('[KUT] appId:', firebaseConfig.appId);
     } catch (initErr) {
       console.error('[KUT] Ошибка инициализации Firebase:', initErr);
@@ -584,6 +587,7 @@
       // ---------- ШАГ 1: Аутентификация ----------
       try {
         console.log('[KUT Login] Попытка входа:', email);
+        console.log('[KUT Login] Используется apiKey:', firebaseConfig.apiKey);
         const cred = await signInWithEmailAndPassword(auth, email, password);
         user = cred.user;
         console.log('[KUT Login] Аутентификация OK. UID:', user.uid);
@@ -918,7 +922,7 @@
       }
     });
 
-    console.info('[KUT] login.html загружен · все ключи внутри файла');
+    console.info('[KUT] login.html загружен · apiKey:', firebaseConfig.apiKey);
   </script>
 </body>
 </html>
