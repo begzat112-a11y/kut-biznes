@@ -1,15 +1,15 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase + WhatsApp Green-API · v4.1
+   КУТ: БИЗНЕС — Firebase + WhatsApp Green-API · v4.2 (боевая)
    ---------------------------------------------------------
-   ⚠️ ВАЖНО: ниже в WA_CONFIG.apiToken стоит ЗАГЛУШКА.
-      Замените её на реальный apiTokenInstance из личного
-      кабинета Green-API, иначе OTP не будет отправляться.
+   WhatsApp-шлюз: Green-API
+   Instance: 720122747171
+   Токен: вставлен
 
    Что внутри:
    • Firebase Auth (Email/Password) + Firestore
    • sendWhatsAppOtp() — генерирует 4-значный код,
-     сохраняет его в otp_sessions/{phone} и делает
-     реальный POST-запрос к Green-API
+     сохраняет в otp_sessions/{phone} и делает
+     РЕАЛЬНЫЙ POST-запрос к Green-API
    • verifyWhatsAppOtp() — проверяет код и логинит в Firebase
    • login / logout / resetPassword
    • CRUD products/sales/debts внутри businesses/{bizId}
@@ -59,14 +59,11 @@ const firebaseConfig = {
 };
 
 // =========================================================
-// 2. GREEN-API CONFIG (WhatsApp шлюз)
-// ---------------------------------------------------------
-// ⚠️ ЗАМЕНИТЕ apiToken НИЖЕ НА РЕАЛЬНЫЙ ТОКЕН ИЗ GREEN-API!
-// Получить: https://console.green-api.com → ваш инстанс
+// 2. GREEN-API CONFIG — WhatsApp-шлюз
 // =========================================================
 const WA_CONFIG = {
   idInstance: '720122747171',
-  apiToken:   'ВСТАВЬ_СЮДА_ТОКЕН_ИЗ_ГРИН_АПИ',
+  apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
 
   buildUrl() {
     return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
@@ -83,8 +80,8 @@ const WA_CONFIG = {
 // Проверка, что токен реально вставлен
 const WA_TOKEN_IS_PLACEHOLDER =
   !WA_CONFIG.apiToken ||
-  WA_CONFIG.apiToken === 'ВСТАВЬ_СЮДА_ТОКЕН_ИЗ_ГРИН_АПИ' ||
-  WA_CONFIG.apiToken.trim() === '';
+  WA_CONFIG.apiToken.trim() === '' ||
+  WA_CONFIG.apiToken.length < 20;
 
 // =========================================================
 // 3. ИНИЦИАЛИЗАЦИЯ
@@ -249,13 +246,6 @@ function otpSessionDoc(phone) {
   return doc(db, 'otp_sessions', phone.replace(/\D/g, ''));
 }
 
-/**
- * Отправка OTP через WhatsApp (Green-API).
- * 1. Генерируем 4-значный код
- * 2. Пишем в otp_sessions/{phone} с TTL 5 минут
- * 3. Отправляем POST-запрос на Green-API
- * 4. Если Green-API ответил ошибкой — бросаем исключение
- */
 async function sendWhatsAppOtp(rawPhone) {
   const phone = normalizePhone(rawPhone);
   if (!/^\+996\d{9}$/.test(phone)) {
@@ -263,7 +253,7 @@ async function sendWhatsAppOtp(rawPhone) {
   }
 
   if (WA_TOKEN_IS_PLACEHOLDER) {
-    console.error('[KUT OTP] apiToken не задан в WA_CONFIG — отправка невозможна.');
+    console.error('[KUT OTP] apiToken не задан или слишком короткий.');
     throw new Error('WHATSAPP_NOT_CONFIGURED');
   }
 
@@ -311,9 +301,6 @@ async function sendWhatsAppOtp(rawPhone) {
   return true;
 }
 
-/**
- * Проверка OTP и вход в систему.
- */
 async function verifyWhatsAppOtp(rawPhone, code) {
   const phone = normalizePhone(rawPhone);
   const ref = otpSessionDoc(phone);
@@ -338,7 +325,6 @@ async function verifyWhatsAppOtp(rawPhone, code) {
 
   await deleteDoc(ref).catch(() => {});
 
-  // Аутентификация в Firebase через суррогатный email
   const fakeEmail = fakeEmailFromPhone(phone);
   const fakePassword = fakePasswordFromPhone(phone);
 
@@ -522,4 +508,4 @@ export {
 
 console.info('[KUT FB] Firebase v10 инициализирован · проект:', firebaseConfig.projectId);
 console.info('[KUT WA] Green-API · instance:', WA_CONFIG.idInstance,
-  WA_TOKEN_IS_PLACEHOLDER ? '· ⚠️ ТОКЕН НЕ ЗАДАН' : '· токен OK');
+  WA_TOKEN_IS_PLACEHOLDER ? '· ⚠️ ТОКЕН НЕ ЗАДАН' : '· ✓ токен установлен');
