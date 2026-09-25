@@ -1,852 +1,850 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Несие / Учёт долгов» (debts.js)
-   Чистый ES6+. Данные в localStorage под ключом kut_debts.
-   Схема записи:
-   {
-     id, name, phone, initialAmount, amount, date, dueDate, note,
-     status: 'active' | 'paid',
-     payments: [{ amount, date }],
-     createdAt, paidAt
-   }
+   КУТ: БИЗНЕС — Модуль «Несие / Учёт долгов» (debts.js) · Firebase v2
+   Работает с Firestore через window.KUT и window.FB.
+   Коллекция: businesses/{businessId}/debts/{docId}
+   Схема: { name, phone, initialAmount, amount, date, dueDate, note,
+            status, payments[], createdAt, updatedAt }
    ========================================================= */
 
-const STORAGE_KEY = 'kut_debts';
-const OVERDUE_DAYS = 30;
-const KG_PHONE_CODE = '+996';
+(function () {
+  'use strict';
 
-// ---------- Состояние ----------
-const state = {
-  debts: [],
-  search: '',
-  tab: 'active',          // 'active' | 'paid'
-  editingId: null,
-  deletingId: null,
-  payingId: null,
-  waDebtId: null,
-};
+  // =========================================================
+  // 1. КОНСТАНТЫ
+  // =========================================================
+  const OVERDUE_DAYS = 30;
+  const KG_PHONE_CODE = '+996';
 
-// ---------- DOM ----------
-const $ = (sel) => document.querySelector(sel);
-const el = {
-  openAddBtn:    $('#openAddBtn'),
-  emptyAddBtn:   $('#emptyAddBtn'),
-  searchInput:   $('#searchInput'),
+  // =========================================================
+  // 2. СОСТОЯНИЕ
+  // =========================================================
+  const state = {
+    debts: [],
+    search: '',
+    tab: 'active',          // 'active' | 'paid'
+    editingId: null,
+    deletingId: null,
+    payingId: null,
+    waDebtId: null,
+    isOwner: true,
+    unsubDebts: null,
+  };
 
-  statTotal:     $('#statTotal'),
-  statCount:     $('#statCount'),
-  statOverdue:   $('#statOverdue'),
+  // =========================================================
+  // 3. DOM
+  // =========================================================
+  const $ = (sel) => document.querySelector(sel);
+  const el = {
+    openAddBtn:    $('#openAddBtn'),
+    emptyAddBtn:   $('#emptyAddBtn'),
+    searchInput:   $('#searchInput'),
 
-  tabs:          document.querySelectorAll('.tab[data-tab]'),
-  tabActiveCount:$('#tabActiveCount'),
-  tabPaidCount:  $('#tabPaidCount'),
+    statTotal:     $('#statTotal'),
+    statCount:     $('#statCount'),
+    statOverdue:   $('#statOverdue'),
 
-  debtsTable:    $('#debtsTable'),
-  debtsBody:     $('#debtsBody'),
-  debtsEmpty:    $('#debtsEmpty'),
-  emptyTitle:    $('#emptyTitle'),
-  emptyText:     $('#emptyText'),
+    tabs:          document.querySelectorAll('.tab[data-tab]'),
+    tabActiveCount:$('#tabActiveCount'),
+    tabPaidCount:  $('#tabPaidCount'),
 
-  debtModal:     $('#debtModal'),
-  debtModalTitle:$('#debtModalTitle'),
-  debtModalSub:  $('#debtModalSub'),
-  debtForm:      $('#debtForm'),
-  debtId:        $('#debtId'),
-  fName:         $('#fName'),
-  fPhone:        $('#fPhone'),
-  fAmount:       $('#fAmount'),
-  fDate:         $('#fDate'),
-  fDueDate:      $('#fDueDate'),
-  fNote:         $('#fNote'),
-  saveBtn:       $('#saveBtn'),
+    debtsTable:    $('#debtsTable'),
+    debtsBody:     $('#debtsBody'),
+    debtsEmpty:    $('#debtsEmpty'),
+    emptyTitle:    $('#emptyTitle'),
+    emptyText:     $('#emptyText'),
 
-  payModal:      $('#payModal'),
-  payClientName: $('#payClientName'),
-  payCurrentDebt:$('#payCurrentDebt'),
-  payOriginalDate: $('#payOriginalDate'),
-  payForm:       $('#payForm'),
-  payAmount:     $('#payAmount'),
-  quickAmounts:  $('#quickAmounts'),
-  paymentsHistory: $('#paymentsHistory'),
-  confirmPayBtn: $('#confirmPayBtn'),
+    debtModal:     $('#debtModal'),
+    debtModalTitle:$('#debtModalTitle'),
+    debtModalSub:  $('#debtModalSub'),
+    debtForm:      $('#debtForm'),
+    debtId:        $('#debtId'),
+    fName:         $('#fName'),
+    fPhone:        $('#fPhone'),
+    fAmount:       $('#fAmount'),
+    fDate:         $('#fDate'),
+    fDueDate:      $('#fDueDate'),
+    fNote:         $('#fNote'),
+    saveBtn:       $('#saveBtn'),
 
-  waModal:       $('#waModal'),
-  waClientInfo:  $('#waClientInfo'),
-  previewRu:     $('#previewRu'),
-  previewKg:     $('#previewKg'),
+    payModal:      $('#payModal'),
+    payClientName: $('#payClientName'),
+    payCurrentDebt:$('#payCurrentDebt'),
+    payOriginalDate: $('#payOriginalDate'),
+    payForm:       $('#payForm'),
+    payAmount:     $('#payAmount'),
+    quickAmounts:  $('#quickAmounts'),
+    paymentsHistory: $('#paymentsHistory'),
+    confirmPayBtn: $('#confirmPayBtn'),
 
-  deleteModal:   $('#deleteModal'),
-  deleteName:    $('#deleteName'),
-  confirmDeleteBtn: $('#confirmDeleteBtn'),
+    waModal:       $('#waModal'),
+    waClientInfo:  $('#waClientInfo'),
+    previewRu:     $('#previewRu'),
+    previewKg:     $('#previewKg'),
 
-  toast:         $('#toast'),
-};
+    deleteModal:   $('#deleteModal'),
+    deleteName:    $('#deleteName'),
+    confirmDeleteBtn: $('#confirmDeleteBtn'),
 
-// =========================================================
-// Утилиты
-// =========================================================
+    toast:         $('#toast'),
+  };
 
-const fmt = (n) =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
+  // =========================================================
+  // 4. УТИЛИТЫ
+  // =========================================================
 
-const fmtMoney = (n) => fmt(n) + ' KGS';
+  const fmt = (n) =>
+    new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
-function readLS(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+  const fmtMoney = (n) => fmt(n) + ' KGS';
 
-function writeLS(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.warn('localStorage write failed:', e);
-    showToast('Не удалось сохранить локально', true);
-  }
-}
-
-function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[ch]));
-}
-
-function uid() {
-  return 'd_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
-}
-
-let toastTimer = null;
-function showToast(message, isError = false) {
-  el.toast.textContent = message;
-  el.toast.classList.toggle('toast--error', isError);
-  el.toast.classList.add('is-visible');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.toast.classList.remove('is-visible'), 2600);
-}
-
-/** Сегодня в формате YYYY-MM-DD */
-function todayISO() {
-  const d = new Date();
-  const z = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
-}
-
-/** Формат даты для отображения: 15.03.2025 */
-function formatDate(iso) {
-  if (!iso) return '—';
-  try {
-    const [y, m, d] = iso.split('-');
-    return `${d}.${m}.${y}`;
-  } catch {
-    return iso;
-  }
-}
-
-/** Разница в днях между датой и сегодня */
-function daysBetween(fromISO, toISO) {
-  if (!fromISO) return 0;
-  const a = new Date(fromISO + 'T00:00:00');
-  const b = toISO ? new Date(toISO + 'T00:00:00') : new Date();
-  return Math.floor((b - a) / (1000 * 60 * 60 * 24));
-}
-
-// =========================================================
-// Нормализация телефона
-// Правила для КР:
-//  - 0700123456      → +996700123456
-//  - 700123456       → +996700123456
-//  - 996700123456    → +996700123456
-//  - +996 700 123456 → +996700123456
-// =========================================================
-
-function normalizePhone(raw) {
-  let d = String(raw || '').replace(/\D/g, '');
-  if (!d) return '';
-
-  if (d.startsWith('996')) {
-    d = d.slice(3);
-  } else if (d.startsWith('0')) {
-    d = d.slice(1);
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[ch]));
   }
 
-  d = d.slice(0, 9);
-  return KG_PHONE_CODE + d;
-}
+  let toastTimer = null;
+  function showToast(message, isError = false) {
+    if (window.KUT?.toast) { window.KUT.toast(message, isError); return; }
+    if (!el.toast) return;
+    el.toast.textContent = message;
+    el.toast.classList.toggle('toast--error', isError);
+    el.toast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.toast.classList.remove('is-visible'), 2600);
+  }
 
-/** Маска для input: +996 XXX XXX XXX */
-function maskPhone(raw) {
-  let d = String(raw || '').replace(/\D/g, '');
-  if (d.startsWith('996')) d = d.slice(3);
-  else if (d.startsWith('0')) d = d.slice(1);
-  d = d.slice(0, 9);
+  function toDate(ts) {
+    if (!ts) return null;
+    if (typeof ts.toDate === 'function') return ts.toDate();
+    if (ts.seconds) return new Date(ts.seconds * 1000);
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? null : d;
+  }
 
-  if (d.length === 0) return '';
-  let out = KG_PHONE_CODE + ' ';
-  if (d.length <= 3) return out + d;
-  out += d.slice(0, 3) + ' ';
-  if (d.length <= 6) return out + d.slice(3);
-  out += d.slice(3, 6) + ' ';
-  out += d.slice(6);
-  return out;
-}
+  function formatDate(iso) {
+    if (!iso) return '—';
+    // Если это ISO-строка "YYYY-MM-DD"
+    if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      const [y, m, d] = iso.split('-');
+      return `${d}.${m}.${y}`;
+    }
+    const d = toDate(iso);
+    if (!d) return '—';
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
 
-/** Валидна ли нормализованная запись (9 цифр) */
-function isValidPhone(normalized) {
-  return /^\+996\d{9}$/.test(normalized);
-}
+  function todayISO() {
+    const d = new Date();
+    const z = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+  }
 
-// =========================================================
-// Загрузка
-// =========================================================
+  function daysBetween(fromISO, toISO) {
+    if (!fromISO) return 0;
+    const a = new Date(fromISO + 'T00:00:00');
+    const b = toISO ? new Date(toISO + 'T00:00:00') : new Date();
+    return Math.floor((b - a) / (1000 * 60 * 60 * 24));
+  }
 
-function loadDebts() {
-  const stored = readLS(STORAGE_KEY, null);
-  state.debts = Array.isArray(stored) ? stored : [];
-}
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-function persist() {
-  writeLS(STORAGE_KEY, state.debts);
-}
+  async function waitForReady(timeoutMs) {
+    timeoutMs = timeoutMs || 20000;
+    const start = Date.now();
+    while (!window.KUT) {
+      if (Date.now() - start > timeoutMs) return null;
+      await sleep(50);
+    }
+    while (true) {
+      const st = window.KUT.getState ? window.KUT.getState() : null;
+      if (st && st.businessId) return st;
+      if (Date.now() - start > timeoutMs) return null;
+      await sleep(100);
+    }
+  }
 
-// =========================================================
-// Вычисления
-// =========================================================
+  // ---------- Телефон ----------
+  function normalizePhone(raw) {
+    let d = String(raw || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.startsWith('996')) d = d.slice(3);
+    else if (d.startsWith('0')) d = d.slice(1);
+    d = d.slice(0, 9);
+    return KG_PHONE_CODE + d;
+  }
 
-const isActive = (d) => d.status !== 'paid' && Number(d.amount) > 0;
+  function maskPhone(raw) {
+    let d = String(raw || '').replace(/\D/g, '');
+    if (d.startsWith('996')) d = d.slice(3);
+    else if (d.startsWith('0')) d = d.slice(1);
+    d = d.slice(0, 9);
 
-function getActiveDebts() {
-  return state.debts.filter(isActive);
-}
+    if (d.length === 0) return '';
+    let out = KG_PHONE_CODE + ' ';
+    if (d.length <= 3) return out + d;
+    out += d.slice(0, 3) + ' ';
+    if (d.length <= 6) return out + d.slice(3);
+    out += d.slice(3, 6) + ' ';
+    out += d.slice(6);
+    return out;
+  }
 
-function getPaidDebts() {
-  return state.debts.filter((d) => d.status === 'paid' || Number(d.amount) <= 0);
-}
+  function isValidPhone(normalized) {
+    return /^\+996\d{9}$/.test(normalized);
+  }
 
-function isOverdue(debt) {
-  if (!isActive(debt)) return false;
-  return daysBetween(debt.date, null) > OVERDUE_DAYS;
-}
+  // =========================================================
+  // 5. ВЫЧИСЛЕНИЯ
+  // =========================================================
 
-// =========================================================
-// Рендер статистики
-// =========================================================
+  const isActive = (d) => d.status !== 'paid' && Number(d.amount) > 0;
+  const getActiveDebts = () => state.debts.filter(isActive);
+  const getPaidDebts = () => state.debts.filter((d) => d.status === 'paid' || Number(d.amount) <= 0);
 
-function renderStats() {
-  const active = getActiveDebts();
-  const total = active.reduce((s, d) => s + (Number(d.amount) || 0), 0);
-  const overdue = active.filter(isOverdue).length;
+  function isOverdue(debt) {
+    if (!isActive(debt)) return false;
+    return daysBetween(debt.date, null) > OVERDUE_DAYS;
+  }
 
-  el.statTotal.innerHTML = `${fmt(Math.round(total))}<small>KGS</small>`;
-  el.statCount.innerHTML = `${fmt(active.length)}<small>чел.</small>`;
-  el.statOverdue.innerHTML = `${fmt(overdue)}<small>чел.</small>`;
+  // =========================================================
+  // 6. РЕНДЕР
+  // =========================================================
 
-  el.tabActiveCount.textContent = String(active.length);
-  el.tabPaidCount.textContent = String(getPaidDebts().length);
-}
+  function renderStats() {
+    const active = getActiveDebts();
+    const total = active.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+    const overdue = active.filter(isOverdue).length;
 
-// =========================================================
-// Рендер таблицы
-// =========================================================
+    if (el.statTotal) el.statTotal.innerHTML = `${fmt(Math.round(total))}<small>KGS</small>`;
+    if (el.statCount) el.statCount.innerHTML = `${fmt(active.length)}<small>чел.</small>`;
+    if (el.statOverdue) el.statOverdue.innerHTML = `${fmt(overdue)}<small>чел.</small>`;
+    if (el.tabActiveCount) el.tabActiveCount.textContent = String(active.length);
+    if (el.tabPaidCount) el.tabPaidCount.textContent = String(getPaidDebts().length);
+  }
 
-function getVisibleDebts() {
-  const q = state.search.trim().toLowerCase();
-  const list = state.tab === 'active' ? getActiveDebts() : getPaidDebts();
+  function getVisibleDebts() {
+    const q = state.search.trim().toLowerCase();
+    const list = state.tab === 'active' ? getActiveDebts() : getPaidDebts();
 
-  const filtered = list.filter((d) => {
-    if (!q) return true;
-    const nameMatch = String(d.name || '').toLowerCase().includes(q);
-    const phoneMatch = String(d.phone || '').toLowerCase().includes(q);
-    return nameMatch || phoneMatch;
-  });
+    const filtered = list.filter((d) => {
+      if (!q) return true;
+      return String(d.name || '').toLowerCase().includes(q) ||
+             String(d.phone || '').toLowerCase().includes(q);
+    });
 
-  // Сортировка: сначала просроченные, потом по дате (свежие первыми)
-  return filtered.sort((a, b) => {
-    const aOver = isOverdue(a) ? 0 : 1;
-    const bOver = isOverdue(b) ? 0 : 1;
-    if (aOver !== bOver) return aOver - bOver;
-    return String(b.date).localeCompare(String(a.date));
-  });
-}
+    return filtered.sort((a, b) => {
+      const aOver = isOverdue(a) ? 0 : 1;
+      const bOver = isOverdue(b) ? 0 : 1;
+      if (aOver !== bOver) return aOver - bOver;
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+  }
 
-function initials(name) {
-  const parts = String(name || '').trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2);
-  return (parts[0][0] || '') + (parts[1][0] || '');
-}
+  function initials(name) {
+    const parts = String(name || '').trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2);
+    return (parts[0][0] || '') + (parts[1][0] || '');
+  }
 
-function renderTable() {
-  const list = getVisibleDebts();
-  const hasAny = state.tab === 'active' ? getActiveDebts().length > 0 : getPaidDebts().length > 0;
+  function renderTable() {
+    if (!el.debtsBody) return;
+    const list = getVisibleDebts();
+    const hasAny = state.tab === 'active' ? getActiveDebts().length > 0 : getPaidDebts().length > 0;
 
-  if (!hasAny && !state.search) {
-    el.debtsTable.hidden = true;
-    el.debtsEmpty.hidden = false;
-    el.debtsBody.innerHTML = '';
+    if (!hasAny && !state.search) {
+      if (el.debtsTable) el.debtsTable.hidden = true;
+      if (el.debtsEmpty) el.debtsEmpty.hidden = false;
+      el.debtsBody.innerHTML = '';
 
-    if (state.tab === 'active') {
-      el.emptyTitle.textContent = 'Пока долгов нет';
-      el.emptyText.textContent = 'Отличная работа — все клиенты расплатились!';
-      el.emptyAddBtn.style.display = '';
+      if (state.tab === 'active') {
+        if (el.emptyTitle) el.emptyTitle.textContent = 'Пока долгов нет';
+        if (el.emptyText) el.emptyText.textContent = 'Отличная работа — все клиенты расплатились!';
+        if (el.emptyAddBtn) el.emptyAddBtn.style.display = '';
+      } else {
+        if (el.emptyTitle) el.emptyTitle.textContent = 'Архив пуст';
+        if (el.emptyText) el.emptyText.textContent = 'Здесь появятся погашенные долги.';
+        if (el.emptyAddBtn) el.emptyAddBtn.style.display = 'none';
+      }
+      return;
+    }
+
+    if (el.debtsTable) el.debtsTable.hidden = false;
+    if (el.debtsEmpty) el.debtsEmpty.hidden = true;
+
+    if (list.length === 0) {
+      el.debtsBody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center; padding:40px 16px; color:var(--kut-muted);">
+            По вашему запросу ничего не найдено.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    el.debtsBody.innerHTML = list.map(renderRow).join('');
+  }
+
+  function renderRow(d) {
+    const paid = d.status === 'paid' || Number(d.amount) <= 0;
+    const overdue = isOverdue(d);
+    const days = daysBetween(d.date, null);
+    const amount = Number(d.amount) || 0;
+    const initial = Number(d.initialAmount) || amount;
+
+    let dateSub = `${days} дн. назад`;
+    let dateSubCls = '';
+    if (paid) {
+      const paidDate = d.paidAt ? toDate(d.paidAt) : null;
+      dateSub = paidDate ? `Погашено ${paidDate.toLocaleDateString('ru-RU')}` : 'Погашено';
+    } else if (overdue) {
+      dateSub = `⚠ Просрочено ${days} дн.`;
+      dateSubCls = days > 60 ? 'is-danger' : 'is-overdue';
+    } else if (d.dueDate) {
+      const daysLeft = daysBetween(todayISO(), d.dueDate);
+      if (daysLeft >= 0) dateSub = `Вернуть до ${formatDate(d.dueDate)} (${daysLeft} дн.)`;
+    }
+
+    let amountHTML;
+    if (paid) {
+      amountHTML = `<span class="amount amount--paid">${fmt(initial)}<small>KGS</small></span>`;
+    } else if (amount < initial) {
+      amountHTML = `
+        <span class="amount">${fmt(amount)}<small>KGS</small></span>
+        <div class="date-cell__sub">из ${fmt(initial)} KGS</div>`;
     } else {
-      el.emptyTitle.textContent = 'Архив пуст';
-      el.emptyText.textContent = 'Здесь появятся погашенные долги.';
-      el.emptyAddBtn.style.display = 'none';
+      amountHTML = `<span class="amount">${fmt(amount)}<small>KGS</small></span>`;
     }
-    return;
-  }
 
-  el.debtsTable.hidden = false;
-  el.debtsEmpty.hidden = true;
-
-  if (list.length === 0) {
-    el.debtsBody.innerHTML = `
-      <tr>
-        <td colspan="5" style="text-align:center; padding:40px 16px; color:var(--kut-muted);">
-          По вашему запросу ничего не найдено.
-        </td>
-      </tr>`;
-    return;
-  }
-
-  el.debtsBody.innerHTML = list.map(renderRow).join('');
-}
-
-function renderRow(d) {
-  const paid = d.status === 'paid' || Number(d.amount) <= 0;
-  const overdue = isOverdue(d);
-  const days = daysBetween(d.date, null);
-  const amount = Number(d.amount) || 0;
-  const initial = Number(d.initialAmount) || amount;
-
-  // Строка статуса под датой
-  let dateSub = `${days} дн. назад`;
-  let dateSubCls = '';
-  if (paid) {
-    dateSub = `Погашено ${formatDate(d.paidAt ? d.paidAt.split('T')[0] : d.date)}`;
-    dateSubCls = '';
-  } else if (overdue) {
-    dateSub = `⚠ Просрочено ${days} дн.`;
-    dateSubCls = days > 60 ? 'is-danger' : 'is-overdue';
-  } else if (d.dueDate) {
-    const daysLeft = daysBetween(todayISO(), d.dueDate);
-    if (daysLeft >= 0) {
-      dateSub = `Вернуть до ${formatDate(d.dueDate)} (${daysLeft} дн.)`;
-    }
-  }
-
-  // Сумма с подписью «частично погашено»
-  let amountHTML;
-  if (paid) {
-    amountHTML = `<span class="amount amount--paid">${fmt(initial)}<small>KGS</small></span>`;
-  } else if (amount < initial) {
-    amountHTML = `
-      <span class="amount">${fmt(amount)}<small>KGS</small></span>
-      <div class="date-cell__sub">из ${fmt(initial)} KGS</div>`;
-  } else {
-    amountHTML = `<span class="amount">${fmt(amount)}<small>KGS</small></span>`;
-  }
-
-  // Кнопки действий
-  const actions = paid
-    ? `
-      <div class="row-actions">
+    let actions;
+    if (paid) {
+      actions = state.isOwner ? `
+        <div class="row-actions">
+          <button class="icon-btn" type="button" data-act="edit" aria-label="Редактировать" title="Редактировать">✏️</button>
+          <button class="icon-btn icon-btn--danger" type="button" data-act="delete" aria-label="Удалить" title="Удалить">🗑️</button>
+        </div>` : '';
+    } else {
+      const ownerExtra = state.isOwner ? `
         <button class="icon-btn" type="button" data-act="edit" aria-label="Редактировать" title="Редактировать">✏️</button>
         <button class="icon-btn icon-btn--danger" type="button" data-act="delete" aria-label="Удалить" title="Удалить">🗑️</button>
-      </div>`
-    : `
-      <div class="row-actions">
-        <button class="icon-btn icon-btn--wa" type="button" data-act="wa" aria-label="Напомнить в WhatsApp" title="Напомнить в WhatsApp">💬</button>
-        <button class="icon-btn icon-btn--pay" type="button" data-act="pay" aria-label="Погасить долг" title="Погасить долг">💵</button>
-        <button class="icon-btn" type="button" data-act="edit" aria-label="Редактировать" title="Редактировать">✏️</button>
-        <button class="icon-btn icon-btn--danger" type="button" data-act="delete" aria-label="Удалить" title="Удалить">🗑️</button>
-      </div>`;
+      ` : '';
+      actions = `
+        <div class="row-actions">
+          <button class="icon-btn icon-btn--wa" type="button" data-act="wa" aria-label="Напомнить в WhatsApp" title="Напомнить в WhatsApp">💬</button>
+          <button class="icon-btn icon-btn--pay" type="button" data-act="pay" aria-label="Погасить долг" title="Погасить долг">💵</button>
+          ${ownerExtra}
+        </div>`;
+    }
 
-  return `
-    <tr data-id="${escapeHtml(d.id)}" class="${overdue ? 'is-overdue' : ''}">
-      <td data-label="Клиент">
-        <div class="client">
-          <div class="client__avatar" aria-hidden="true">${escapeHtml(initials(d.name))}</div>
-          <div class="client__text">
-            <div class="client__name">${escapeHtml(d.name)}</div>
-            ${d.note ? `<div class="client__note" title="${escapeHtml(d.note)}">${escapeHtml(d.note)}</div>` : ''}
+    return `
+      <tr data-id="${escapeHtml(d.id)}" class="${overdue ? 'is-overdue' : ''}">
+        <td data-label="Клиент">
+          <div class="client">
+            <div class="client__avatar" aria-hidden="true">${escapeHtml(initials(d.name))}</div>
+            <div class="client__text">
+              <div class="client__name">${escapeHtml(d.name)}</div>
+              ${d.note ? `<div class="client__note" title="${escapeHtml(d.note)}">${escapeHtml(d.note)}</div>` : ''}
+            </div>
           </div>
-        </div>
-      </td>
-      <td data-label="Телефон">
-        <a class="phone-link" href="tel:${escapeHtml(d.phone)}">📞 ${escapeHtml(d.phone)}</a>
-      </td>
-      <td data-label="Сумма долга">${amountHTML}</td>
-      <td data-label="Дата">
-        <div class="date-cell">${formatDate(d.date)}</div>
-        <div class="date-cell__sub ${dateSubCls}">${escapeHtml(dateSub)}</div>
-      </td>
-      <td data-label="Действия">${actions}</td>
-    </tr>
-  `;
-}
-
-// =========================================================
-// Модалки
-// =========================================================
-
-let lastFocused = null;
-
-function openModal(modal) {
-  lastFocused = document.activeElement;
-  modal.hidden = false;
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal(modal) {
-  modal.hidden = true;
-  document.body.style.overflow = '';
-  if (lastFocused && typeof lastFocused.focus === 'function') {
-    lastFocused.focus();
-  }
-}
-
-// =========================================================
-// Форма: новый долг / редактирование
-// =========================================================
-
-function clearFieldErrors() {
-  document.querySelectorAll('.field__hint').forEach((h) => {
-    h.textContent = '';
-    h.classList.remove('is-error');
-  });
-  document.querySelectorAll('input, select, textarea').forEach((i) => {
-    i.classList.remove('is-invalid');
-  });
-}
-
-function setFieldError(fieldId, message) {
-  const input = document.getElementById(fieldId);
-  const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
-  if (input) input.classList.add('is-invalid');
-  if (hint) {
-    hint.textContent = message || '';
-    hint.classList.toggle('is-error', Boolean(message));
-  }
-}
-
-function openAddModal() {
-  state.editingId = null;
-  el.debtModalTitle.textContent = 'Новый долг';
-  el.debtModalSub.textContent = 'Запишите клиента и сумму — потом напомним в WhatsApp в один клик.';
-  el.saveBtn.textContent = 'Записать долг';
-
-  el.debtForm.reset();
-  el.debtId.value = '';
-  el.fDate.value = todayISO();
-  el.fDueDate.value = '';
-  clearFieldErrors();
-
-  openModal(el.debtModal);
-  requestAnimationFrame(() => el.fName.focus());
-}
-
-function openEditModal(id) {
-  const d = state.debts.find((x) => x.id === id);
-  if (!d) return;
-
-  state.editingId = d.id;
-  el.debtModalTitle.textContent = 'Редактировать запись';
-  el.debtModalSub.textContent = 'Обновите данные и сохраните.';
-  el.saveBtn.textContent = 'Сохранить';
-
-  el.debtId.value = d.id;
-  el.fName.value = d.name || '';
-  el.fPhone.value = maskPhone(d.phone || '');
-  el.fAmount.value = d.amount ?? '';
-  el.fDate.value = d.date || todayISO();
-  el.fDueDate.value = d.dueDate || '';
-  el.fNote.value = d.note || '';
-  clearFieldErrors();
-
-  openModal(el.debtModal);
-  requestAnimationFrame(() => el.fName.focus());
-}
-
-function validateDebtForm() {
-  clearFieldErrors();
-  let ok = true;
-
-  const name = el.fName.value.trim();
-  if (name.length < 2) {
-    setFieldError('fName', 'Имя минимум 2 символа');
-    ok = false;
+        </td>
+        <td data-label="Телефон">
+          ${d.phone ? `<a class="phone-link" href="tel:${escapeHtml(d.phone)}">📞 ${escapeHtml(d.phone)}</a>` : '—'}
+        </td>
+        <td data-label="Сумма долга">${amountHTML}</td>
+        <td data-label="Дата">
+          <div class="date-cell">${formatDate(d.date)}</div>
+          <div class="date-cell__sub ${dateSubCls}">${escapeHtml(dateSub)}</div>
+        </td>
+        <td data-label="Действия">${actions}</td>
+      </tr>
+    `;
   }
 
-  const phoneNorm = normalizePhone(el.fPhone.value);
-  if (!isValidPhone(phoneNorm)) {
-    setFieldError('fPhone', 'Введите корректный номер (например 0700 12 34 56)');
-    ok = false;
-  }
+  // =========================================================
+  // 7. ДАННЫЕ — Firestore
+  // =========================================================
 
-  const amount = Number(el.fAmount.value);
-  if (el.fAmount.value === '' || Number.isNaN(amount) || amount <= 0) {
-    setFieldError('fAmount', 'Сумма должна быть больше 0');
-    ok = false;
-  }
-
-  if (!el.fDate.value) {
-    setFieldError('fDate', 'Укажите дату взятия');
-    ok = false;
-  }
-
-  return ok;
-}
-
-function saveDebt(event) {
-  event.preventDefault();
-  if (!validateDebtForm()) return;
-
-  const phoneNorm = normalizePhone(el.fPhone.value);
-  const amount = Number(el.fAmount.value) || 0;
-  const name = el.fName.value.trim();
-
-  if (state.editingId) {
-    const idx = state.debts.findIndex((x) => x.id === state.editingId);
-    if (idx !== -1) {
-      const prev = state.debts[idx];
-      // Пересчитываем initialAmount по логике: если пользователь изменил сумму,
-      // считаем, что это новая изначальная сумма.
-      const newInitial = amount >= Number(prev.amount) ? amount : prev.initialAmount;
-      state.debts[idx] = {
-        ...prev,
-        name,
-        phone: phoneNorm,
-        amount,
-        initialAmount: newInitial,
-        date: el.fDate.value,
-        dueDate: el.fDueDate.value || '',
-        note: el.fNote.value.trim(),
-        status: amount <= 0 ? 'paid' : 'active',
-        paidAt: amount <= 0 ? (prev.paidAt || new Date().toISOString()) : null,
-        updatedAt: new Date().toISOString(),
-      };
+  async function loadDebts() {
+    try {
+      const items = await window.FB.getCollection('debts');
+      state.debts = items;
+      renderStats();
+      renderTable();
+    } catch (err) {
+      console.error('[debts] loadDebts failed:', err);
+      showToast('Не удалось загрузить долги', true);
     }
-    showToast(`Запись «${name}» обновлена`);
-  } else {
-    state.debts.push({
-      id: uid(),
+  }
+
+  function subscribeDebts() {
+    if (state.unsubDebts) state.unsubDebts();
+    state.unsubDebts = window.FB.subscribeCollection('debts', (items) => {
+      state.debts = items;
+      renderStats();
+      renderTable();
+    });
+  }
+
+  // =========================================================
+  // 8. МОДАЛЬНЫЕ ОКНА
+  // =========================================================
+
+  let lastFocused = null;
+  function openModal(modal) {
+    lastFocused = document.activeElement;
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(modal) {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+  }
+
+  // =========================================================
+  // 9. ФОРМА ДОЛГА
+  // =========================================================
+
+  function clearFieldErrors() {
+    document.querySelectorAll('.field__hint').forEach((h) => {
+      h.textContent = '';
+      h.classList.remove('is-error');
+    });
+    document.querySelectorAll('input, select, textarea').forEach((i) => {
+      i.classList.remove('is-invalid');
+    });
+  }
+
+  function setFieldError(fieldId, message) {
+    const input = document.getElementById(fieldId);
+    const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
+    if (input) input.classList.add('is-invalid');
+    if (hint) {
+      hint.textContent = message || '';
+      hint.classList.toggle('is-error', Boolean(message));
+    }
+  }
+
+  function openAddModal() {
+    state.editingId = null;
+    if (el.debtModalTitle) el.debtModalTitle.textContent = 'Новый долг';
+    if (el.debtModalSub) el.debtModalSub.textContent = 'Запишите клиента и сумму — потом напомним в WhatsApp в один клик.';
+    if (el.saveBtn) el.saveBtn.textContent = 'Записать долг';
+
+    if (el.debtForm) el.debtForm.reset();
+    if (el.debtId) el.debtId.value = '';
+    if (el.fDate) el.fDate.value = todayISO();
+    if (el.fDueDate) el.fDueDate.value = '';
+    clearFieldErrors();
+
+    openModal(el.debtModal);
+    if (el.fName) requestAnimationFrame(() => el.fName.focus());
+  }
+
+  function openEditModal(id) {
+    const d = state.debts.find((x) => x.id === id);
+    if (!d) return;
+
+    state.editingId = d.id;
+    if (el.debtModalTitle) el.debtModalTitle.textContent = 'Редактировать запись';
+    if (el.debtModalSub) el.debtModalSub.textContent = 'Обновите данные и сохраните.';
+    if (el.saveBtn) el.saveBtn.textContent = 'Сохранить';
+
+    if (el.debtId) el.debtId.value = d.id;
+    if (el.fName) el.fName.value = d.name || '';
+    if (el.fPhone) el.fPhone.value = maskPhone(d.phone || '');
+    if (el.fAmount) el.fAmount.value = d.amount ?? '';
+    if (el.fDate) el.fDate.value = d.date || todayISO();
+    if (el.fDueDate) el.fDueDate.value = d.dueDate || '';
+    if (el.fNote) el.fNote.value = d.note || '';
+    clearFieldErrors();
+
+    openModal(el.debtModal);
+    if (el.fName) requestAnimationFrame(() => el.fName.focus());
+  }
+
+  function validateDebtForm() {
+    clearFieldErrors();
+    let ok = true;
+
+    const name = el.fName.value.trim();
+    if (name.length < 2) { setFieldError('fName', 'Имя минимум 2 символа'); ok = false; }
+
+    const phoneNorm = normalizePhone(el.fPhone.value);
+    if (!isValidPhone(phoneNorm)) {
+      setFieldError('fPhone', 'Введите корректный номер (например 0700 12 34 56)');
+      ok = false;
+    }
+
+    const amount = Number(el.fAmount.value);
+    if (el.fAmount.value === '' || Number.isNaN(amount) || amount <= 0) {
+      setFieldError('fAmount', 'Сумма должна быть больше 0');
+      ok = false;
+    }
+
+    if (!el.fDate.value) { setFieldError('fDate', 'Укажите дату взятия'); ok = false; }
+
+    return ok;
+  }
+
+  async function saveDebt(event) {
+    event.preventDefault();
+    if (!validateDebtForm()) return;
+
+    const phoneNorm = normalizePhone(el.fPhone.value);
+    const amount = Number(el.fAmount.value) || 0;
+    const name = el.fName.value.trim();
+
+    const data = {
       name,
       phone: phoneNorm,
-      initialAmount: amount,
       amount,
       date: el.fDate.value,
       dueDate: el.fDueDate.value || '',
       note: el.fNote.value.trim(),
-      status: 'active',
-      payments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    showToast(`Долг «${name}» записан`);
-  }
+    };
 
-  persist();
-  renderStats();
-  renderTable();
-  closeModal(el.debtModal);
-}
-
-// =========================================================
-// Погашение долга
-// =========================================================
-
-function openPayModal(id) {
-  const d = state.debts.find((x) => x.id === id);
-  if (!d) return;
-  if (d.status === 'paid') return;
-
-  state.payingId = d.id;
-  const amount = Number(d.amount) || 0;
-
-  el.payClientName.innerHTML = `Клиент: <strong>${escapeHtml(d.name)}</strong>`;
-  el.payCurrentDebt.textContent = fmtMoney(amount);
-  el.payOriginalDate.textContent = formatDate(d.date);
-  el.payAmount.value = amount;
-  el.payAmount.max = amount;
-
-  renderPaymentsHistory(d);
-  clearFieldErrors();
-  openModal(el.payModal);
-  requestAnimationFrame(() => el.payAmount.focus());
-}
-
-function renderPaymentsHistory(d) {
-  const list = Array.isArray(d.payments) ? d.payments : [];
-  if (list.length === 0) {
-    el.paymentsHistory.innerHTML = '';
-    return;
-  }
-  el.paymentsHistory.innerHTML = `
-    <h4>История платежей</h4>
-    ${list
-      .slice()
-      .reverse()
-      .map(
-        (p) => `
-      <div class="payment-row">
-        <span class="payment-row__date">${formatDate(p.date ? p.date.split('T')[0] : '')}</span>
-        <span class="payment-row__amount">+ ${fmt(p.amount)} KGS</span>
-      </div>`
-      )
-      .join('')}
-  `;
-}
-
-function confirmPayment(event) {
-  event.preventDefault();
-  const d = state.debts.find((x) => x.id === state.payingId);
-  if (!d) return;
-
-  const pay = Number(el.payAmount.value);
-  const debt = Number(d.amount) || 0;
-
-  if (el.payAmount.value === '' || Number.isNaN(pay) || pay <= 0) {
-    setFieldError('payAmount', 'Сумма должна быть больше 0');
-    return;
-  }
-  if (pay > debt + 0.001) {
-    setFieldError('payAmount', `Не может быть больше долга (${fmt(debt)} KGS)`);
-    return;
-  }
-
-  const newAmount = Number((debt - pay).toFixed(2));
-
-  if (!Array.isArray(d.payments)) d.payments = [];
-  d.payments.push({
-    amount: pay,
-    date: new Date().toISOString(),
-  });
-
-  d.amount = newAmount;
-  d.updatedAt = new Date().toISOString();
-
-  const fullyPaid = newAmount <= 0.001;
-
-  if (fullyPaid) {
-    d.amount = 0;
-    d.status = 'paid';
-    d.paidAt = new Date().toISOString();
-    showToast(`Долг «${d.name}» полностью погашен ✓`);
-  } else {
-    showToast(`Принято ${fmt(pay)} KGS. Остаток: ${fmt(newAmount)} KGS`);
-  }
-
-  persist();
-  renderStats();
-  renderTable();
-  closeModal(el.payModal);
-  state.payingId = null;
-}
-
-// =========================================================
-// WhatsApp-напоминание
-// =========================================================
-
-function openWaModal(id) {
-  const d = state.debts.find((x) => x.id === id);
-  if (!d) return;
-
-  state.waDebtId = d.id;
-  const amount = Number(d.amount) || 0;
-
-  el.waClientInfo.innerHTML = `Клиент: <strong>${escapeHtml(d.name)}</strong> · Долг: <strong>${fmtMoney(amount)}</strong>`;
-
-  // Предпросмотр текста (сокращённый)
-  el.previewRu.textContent = ruMessage(d, amount, true);
-  el.previewKg.textContent = kgMessage(d, amount, true);
-
-  openModal(el.waModal);
-}
-
-/** Полный текст напоминания на русском */
-function ruMessage(d, amount, preview = false) {
-  const base = `Салам, ${d.name}! Напоминаем о задолженности ${fmt(amount)} сомов в магазине. Спасибо!`;
-  if (preview) return base.length > 60 ? base.slice(0, 60) + '…' : base;
-  return `Салам, ${d.name}!\nНапоминаем о задолженности ${fmt(amount)} сомов${d.date ? ' от ' + formatDate(d.date) : ''}.\nПожалуйста, погасите при удобной возможности. Спасибо! 🙏`;
-}
-
-/** Полный текст напоминания на кыргызском */
-function kgMessage(d, amount, preview = false) {
-  const base = `Салам, ${d.name}! Карызды унутпаңыз: ${fmt(amount)} сом. Рахмат!`;
-  if (preview) return base.length > 60 ? base.slice(0, 60) + '…' : base;
-  return `Салам, ${d.name}!\n${d.date ? formatDate(d.date) + ' күнү алынган ' : ''}${fmt(amount)} сом карызыңызды унутпаңыз.\nЫңгайлуу убакытта төлөп берсеңиз. Рахмат! 🙏`;
-}
-
-function sendWhatsApp(lang) {
-  const d = state.debts.find((x) => x.id === state.waDebtId);
-  if (!d) return;
-
-  const amount = Number(d.amount) || 0;
-  const text = lang === 'kg' ? kgMessage(d, amount) : ruMessage(d, amount);
-
-  // wa.me требует номер без плюса
-  const phoneDigits = String(d.phone || '').replace(/\D/g, '');
-  const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`;
-
-  window.open(url, '_blank', 'noopener');
-  closeModal(el.waModal);
-  state.waDebtId = null;
-}
-
-// =========================================================
-// Удаление
-// =========================================================
-
-function openDeleteModal(id) {
-  const d = state.debts.find((x) => x.id === id);
-  if (!d) return;
-  state.deletingId = d.id;
-  el.deleteName.textContent = `Запись о долге «${d.name}» (${fmtMoney(d.amount)}) будет удалена.`;
-  openModal(el.deleteModal);
-}
-
-function confirmDelete() {
-  if (!state.deletingId) return;
-  const d = state.debts.find((x) => x.id === state.deletingId);
-  state.debts = state.debts.filter((x) => x.id !== state.deletingId);
-  state.deletingId = null;
-  persist();
-  renderStats();
-  renderTable();
-  closeModal(el.deleteModal);
-  if (d) showToast(`Запись «${d.name}» удалена`);
-}
-
-// =========================================================
-// События
-// =========================================================
-
-function bindEvents() {
-  // Открыть добавление
-  el.openAddBtn.addEventListener('click', openAddModal);
-  el.emptyAddBtn.addEventListener('click', openAddModal);
-
-  // Поиск
-  el.searchInput.addEventListener('input', (e) => {
-    state.search = e.target.value;
-    renderTable();
-  });
-
-  // Табы
-  el.tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      state.tab = tab.dataset.tab;
-      el.tabs.forEach((t) => {
-        const active = t.dataset.tab === state.tab;
-        t.classList.toggle('is-active', active);
-        t.setAttribute('aria-selected', String(active));
-      });
-      renderTable();
-    });
-  });
-
-  // Действия в таблице (делегирование)
-  el.debtsBody.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-act]');
-    if (!btn) return;
-    const row = btn.closest('tr[data-id]');
-    if (!row) return;
-    const id = row.dataset.id;
-    const act = btn.dataset.act;
-
-    if (act === 'wa') openWaModal(id);
-    else if (act === 'pay') openPayModal(id);
-    else if (act === 'edit') openEditModal(id);
-    else if (act === 'delete') openDeleteModal(id);
-  });
-
-  // Маска телефона при вводе
-  el.fPhone.addEventListener('input', (e) => {
-    const masked = maskPhone(e.target.value);
-    // Разрешаем стирать
-    if (masked.length >= e.target.value.length || e.target.value.length < 5) {
-      e.target.value = masked;
-    } else {
-      e.target.value = masked;
+    if (el.saveBtn) {
+      el.saveBtn.disabled = true;
+      el.saveBtn.textContent = state.editingId ? 'Сохраняем...' : 'Записываем...';
     }
-  });
 
-  // Отправка формы долга
-  el.debtForm.addEventListener('submit', saveDebt);
+    try {
+      if (state.editingId) {
+        const existing = state.debts.find((x) => x.id === state.editingId);
+        const initial = existing ? (Number(existing.initialAmount) || Number(existing.amount) || amount) : amount;
+        const newInitial = amount >= (Number(existing?.amount) || 0) ? amount : initial;
+        const newStatus = amount <= 0 ? 'paid' : 'active';
+        await window.FB.updateItem('debts', state.editingId, {
+          ...data,
+          initialAmount: newInitial,
+          status: newStatus,
+          paidAt: newStatus === 'paid' ? (existing?.paidAt || new Date()) : null,
+        });
+        showToast(`Запись «${name}» обновлена`);
+      } else {
+        await window.FB.addItem('debts', {
+          ...data,
+          initialAmount: amount,
+          status: 'active',
+          payments: [],
+          source: 'manual',
+        });
+        showToast(`Долг «${name}» записан`);
+      }
+      closeModal(el.debtModal);
+    } catch (err) {
+      console.error('[debts] save failed:', err);
+      showToast('Не удалось сохранить долг', true);
+    } finally {
+      if (el.saveBtn) {
+        el.saveBtn.disabled = false;
+        el.saveBtn.textContent = state.editingId ? 'Сохранить' : 'Записать долг';
+      }
+    }
+  }
 
-  // Быстрые суммы в модалке погашения
-  el.quickAmounts.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-q]');
-    if (!btn) return;
+  // =========================================================
+  // 10. ПОГАШЕНИЕ
+  // =========================================================
+
+  function openPayModal(id) {
+    const d = state.debts.find((x) => x.id === id);
+    if (!d) return;
+    if (d.status === 'paid') return;
+
+    state.payingId = d.id;
+    const amount = Number(d.amount) || 0;
+
+    if (el.payClientName) el.payClientName.innerHTML = `Клиент: <strong>${escapeHtml(d.name)}</strong>`;
+    if (el.payCurrentDebt) el.payCurrentDebt.textContent = fmtMoney(amount);
+    if (el.payOriginalDate) el.payOriginalDate.textContent = formatDate(d.date);
+    if (el.payAmount) {
+      el.payAmount.value = amount;
+      el.payAmount.max = amount;
+    }
+
+    renderPaymentsHistory(d);
+    clearFieldErrors();
+    openModal(el.payModal);
+    if (el.payAmount) requestAnimationFrame(() => el.payAmount.focus());
+  }
+
+  function renderPaymentsHistory(d) {
+    if (!el.paymentsHistory) return;
+    const list = Array.isArray(d.payments) ? d.payments : [];
+    if (list.length === 0) {
+      el.paymentsHistory.innerHTML = '';
+      return;
+    }
+    el.paymentsHistory.innerHTML = `
+      <h4>История платежей</h4>
+      ${list.slice().reverse().map((p) => {
+        const pd = toDate(p.date);
+        const dateStr = pd ? pd.toLocaleDateString('ru-RU') : '—';
+        return `
+          <div class="payment-row">
+            <span class="payment-row__date">${dateStr}</span>
+            <span class="payment-row__amount">+ ${fmt(p.amount)} KGS</span>
+          </div>`;
+      }).join('')}
+    `;
+  }
+
+  async function confirmPayment(event) {
+    event.preventDefault();
     const d = state.debts.find((x) => x.id === state.payingId);
     if (!d) return;
+
+    const pay = Number(el.payAmount.value);
     const debt = Number(d.amount) || 0;
 
-    if (btn.dataset.q === 'full') {
-      el.payAmount.value = debt;
-    } else {
-      el.payAmount.value = Math.min(debt, Number(btn.dataset.q) || 0);
+    if (el.payAmount.value === '' || Number.isNaN(pay) || pay <= 0) {
+      setFieldError('payAmount', 'Сумма должна быть больше 0');
+      return;
     }
-    el.payAmount.focus();
-  });
-
-  // Подтверждение погашения
-  el.payForm.addEventListener('submit', confirmPayment);
-
-  // WhatsApp: выбор языка
-  el.waModal.addEventListener('click', (e) => {
-    const opt = e.target.closest('.lang-option');
-    if (!opt) return;
-    sendWhatsApp(opt.dataset.lang);
-  });
-
-  // Удаление
-  el.confirmDeleteBtn.addEventListener('click', confirmDelete);
-
-  // Универсальное закрытие по [data-close]
-  document.addEventListener('click', (e) => {
-    if (e.target.matches('[data-close]')) {
-      const modal = e.target.closest('.modal');
-      if (modal) closeModal(modal);
+    if (pay > debt + 0.001) {
+      setFieldError('payAmount', `Не может быть больше долга (${fmt(debt)} KGS)`);
+      return;
     }
-  });
 
-  // Escape
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    const modals = [el.debtModal, el.payModal, el.waModal, el.deleteModal];
-    const open = modals.find((m) => !m.hidden);
-    if (open) closeModal(open);
-  });
+    const newAmount = Number((debt - pay).toFixed(2));
+    const fullyPaid = newAmount <= 0.001;
 
-  // Синхронизация между вкладками
-  window.addEventListener('storage', (e) => {
-    if (e.key !== STORAGE_KEY) return;
-    loadDebts();
+    const payments = Array.isArray(d.payments) ? d.payments.slice() : [];
+    payments.push({ amount: pay, date: new Date() });
+
+    const updateData = {
+      amount: fullyPaid ? 0 : newAmount,
+      payments,
+    };
+    if (fullyPaid) {
+      updateData.status = 'paid';
+      updateData.paidAt = new Date();
+    }
+
+    if (el.confirmPayBtn) {
+      el.confirmPayBtn.disabled = true;
+      el.confirmPayBtn.textContent = 'Погашаем...';
+    }
+
+    try {
+      await window.FB.updateItem('debts', d.id, updateData);
+
+      if (fullyPaid) showToast(`Долг «${d.name}» полностью погашен ✓`);
+      else showToast(`Принято ${fmt(pay)} KGS. Остаток: ${fmt(newAmount)} KGS`);
+
+      state.payingId = null;
+      closeModal(el.payModal);
+    } catch (err) {
+      console.error('[debts] payment failed:', err);
+      showToast('Не удалось провести платёж', true);
+    } finally {
+      if (el.confirmPayBtn) {
+        el.confirmPayBtn.disabled = false;
+        el.confirmPayBtn.textContent = 'Погасить';
+      }
+    }
+  }
+
+  // =========================================================
+  // 11. WHATSAPP
+  // =========================================================
+
+  function openWaModal(id) {
+    const d = state.debts.find((x) => x.id === id);
+    if (!d) return;
+
+    state.waDebtId = d.id;
+    const amount = Number(d.amount) || 0;
+
+    if (el.waClientInfo) {
+      el.waClientInfo.innerHTML = `Клиент: <strong>${escapeHtml(d.name)}</strong> · Долг: <strong>${fmtMoney(amount)}</strong>`;
+    }
+    if (el.previewRu) el.previewRu.textContent = ruMessage(d, amount, true);
+    if (el.previewKg) el.previewKg.textContent = kgMessage(d, amount, true);
+
+    openModal(el.waModal);
+  }
+
+  function ruMessage(d, amount, preview) {
+    const base = `Салам, ${d.name}! Напоминаем о задолженности ${fmt(amount)} сомов в магазине. Спасибо!`;
+    if (preview) return base.length > 60 ? base.slice(0, 60) + '…' : base;
+    const from = d.date ? ' от ' + formatDate(d.date) : '';
+    return `Салам, ${d.name}!\nНапоминаем о задолженности ${fmt(amount)} сомов${from}.\nПожалуйста, погасите при удобной возможности. Спасибо! 🙏`;
+  }
+
+  function kgMessage(d, amount, preview) {
+    const base = `Салам, ${d.name}! Карызды унутпаңыз: ${fmt(amount)} сом. Рахмат!`;
+    if (preview) return base.length > 60 ? base.slice(0, 60) + '…' : base;
+    const from = d.date ? formatDate(d.date) + ' күнү алынган ' : '';
+    return `Салам, ${d.name}!\n${from}${fmt(amount)} сом карызыңызды унутпаңыз.\nЫңгайлуу убакытта төлөп берсеңиз. Рахмат! 🙏`;
+  }
+
+  function sendWhatsApp(lang) {
+    const d = state.debts.find((x) => x.id === state.waDebtId);
+    if (!d) return;
+
+    const amount = Number(d.amount) || 0;
+    const text = lang === 'kg' ? kgMessage(d, amount) : ruMessage(d, amount);
+    const phoneDigits = String(d.phone || '').replace(/\D/g, '');
+    const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`;
+
+    window.open(url, '_blank', 'noopener');
+    closeModal(el.waModal);
+    state.waDebtId = null;
+  }
+
+  // =========================================================
+  // 12. УДАЛЕНИЕ
+  // =========================================================
+
+  function openDeleteModal(id) {
+    const d = state.debts.find((x) => x.id === id);
+    if (!d) return;
+    state.deletingId = d.id;
+    if (el.deleteName) el.deleteName.textContent = `Запись о долге «${d.name}» (${fmtMoney(d.amount)}) будет удалена.`;
+    openModal(el.deleteModal);
+  }
+
+  async function confirmDelete() {
+    const id = state.deletingId;
+    if (!id) return;
+    const d = state.debts.find((x) => x.id === id);
+
+    if (el.confirmDeleteBtn) {
+      el.confirmDeleteBtn.disabled = true;
+      el.confirmDeleteBtn.textContent = 'Удаляем...';
+    }
+
+    try {
+      await window.FB.deleteItem('debts', id);
+      state.deletingId = null;
+      closeModal(el.deleteModal);
+      if (d) showToast(`Запись «${d.name}» удалена`);
+    } catch (err) {
+      console.error('[debts] delete failed:', err);
+      showToast('Не удалось удалить запись', true);
+    } finally {
+      if (el.confirmDeleteBtn) {
+        el.confirmDeleteBtn.disabled = false;
+        el.confirmDeleteBtn.textContent = 'Удалить';
+      }
+    }
+  }
+
+  // =========================================================
+  // 13. СОБЫТИЯ
+  // =========================================================
+
+  function bindEvents() {
+    if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
+    if (el.emptyAddBtn) el.emptyAddBtn.addEventListener('click', openAddModal);
+
+    if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
+      state.search = e.target.value;
+      renderTable();
+    });
+
+    el.tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        state.tab = tab.dataset.tab;
+        el.tabs.forEach((t) => {
+          const active = t.dataset.tab === state.tab;
+          t.classList.toggle('is-active', active);
+          t.setAttribute('aria-selected', String(active));
+        });
+        renderTable();
+      });
+    });
+
+    if (el.debtsBody) el.debtsBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const row = btn.closest('tr[data-id]');
+      if (!row) return;
+      const id = row.dataset.id;
+      const act = btn.dataset.act;
+
+      if (act === 'wa') openWaModal(id);
+      else if (act === 'pay') openPayModal(id);
+      else if (act === 'edit' && state.isOwner) openEditModal(id);
+      else if (act === 'delete' && state.isOwner) openDeleteModal(id);
+    });
+
+    if (el.fPhone) el.fPhone.addEventListener('input', (e) => {
+      e.target.value = maskPhone(e.target.value);
+    });
+
+    if (el.debtForm) el.debtForm.addEventListener('submit', saveDebt);
+
+    if (el.quickAmounts) el.quickAmounts.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-q]');
+      if (!btn) return;
+      const d = state.debts.find((x) => x.id === state.payingId);
+      if (!d) return;
+      const debt = Number(d.amount) || 0;
+      if (btn.dataset.q === 'full') el.payAmount.value = debt;
+      else el.payAmount.value = Math.min(debt, Number(btn.dataset.q) || 0);
+      el.payAmount.focus();
+    });
+
+    if (el.payForm) el.payForm.addEventListener('submit', confirmPayment);
+
+    if (el.waModal) el.waModal.addEventListener('click', (e) => {
+      const opt = e.target.closest('.lang-option');
+      if (!opt) return;
+      sendWhatsApp(opt.dataset.lang);
+    });
+
+    if (el.confirmDeleteBtn) el.confirmDeleteBtn.addEventListener('click', confirmDelete);
+
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('[data-close]')) {
+        const modal = e.target.closest('.modal');
+        if (modal) closeModal(modal);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const modals = [el.debtModal, el.payModal, el.waModal, el.deleteModal];
+      const open = modals.find((m) => m && !m.hidden);
+      if (open) closeModal(open);
+    });
+
+    window.addEventListener('kut:lang', () => {
+      renderStats();
+      renderTable();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (state.unsubDebts) state.unsubDebts();
+    });
+  }
+
+  // =========================================================
+  // 14. ИНИЦИАЛИЗАЦИЯ
+  // =========================================================
+
+  async function init() {
+    const st = await waitForReady();
+    if (!st) return;
+
+    state.isOwner = st.profile?.role === 'owner' || st.profile?.role === 'super_admin';
+    if (!state.isOwner && el.openAddBtn) el.openAddBtn.style.display = 'none';
+
+    if (el.fDate) el.fDate.value = todayISO();
+
     renderStats();
-    renderTable();
-  });
-}
+    subscribeDebts();
+    await loadDebts();
+    bindEvents();
+  }
 
-// =========================================================
-// Инициализация
-// =========================================================
-
-function init() {
-  loadDebts();
-  renderStats();
-  renderTable();
-  bindEvents();
-
-  // Дефолтная дата в форме нового долга
-  el.fDate.value = todayISO();
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
