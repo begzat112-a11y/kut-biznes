@@ -69,6 +69,7 @@
       align-items: center;
       gap: 16px;
       justify-content: space-between;
+      flex-wrap: wrap;
     }
     .topbar__brand {
       display: inline-flex;
@@ -271,9 +272,6 @@
       flex-wrap: nowrap;
     }
     .chips::-webkit-scrollbar { display: none; }
-    @media (min-width: 720px) {
-      .chips { flex-wrap: nowrap; overflow: visible; }
-    }
     .chip {
       border: 1px solid var(--kut-border);
       background: #fff;
@@ -639,7 +637,7 @@
       border-color: var(--kut-green);
     }
 
-    /* 📷 Поле штрихкода — красивый блок с кнопкой сканера */
+    /* 📷 Поле штрихкода */
     .barcode-row {
       display: flex;
       gap: 8px;
@@ -1000,9 +998,8 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- ============ Скрипты ============ -->
-  <!-- Ядро системы — должно идти первым, чтобы window.KUT был доступен -->
-  <script src="./js/app.js"></script>
+  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/stock.js"></script>
   <script src="./js/lang.js"></script>
-  <script src="./js/stock.js"></script>
 </body>
 </html>
