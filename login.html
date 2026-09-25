@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — вход по номеру телефона через WhatsApp.">
+  <meta name="description" content="КУТ: БИЗНЕС — вход по WhatsApp или Email.">
   <title>Вход — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,10 +44,10 @@
 
     .auth-card {
       width: 100%;
-      max-width: 440px;
+      max-width: 460px;
       background: #fff;
       border-radius: 24px;
-      padding: 32px 28px;
+      padding: 28px 26px;
       box-shadow: var(--shadow-lg);
       animation: cardIn .35s cubic-bezier(.2,.9,.3,1.1);
     }
@@ -60,7 +60,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       justify-content: center;
     }
     .auth-brand__mark {
@@ -86,6 +86,40 @@
       font-size: 12px;
       color: var(--kut-muted);
       margin-top: 2px;
+    }
+
+    /* ========== Табы входа ========== */
+    .auth-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--kut-green-soft);
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px 8px;
+      border: none;
+      background: transparent;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--kut-muted);
+      cursor: pointer;
+      transition: all .18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .auth-tab:hover { color: var(--kut-green); }
+    .auth-tab.is-active {
+      background: #fff;
+      color: var(--kut-green);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
     }
 
     .auth-message {
@@ -200,7 +234,7 @@
 
     .auth-footer {
       text-align: center;
-      margin-top: 18px;
+      margin-top: 16px;
       font-size: 13px;
       color: var(--kut-muted);
       line-height: 1.4;
@@ -211,6 +245,23 @@
       font-weight: 600;
     }
     .auth-footer a:hover { text-decoration: underline; }
+
+    .forgot-link {
+      text-align: right;
+      margin-top: -6px;
+      margin-bottom: 8px;
+    }
+    .forgot-link button {
+      background: transparent;
+      border: none;
+      color: var(--kut-green);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+    .forgot-link button:hover { text-decoration: underline; }
 
     .hidden { display: none !important; }
     ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
@@ -223,63 +274,115 @@
       <div class="auth-brand__mark">К</div>
       <div class="auth-brand__text">
         <strong>КУТ: БИЗНЕС</strong>
-        <small>Вход по номеру телефона</small>
+        <small>Вход в систему</small>
       </div>
+    </div>
+
+    <!-- ========== Табы ========== -->
+    <div class="auth-tabs" role="tablist">
+      <button class="auth-tab is-active" type="button" data-tab="phone" role="tab" aria-selected="true">
+        <span aria-hidden="true">📱</span> По телефону
+      </button>
+      <button class="auth-tab" type="button" data-tab="email" role="tab" aria-selected="false">
+        <span aria-hidden="true">✉️</span> По Email
+      </button>
     </div>
 
     <div class="auth-message" id="authMessage"></div>
 
-    <!-- ============ ШАГ 1: Ввод номера ============ -->
-    <form id="phoneForm" novalidate>
-      <div class="form-field">
-        <label for="phoneInput">Номер телефона <span class="req">*</span></label>
-        <input
-          type="tel"
-          id="phoneInput"
-          placeholder="+996 700 123 456"
-          inputmode="tel"
-          autocomplete="tel"
-          required>
-        <div class="form-error" data-for="phoneInput"></div>
-      </div>
+    <!-- ========== ВКЛАДКА 1: ВХОД ПО ТЕЛЕФОНУ ========== -->
+    <div id="phoneTab">
+      <!-- ШАГ 1: Ввод номера -->
+      <form id="phoneForm" novalidate>
+        <div class="form-field">
+          <label for="phoneInput">Номер телефона <span class="req">*</span></label>
+          <input
+            type="tel"
+            id="phoneInput"
+            placeholder="+996 700 123 456"
+            inputmode="tel"
+            autocomplete="tel"
+            required>
+          <div class="form-error" data-for="phoneInput"></div>
+        </div>
 
-      <button class="auth-btn auth-btn--whatsapp" type="submit" id="sendOtpBtn">
-        <span aria-hidden="true">💬</span> Получить код в WhatsApp
-      </button>
+        <button class="auth-btn auth-btn--whatsapp" type="submit" id="sendOtpBtn">
+          <span aria-hidden="true">💬</span> Получить код в WhatsApp
+        </button>
 
-      <div class="auth-footer">
-        Мы отправим 4-значный код в WhatsApp. Никому не сообщайте его.
-      </div>
-    </form>
+        <div class="auth-footer">
+          Для сотрудников и кассиров. Код приходит в WhatsApp.
+        </div>
+      </form>
 
-    <!-- ============ ШАГ 2: Ввод OTP ============ -->
-    <form id="otpForm" class="hidden" novalidate>
-      <div class="form-field">
-        <label for="otpInput">Введи 4-значный код <span class="req">*</span></label>
-        <input
-          type="text"
-          id="otpInput"
-          class="otp-input"
-          placeholder="0000"
-          inputmode="numeric"
-          maxlength="4"
-          autocomplete="one-time-code"
-          required>
-        <div class="form-error" data-for="otpInput"></div>
-      </div>
+      <!-- ШАГ 2: Ввод OTP -->
+      <form id="otpForm" class="hidden" novalidate>
+        <div class="form-field">
+          <label for="otpInput">Введи 4-значный код <span class="req">*</span></label>
+          <input
+            type="text"
+            id="otpInput"
+            class="otp-input"
+            placeholder="0000"
+            inputmode="numeric"
+            maxlength="4"
+            autocomplete="one-time-code"
+            required>
+          <div class="form-error" data-for="otpInput"></div>
+        </div>
 
-      <button class="auth-btn" type="submit" id="verifyOtpBtn">
-        Войти в систему
-      </button>
+        <button class="auth-btn" type="submit" id="verifyOtpBtn">
+          Войти в систему
+        </button>
 
-      <button class="auth-btn auth-btn--ghost" type="button" id="backBtn">
-        ← Изменить номер
-      </button>
+        <button class="auth-btn auth-btn--ghost" type="button" id="backBtn">
+          ← Изменить номер
+        </button>
 
-      <div class="auth-footer" id="otpTimerWrap">
-        Код действителен ещё <strong id="otpTimer">05:00</strong>
-      </div>
-    </form>
+        <div class="auth-footer" id="otpTimerWrap">
+          Код действителен ещё <strong id="otpTimer">05:00</strong>
+        </div>
+      </form>
+    </div>
+
+    <!-- ========== ВКЛАДКА 2: ВХОД ПО EMAIL ========== -->
+    <div id="emailTab" class="hidden">
+      <form id="emailForm" novalidate>
+        <div class="form-field">
+          <label for="emailInput">Email <span class="req">*</span></label>
+          <input
+            type="email"
+            id="emailInput"
+            placeholder="owner@shop.kg"
+            autocomplete="email"
+            required>
+          <div class="form-error" data-for="emailInput"></div>
+        </div>
+
+        <div class="form-field">
+          <label for="passwordInput">Пароль <span class="req">*</span></label>
+          <input
+            type="password"
+            id="passwordInput"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required>
+          <div class="form-error" data-for="passwordInput"></div>
+        </div>
+
+        <div class="forgot-link">
+          <button type="button" id="forgotBtn">Забыли пароль?</button>
+        </div>
+
+        <button class="auth-btn" type="submit" id="emailLoginBtn">
+          Войти
+        </button>
+
+        <div class="auth-footer">
+          Для владельцев бизнеса и супер-администратора.
+        </div>
+      </form>
+    </div>
   </div>
 
   <script type="module">
@@ -343,14 +446,65 @@
     }
 
     // =========================================================
-    // СОСТОЯНИЕ
+    // РЕДИРЕКТ ПО РОЛИ
+    // super_admin → admin.html
+    // owner       → index.html
+    // cashier     → cash.html
+    // =========================================================
+    function redirectByRole(profile) {
+      if (!profile) { window.location.href = './login.html'; return; }
+
+      if (profile.active === false) {
+        showMessage('Ваш аккаунт заблокирован. Свяжитесь с администратором.', 'error');
+        window.FB.logout().catch(() => {});
+        return;
+      }
+
+      const role = profile.role;
+
+      if (role === 'super_admin') {
+        window.location.href = './admin.html';
+        return;
+      }
+      if (role === 'owner') {
+        window.location.href = './index.html';
+        return;
+      }
+      if (role === 'cashier') {
+        window.location.href = './cash.html';
+        return;
+      }
+      // На случай неизвестной роли — на дашборд
+      window.location.href = './index.html';
+    }
+
+    // =========================================================
+    // ПЕРЕКЛЮЧЕНИЕ ТАБОВ
+    // =========================================================
+    const phoneTab = $('#phoneTab');
+    const emailTab = $('#emailTab');
+
+    document.querySelectorAll('.auth-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+        document.querySelectorAll('.auth-tab').forEach((t) => {
+          const active = t.dataset.tab === target;
+          t.classList.toggle('is-active', active);
+          t.setAttribute('aria-selected', String(active));
+        });
+        phoneTab.classList.toggle('hidden', target !== 'phone');
+        emailTab.classList.toggle('hidden', target !== 'email');
+        clearMessage();
+        stopOtpTimer();
+      });
+    });
+
+    // =========================================================
+    // ВХОД ПО ТЕЛЕФОНУ
     // =========================================================
     let currentPhone = '';
     let otpTimerInterval = null;
 
-    // =========================================================
-    // ФОРМА 1: ЗАПРОС OTP
-    // =========================================================
     const phoneForm = $('#phoneForm');
     const otpForm = $('#otpForm');
     const phoneInput = $('#phoneInput');
@@ -396,9 +550,6 @@
       }
     });
 
-    // =========================================================
-    // ФОРМА 2: ПРОВЕРКА OTP
-    // =========================================================
     otpForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       clearErrors(otpForm);
@@ -433,7 +584,7 @@
         }
 
         showMessage('Успешно! Перенаправляем...', 'success');
-        setTimeout(() => window.FB.redirectByRole(profile), 400);
+        setTimeout(() => redirectByRole(profile), 400);
       } catch (err) {
         console.error('[login] verify OTP failed:', err);
         let msg = 'Неверный код. Попробуйте ещё раз.';
@@ -457,9 +608,7 @@
       phoneInput.focus();
     });
 
-    // =========================================================
-    // ТАЙМЕР ОБРАТНОГО ОТСЧЁТА
-    // =========================================================
+    // ---------- Таймер OTP ----------
     function startOtpTimer(seconds) {
       stopOtpTimer();
       const el = $('#otpTimer');
@@ -487,13 +636,102 @@
     }
 
     // =========================================================
+    // ВХОД ПО EMAIL И ПАРОЛЮ
+    // =========================================================
+    const emailForm = $('#emailForm');
+
+    emailForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors(emailForm);
+      clearMessage();
+
+      const email = $('#emailInput').value.trim();
+      const password = $('#passwordInput').value;
+      let ok = true;
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setError('emailInput', 'Введите корректный email');
+        ok = false;
+      }
+      if (password.length < 6) {
+        setError('passwordInput', 'Пароль минимум 6 символов');
+        ok = false;
+      }
+      if (!ok) return;
+
+      if (!window.FB || typeof window.FB.login !== 'function') {
+        showMessage('Сервис авторизации не загружен. Обновите страницу.', 'error');
+        return;
+      }
+
+      const btn = $('#emailLoginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Входим...';
+
+      try {
+        const { profile } = await window.FB.login(email, password);
+
+        if (!profile) {
+          showMessage('Профиль не найден. Обратитесь к администратору.', 'error');
+          return;
+        }
+        if (profile.active === false) {
+          showMessage('Ваш аккаунт заблокирован. Свяжитесь с администратором.', 'error');
+          await window.FB.logout().catch(() => {});
+          return;
+        }
+
+        showMessage('Успешно! Перенаправляем...', 'success');
+        setTimeout(() => redirectByRole(profile), 400);
+      } catch (err) {
+        console.error('[login] email login failed:', err);
+        let msg = 'Ошибка входа. Попробуйте ещё раз.';
+        if (err.message === 'ACCOUNT_DISABLED') msg = 'Аккаунт заблокирован.';
+        else if (err.code === 'auth/invalid-credential' ||
+                 err.code === 'auth/wrong-password' ||
+                 err.code === 'auth/invalid-login-credentials') {
+          msg = 'Неверный email или пароль.';
+        }
+        else if (err.code === 'auth/user-not-found') msg = 'Пользователь не найден.';
+        else if (err.code === 'auth/too-many-requests') msg = 'Слишком много попыток. Подождите минуту.';
+        else if (err.code === 'auth/invalid-email') msg = 'Некорректный email.';
+        showMessage(msg, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+      }
+    });
+
+    // ---------- Забыли пароль ----------
+    $('#forgotBtn').addEventListener('click', async () => {
+      const email = $('#emailInput').value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showMessage('Введите email — мы отправим ссылку для сброса пароля.', 'info');
+        $('#emailInput').focus();
+        return;
+      }
+      if (!window.FB || typeof window.FB.resetPassword !== 'function') {
+        showMessage('Функция сброса пароля недоступна.', 'error');
+        return;
+      }
+      try {
+        await window.FB.resetPassword(email);
+        showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
+      } catch (err) {
+        console.error('[login] reset password failed:', err);
+        showMessage('Не удалось отправить письмо. Проверьте email.', 'error');
+      }
+    });
+
+    // =========================================================
     // АВТО-РЕДИРЕКТ, ЕСЛИ УЖЕ АВТОРИЗОВАН
     // =========================================================
     (async () => {
       try {
         const { profile } = await window.FB.waitForAuth();
-        if (profile && profile.active !== false && profile.phone) {
-          window.FB.redirectByRole(profile);
+        if (profile && profile.active !== false) {
+          // Пользователь уже вошёл — редиректим по роли
+          redirectByRole(profile);
         }
       } catch (_) {}
     })();
