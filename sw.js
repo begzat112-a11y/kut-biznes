@@ -1,100 +1,62 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Service Worker (sw.js)
-   Простой кэш-first SW для PWA-режима.
-   Обновление кэша — через смену CACHE_NAME.
+   КУТ: БИЗНЕС — Service Worker (минимальный, installable)
+   Задача: гарантированно пройти проверку Chrome на Android.
+   Кэширование — опционально, установка от него не зависит.
    ========================================================= */
 
-const CACHE_NAME = 'kut-biznes-v1.0.0';
+const CACHE_NAME = 'kut-biznes-v1.1.0';
 
-// Файлы «оболочки» приложения — обязательны для офлайн-старта
 const CORE_ASSETS = [
   './',
   './index.html',
-  './cash.html',
-  './stock.html',
-  './debts.html',
   './css/style.css',
   './js/app.js',
   './js/lang.js',
-  './js/cash.js',
-  './js/stock.js',
-  './js/debts.js',
   './manifest.json',
 ];
 
-// ---------- Установка: кэшируем оболочку ----------
+// ---------- Установка ----------
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // allSettled — чтобы одна 404-ка не сломала всю установку
-      return Promise.allSettled(
-        CORE_ASSETS.map((url) =>
-          cache.add(url).catch((err) => {
-            console.warn('[SW] Не удалось закэшировать:', url, err);
-          })
-        )
-      );
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS).catch(() => {}))
+      .then(() => self.skipWaiting())
   );
 });
 
-// ---------- Активация: удаляем старые кэши ----------
+// ---------- Активация ----------
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k !== CACHE_NAME)
-          .map((k) => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
-// ---------- Fetch: кэш-first с фоллбэком на сеть ----------
+// ---------- Обработчик fetch — обязателен для Android ----------
+// Chrome на Android по-прежнему требует наличия обработчика fetch,
+// даже если он просто передаёт запрос в сеть.
+// https://developer.chrome.com/blog/update-install-criteria
 self.addEventListener('fetch', (event) => {
-  const req = event.request;
+  // Пропускаем не-GET запросы
+  if (event.request.method !== 'GET') return;
 
-  // Работаем только с GET и только со своим origin
-  if (req.method !== 'GET') return;
-
-  const url = new URL(req.url);
+  // Пропускаем запросы на чужие домены
+  const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Для HTML-страниц — network-first, чтобы юзер всегда видел свежие данные
-  // (актуально для localStorage-приложения; можно и cache-first)
-  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
-          return res;
-        })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match('./index.html')))
-    );
-    return;
-  }
-
-  // Для остальных ресурсов — cache-first
   event.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) return hit;
-      return fetch(req).then((res) => {
-        if (!res || res.status !== 200 || res.type !== 'basic') return res;
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {});
-        return res;
-      }).catch(() => {
-        // Офлайн — отдаём index.html для навигации
-        if (req.mode === 'navigate') return caches.match('./index.html');
-        return new Response('', { status: 504, statusText: 'Offline' });
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).catch(() => {
+        // Офлайн-фоллбэк для навигации
+        if (event.request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+        return new Response('', { status: 503, statusText: 'Offline' });
       });
     })
   );
-});
-
-// ---------- Сообщения от страницы (ручное обновление) ----------
-self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
