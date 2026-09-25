@@ -1,17 +1,19 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase + WhatsApp Green-API
-   Версия: v4.0 (боевая отправка OTP)
+   КУТ: БИЗНЕС — Firebase + WhatsApp Green-API · v4.1
+   ---------------------------------------------------------
+   ⚠️ ВАЖНО: ниже в WA_CONFIG.apiToken стоит ЗАГЛУШКА.
+      Замените её на реальный apiTokenInstance из личного
+      кабинета Green-API, иначе OTP не будет отправляться.
 
    Что внутри:
    • Firebase Auth (Email/Password) + Firestore
    • sendWhatsAppOtp() — генерирует 4-значный код,
-     сохраняет в otp_sessions/{phone} и отправляет РЕАЛЬНЫЙ
-     POST-запрос на Green-API → пользователь получает
-     сообщение в WhatsApp
+     сохраняет его в otp_sessions/{phone} и делает
+     реальный POST-запрос к Green-API
    • verifyWhatsAppOtp() — проверяет код и логинит в Firebase
-   • login/logout/resetPassword
-   • CRUD для products/sales/debts внутри businesses/{bizId}
-   • Admin API: управление бизнесами и телефонами сотрудников
+   • login / logout / resetPassword
+   • CRUD products/sales/debts внутри businesses/{bizId}
+   • Admin API: бизнесы + смена телефонов сотрудников
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -44,7 +46,7 @@ import {
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js';
 
 // =========================================================
-// 1. FIREBASE CONFIG — ваши ключи
+// 1. FIREBASE CONFIG
 // =========================================================
 const firebaseConfig = {
   apiKey:            "AIzaSyAO1MniEwNBKhcEs64XMMPVN0GDEZFpxPg",
@@ -57,35 +59,32 @@ const firebaseConfig = {
 };
 
 // =========================================================
-// 2. WHATSAPP GATEWAY CONFIG (Green-API)
+// 2. GREEN-API CONFIG (WhatsApp шлюз)
 // ---------------------------------------------------------
-// Как получить:
-//   1. Зарегистрируйтесь на https://green-api.com
-//   2. Создайте инстанс и отсканируйте QR-код WhatsApp
-//   3. Скопируйте idInstance и apiTokenInstance
-//   4. Вставьте их сюда
-//
-// Пример URL запроса Green-API:
-//   https://api.green-api.com/waInstance{ID}/sendMessage/{TOKEN}
+// ⚠️ ЗАМЕНИТЕ apiToken НИЖЕ НА РЕАЛЬНЫЙ ТОКЕН ИЗ GREEN-API!
+// Получить: https://console.green-api.com → ваш инстанс
 // =========================================================
 const WA_CONFIG = {
-  // Если пусто — отправка не выполнится, будет ошибка в консоли
-  idInstance:    '1101000000',         // ← ваш idInstance
-  apiToken:      'your_api_token',     // ← ваш apiTokenInstance
+  idInstance: '720122747171',
+  apiToken:   'ВСТАВЬ_СЮДА_ТОКЕН_ИЗ_ГРИН_АПИ',
 
-  // Шаблон URL (можно заменить на Chat-API, Wati, Twilio и т.п.)
   buildUrl() {
     return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
   },
 
-  // Шаблон тела запроса Green-API
   buildBody(phoneDigits, message) {
     return {
-      chatId: `${phoneDigits}@c.us`,
+      chatId:  `${phoneDigits}@c.us`,
       message: message,
     };
   },
 };
+
+// Проверка, что токен реально вставлен
+const WA_TOKEN_IS_PLACEHOLDER =
+  !WA_CONFIG.apiToken ||
+  WA_CONFIG.apiToken === 'ВСТАВЬ_СЮДА_ТОКЕН_ИЗ_ГРИН_АПИ' ||
+  WA_CONFIG.apiToken.trim() === '';
 
 // =========================================================
 // 3. ИНИЦИАЛИЗАЦИЯ
@@ -239,7 +238,7 @@ async function resetPassword(email) {
 }
 
 // =========================================================
-// 8. WHATSAPP OTP — БОЕВАЯ ОТПРАВКА
+// 8. WHATSAPP OTP — РЕАЛЬНАЯ ОТПРАВКА ЧЕРЕЗ GREEN-API
 // =========================================================
 
 function generateOtpCode() {
@@ -254,13 +253,18 @@ function otpSessionDoc(phone) {
  * Отправка OTP через WhatsApp (Green-API).
  * 1. Генерируем 4-значный код
  * 2. Пишем в otp_sessions/{phone} с TTL 5 минут
- * 3. Отправляем POST-запрос на шлюз
- * 4. Если шлюз ответил ошибкой — бросаем исключение
+ * 3. Отправляем POST-запрос на Green-API
+ * 4. Если Green-API ответил ошибкой — бросаем исключение
  */
 async function sendWhatsAppOtp(rawPhone) {
   const phone = normalizePhone(rawPhone);
   if (!/^\+996\d{9}$/.test(phone)) {
     throw new Error('INVALID_PHONE');
+  }
+
+  if (WA_TOKEN_IS_PLACEHOLDER) {
+    console.error('[KUT OTP] apiToken не задан в WA_CONFIG — отправка невозможна.');
+    throw new Error('WHATSAPP_NOT_CONFIGURED');
   }
 
   // ----- 1. Генерация и запись в Firestore -----
@@ -275,15 +279,10 @@ async function sendWhatsAppOtp(rawPhone) {
     attempts: 0,
   });
 
-  // ----- 2. Отправка через WhatsApp-шлюз -----
-  if (!WA_CONFIG.idInstance || WA_CONFIG.idInstance === '1101000000' ||
-      !WA_CONFIG.apiToken  || WA_CONFIG.apiToken === 'your_api_token') {
-    throw new Error('WHATSAPP_NOT_CONFIGURED');
-  }
-
+  // ----- 2. Отправка через Green-API -----
   const phoneDigits = phone.replace(/\D/g, ''); // 996XXXXXXXXX
   const message =
-    `Ваш код подтверждения в КУТ: БИЗНЕС — ${code}\n\n` +
+    `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\n` +
     `Никому не сообщайте этот код. Действителен 5 минут.`;
 
   const url = WA_CONFIG.buildUrl();
@@ -304,11 +303,11 @@ async function sendWhatsAppOtp(rawPhone) {
   if (!res.ok) {
     let errText = '';
     try { errText = await res.text(); } catch (_) {}
-    console.error('[KUT OTP] Шлюз ответил ошибкой:', res.status, errText);
+    console.error('[KUT OTP] Green-API ответил ошибкой:', res.status, errText);
     throw new Error('WHATSAPP_FAILED');
   }
 
-  console.info('[KUT OTP] Код успешно отправлен на', phone);
+  console.info('[KUT OTP] Код', code, 'успешно отправлен на', phone);
   return true;
 }
 
@@ -522,4 +521,5 @@ export {
 };
 
 console.info('[KUT FB] Firebase v10 инициализирован · проект:', firebaseConfig.projectId);
-console.info('[KUT WA] WhatsApp-шлюз Green-API · instance:', WA_CONFIG.idInstance);
+console.info('[KUT WA] Green-API · instance:', WA_CONFIG.idInstance,
+  WA_TOKEN_IS_PLACEHOLDER ? '· ⚠️ ТОКЕН НЕ ЗАДАН' : '· токен OK');
