@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
 
   // Пропускаем запросы на чужие домены
-  // (Firebase, Google Fonts, Green-API и т.п. — они идут напрямую в сеть)
+  // (Firebase, Google Fonts, Green-API — они идут напрямую в сеть)
   if (url.origin !== self.location.origin) return;
 
   // HTML — network-first
