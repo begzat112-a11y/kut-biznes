@@ -1,12 +1,12 @@
 /* =========================================================
    КУТ: БИЗНЕС — Service Worker (sw.js)
-   Версия кэша: kut-biznes-v3.4.0
+   Версия кэша: kut-biznes-v3.5.0
    Стратегия:
    • HTML — network-first (всегда свежие данные)
    • Остальное — cache-first с фоллбэком на сеть
    ========================================================= */
 
-const CACHE_NAME = 'kut-biznes-v3.4.0';
+const CACHE_NAME = 'kut-biznes-v3.5.0';
 
 const CORE_ASSETS = [
   './',
