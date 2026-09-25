@@ -279,7 +279,7 @@
 
     <div class="auth-tabs" role="tablist">
       <button class="auth-tab is-active" type="button" data-tab="phone" role="tab" aria-selected="true">
-        <span aria-hidden="true">📱</span> По телефону
+        <span aria-hidden="true">📱</span> По номеру
       </button>
       <button class="auth-tab" type="button" data-tab="email" role="tab" aria-selected="false">
         <span aria-hidden="true">✉️</span> По Email
@@ -288,7 +288,7 @@
 
     <div class="auth-message" id="authMessage"></div>
 
-    <!-- ========== ВКЛАДКА 1: ВХОД ПО ТЕЛЕФОНУ ========== -->
+    <!-- ========== ВКЛАДКА 1: ВХОД ПО НОМЕРУ (КАССИРЫ) ========== -->
     <div id="phoneTab">
       <form id="phoneForm" novalidate>
         <div class="form-field">
@@ -341,7 +341,7 @@
       </form>
     </div>
 
-    <!-- ========== ВКЛАДКА 2: ВХОД ПО EMAIL ========== -->
+    <!-- ========== ВКЛАДКА 2: ВХОД ПО EMAIL (АДМИН И ВЛАДЕЛЬЦЫ) ========== -->
     <div id="emailTab" class="hidden">
       <form id="emailForm" novalidate>
         <div class="form-field">
@@ -492,7 +492,7 @@
     });
 
     // =========================================================
-    // ВХОД ПО ТЕЛЕФОНУ
+    // ВХОД ПО НОМЕРУ
     // =========================================================
     let currentPhone = '';
     let otpTimerInterval = null;
