@@ -1,12 +1,14 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Многоязычность (i18n) v2.0 «бронебойная»
+   КУТ: БИЗНЕС — Многоязычность (i18n) v3.0
    Языки: Русский (ru) · Кыргызча (kg) · English (en)
 
-   Логика переключения:
-   - клик по языку → localStorage.setItem('kut_lang', X) → location.reload()
-   - при загрузке: читаем kut_lang, применяем перевод НЕМЕДЛЕННО,
-     а потом ещё несколько раз (100мс / 400мс / 1200мс), чтобы
-     гарантированно перекрыть рендер app.js и других модулей.
+   Гарантированная стратегия:
+   • при клике KG/RU/EN → localStorage + location.reload()
+   • при загрузке: читаем kut_lang сразу
+   • применяем перевод 4 раза с задержками (100/400/1200/2500 мс)
+   • MutationObserver следит за DOM и мгновенно возвращает перевод,
+     если app.js или другой модуль пытается вернуть русский текст
+   • работаем даже без data-i18n — через обход текстовых узлов
    ========================================================= */
 
 (function () {
@@ -23,7 +25,6 @@
   const CODES = { ru: 'RU', kg: 'KG', en: 'EN' };
   const NAMES = { ru: 'Русский', kg: 'Кыргызча', en: 'English' };
 
-  // Читаем язык МГНОВЕННО — до любых рендеров
   let current = (function () {
     try {
       const v = localStorage.getItem(STORAGE_KEY);
@@ -559,7 +560,26 @@
   };
 
   // =========================================================
-  // 4. ПЕРЕВОДЧИК
+  // 4. ОБРАТНЫЙ ИНДЕКС: русский текст → ключ
+  // Работает для перевода текста БЕЗ data-i18n.
+  // HTML-разметка у нас всегда на русском — это источник истины.
+  // =========================================================
+  const reverseIndex = (function () {
+    const map = {};
+    Object.keys(dict.ru).forEach(function (key) {
+      const ruText = dict.ru[key];
+      // Для строк с параметрами {n} — берём шаблон, но при точном
+      // совпадении (без подстановки) такие строки обычно не встречаются.
+      if (ruText && !/\{/.test(ruText)) {
+        if (!map[ruText]) map[ruText] = [];
+        map[ruText].push(key);
+      }
+    });
+    return map;
+  })();
+
+  // =========================================================
+  // 5. ПЕРЕВОДЧИКИ
   // =========================================================
   function t(key, params) {
     const langDict = dict[current] || dict[DEFAULT_LANG];
@@ -586,51 +606,131 @@
   }
 
   // =========================================================
-  // 5. ПРИМЕНЕНИЕ ПЕРЕВОДА К DOM
+  // 6. ПРИМЕНЕНИЕ ПЕРЕВОДА К DOM
   // =========================================================
   function applyToDOM() {
-    // <html lang>
-    document.documentElement.lang = current;
+    try {
+      document.documentElement.lang = current;
 
-    // textContent
-    document.querySelectorAll('[data-i18n]').forEach(function (el) {
-      const key = el.getAttribute('data-i18n');
-      if (key) el.textContent = t(key);
-    });
+      // --- 6.1. data-i18n (textContent) ---
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        const key = el.getAttribute('data-i18n');
+        if (!key) return;
+        const translated = t(key);
+        if (el.textContent !== translated) el.textContent = translated;
+      });
 
-    // placeholder
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
-      el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
-    });
+      // --- 6.2. data-i18n-placeholder ---
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (!key) return;
+        const translated = t(key);
+        if (el.getAttribute('placeholder') !== translated) {
+          el.setAttribute('placeholder', translated);
+        }
+      });
 
-    // title
-    document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
-      el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
-    });
+      // --- 6.3. data-i18n-title ---
+      document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+        const key = el.getAttribute('data-i18n-title');
+        if (!key) return;
+        const translated = t(key);
+        if (el.getAttribute('title') !== translated) {
+          el.setAttribute('title', translated);
+        }
+      });
 
-    // aria-label
-    document.querySelectorAll('[data-i18n-aria]').forEach(function (el) {
-      el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria')));
-    });
+      // --- 6.4. data-i18n-aria ---
+      document.querySelectorAll('[data-i18n-aria]').forEach(function (el) {
+        const key = el.getAttribute('data-i18n-aria');
+        if (!key) return;
+        const translated = t(key);
+        if (el.getAttribute('aria-label') !== translated) {
+          el.setAttribute('aria-label', translated);
+        }
+      });
 
-    // HTML-вставка (для сложных строк)
-    document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
-      el.innerHTML = t(el.getAttribute('data-i18n-html'));
-    });
+      // --- 6.5. data-i18n-html ---
+      document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+        const key = el.getAttribute('data-i18n-html');
+        if (!key) return;
+        const translated = t(key);
+        if (el.innerHTML !== translated) el.innerHTML = translated;
+      });
+
+      // --- 6.6. ГЛАВНОЕ: обход текстовых узлов для перевода
+      //        даже без data-i18n. Работает по обратному индексу.
+      //        Пропускает уже переведённые строки (нет изменений → нет мутации).
+      translateTextNodes(document.body);
+    } catch (e) {
+      console.warn('[KUT i18n] applyToDOM error:', e);
+    }
   }
 
-  // Запускаем применение несколько раз с интервалом —
-  // чтобы перекрыть любые рендеры от app.js / cash.js / stock.js / debts.js.
-  function applyWithRetries() {
-    applyToDOM();
-    setTimeout(applyToDOM, 100);
-    setTimeout(applyToDOM, 400);
-    setTimeout(applyToDOM, 1200);
-    setTimeout(applyToDOM, 2500);
+  function translateTextNodes(root) {
+    if (!root) return;
+    const walker = document.createTreeWalker(
+      root,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: function (node) {
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          const tag = parent.tagName;
+          // Не трогаем скрипты/стили/вводимые поля
+          if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' ||
+              tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'OPTION') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          // Только осмысленные текстовые узлы
+          const text = (node.nodeValue || '').trim();
+          if (!text || text.length < 2) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    let node;
+    const replacements = [];
+    while ((node = walker.nextNode())) {
+      const raw = node.nodeValue;
+      const trimmed = raw.trim();
+
+      // 1) Приоритет — если у родителя есть data-i18n, перевод уже сделан в 6.1.
+      const parent = node.parentElement;
+      if (parent && parent.getAttribute && parent.getAttribute('data-i18n')) continue;
+
+      // 2) Ищем по обратному индексу (точное совпадение русского текста)
+      const keys = reverseIndex[trimmed];
+      if (keys && keys.length) {
+        const translated = t(keys[0]);
+        if (translated !== trimmed) {
+          replacements.push({ node: node, raw: raw, translated: translated });
+        }
+        continue;
+      }
+
+      // 3) Название товара? (для страниц кассы/склада — на случай,
+      //    если рендер делает модуль, а не наш tProduct)
+      if (PRODUCT_MAP[trimmed]) {
+        const translated = tProduct(trimmed);
+        if (translated !== trimmed) {
+          replacements.push({ node: node, raw: raw, translated: translated });
+        }
+      }
+    }
+
+    // Применяем замены после обхода — так безопаснее для walker
+    replacements.forEach(function (r) {
+      // Сохраняем ведущие/замыкающие пробелы
+      const leading = r.raw.match(/^\s*/)[0];
+      const trailing = r.raw.match(/\s*$/)[0];
+      r.node.nodeValue = leading + r.translated + trailing;
+    });
   }
 
   // =========================================================
-  // 6. ПЕРЕКЛЮЧАТЕЛЬ ЯЗЫКА В ШАПКЕ
+  // 7. СТИЛИ ПЕРЕКЛЮЧАТЕЛЯ
   // =========================================================
   function injectStyles() {
     if (document.getElementById('kut-lang-styles')) return;
@@ -664,6 +764,9 @@
     document.head.appendChild(style);
   }
 
+  // =========================================================
+  // 8. ПЕРЕКЛЮЧАТЕЛЬ
+  // =========================================================
   function buildSwitcher() {
     const wrap = document.createElement('div');
     wrap.className = 'kut-lang';
@@ -691,47 +794,32 @@
   }
 
   function mountSwitcher() {
-    // Ищем, куда вставить: сначала специальный маркер, потом шапка
     const target = document.querySelector('[data-kut-lang]') ||
                    document.querySelector('.topbar__inner') ||
                    document.querySelector('.mobile-bar');
     if (!target) return;
-
-    // Не дублируем
     if (target.querySelector('.kut-lang')) return;
-
-    const switcher = buildSwitcher();
-    target.appendChild(switcher);
+    target.appendChild(buildSwitcher());
   }
 
   // =========================================================
-  // 7. КЛИКИ: СОХРАНИТЬ ЯЗЫК + ПЕРЕЗАГРУЗИТЬ СТРАНИЦУ
+  // 9. КЛИКИ: сохранить язык + reload
   // =========================================================
   function switchLang(lang) {
     if (SUPPORTED.indexOf(lang) === -1) return;
-
-    try {
-      localStorage.setItem(STORAGE_KEY, lang);
-    } catch (_) {}
-
-    // Принудительная полная перезагрузка — гарантия, что все скрипты
-    // стартуют уже с новым языком из localStorage.
+    try { localStorage.setItem(STORAGE_KEY, lang); } catch (_) {}
     window.location.reload();
   }
 
-  // Делегированный обработчик кликов — надёжно работает на любом устройстве
   document.addEventListener('click', function (e) {
-    // 1) Клик по пункту меню
-    const option = e.target.closest && e.target.closest('.kut-lang__menu [data-lang]');
+    const option = e.target && e.target.closest && e.target.closest('.kut-lang__menu [data-lang]');
     if (option) {
       e.preventDefault();
       e.stopPropagation();
       switchLang(option.getAttribute('data-lang'));
       return;
     }
-
-    // 2) Клик по кнопке-триггеру — открыть/закрыть меню
-    const trigger = e.target.closest && e.target.closest('.kut-lang__btn');
+    const trigger = e.target && e.target.closest && e.target.closest('.kut-lang__btn');
     if (trigger) {
       e.preventDefault();
       e.stopPropagation();
@@ -739,7 +827,6 @@
       const menu = wrap && wrap.querySelector('.kut-lang__menu');
       if (!menu) return;
       const willOpen = menu.hidden;
-      // Закроем все открытые
       document.querySelectorAll('.kut-lang__menu').forEach(function (m) { m.hidden = true; });
       document.querySelectorAll('.kut-lang').forEach(function (w) { w.classList.remove('is-open'); });
       if (willOpen) {
@@ -749,9 +836,7 @@
       }
       return;
     }
-
-    // 3) Клик мимо — закрыть меню
-    if (!e.target.closest || !e.target.closest('.kut-lang')) {
+    if (!e.target || !e.target.closest || !e.target.closest('.kut-lang')) {
       document.querySelectorAll('.kut-lang__menu').forEach(function (m) { m.hidden = true; });
       document.querySelectorAll('.kut-lang').forEach(function (w) { w.classList.remove('is-open'); });
     }
@@ -765,7 +850,62 @@
   });
 
   // =========================================================
-  // 8. ПУБЛИЧНЫЙ API
+  // 10. МУТАЦИОННЫЙ НАБЛЮДАТЕЛЬ — ядро всей защиты
+  // =========================================================
+  let observer = null;
+  let debounceTimer = null;
+
+  function startObserver() {
+    if (observer || !document.body) return;
+
+    observer = new MutationObserver(function (mutations) {
+      // Проверяем — были ли реальные изменения, которые нужно "отбить"
+      let needsReapply = false;
+
+      for (let i = 0; i < mutations.length; i++) {
+        const m = mutations[i];
+
+        // Изменения текста
+        if (m.type === 'characterData') {
+          const text = (m.target.nodeValue || '').trim();
+          if (text && reverseIndex[text]) { needsReapply = true; break; }
+          if (text && PRODUCT_MAP[text]) { needsReapply = true; break; }
+          continue;
+        }
+
+        // Появление новых узлов (app.js отрисовал дашборд)
+        if (m.type === 'childList' && m.addedNodes.length) {
+          needsReapply = true;
+          break;
+        }
+      }
+
+      if (!needsReapply) return;
+
+      // Дебаунс: не чаще, чем раз в 120 мс
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () {
+        // Отключаем observer, чтобы наши записи не вызвали лавину
+        observer.disconnect();
+        try { applyToDOM(); } catch (_) {}
+        // Включаем обратно
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+      }, 120);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+
+  // =========================================================
+  // 11. ПУБЛИЧНЫЙ API
   // =========================================================
   window.KUT_LANG = {
     t: t,
@@ -773,31 +913,63 @@
     tCategory: tCategory,
     getLang: function () { return current; },
     setLang: switchLang,
+    applyToDOM: applyToDOM,
     supported: SUPPORTED,
     dict: dict,
-    applyToDOM: applyToDOM
+
+    // Диагностика — запустить в консоли: KUT_LANG.diagnose()
+    diagnose: function () {
+      const i18nEls = document.querySelectorAll('[data-i18n]').length;
+      const placeholderEls = document.querySelectorAll('[data-i18n-placeholder]').length;
+      let textMatches = 0;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        const trimmed = (n.nodeValue || '').trim();
+        if (reverseIndex[trimmed] || PRODUCT_MAP[trimmed]) textMatches++;
+      }
+      console.log('%c[KUT i18n] Диагностика', 'color:#005F40;font-weight:700');
+      console.log('Текущий язык:', current.toUpperCase());
+      console.log('Элементов с data-i18n:', i18nEls);
+      console.log('Элементов с data-i18n-placeholder:', placeholderEls);
+      console.log('Найдено русских текстовых узлов (для перевода по индексу):', textMatches);
+      console.log('Observer активен:', !!observer);
+      return { current: current, i18nEls: i18nEls, placeholderEls: placeholderEls, textMatches: textMatches };
+    },
   };
 
   // =========================================================
-  // 9. АВТОЗАПУСК
+  // 12. АВТОЗАПУСК
   // =========================================================
   function boot() {
     injectStyles();
     mountSwitcher();
-    applyWithRetries();
 
-    // Оповещаем модули (app.js может это слушать и перерисовать дашборд)
+    // Основное применение + страховки с задержками,
+    // чтобы перебить любой рендер от app.js / cash.js / stock.js / debts.js
+    applyToDOM();
+    setTimeout(applyToDOM, 50);
+    setTimeout(applyToDOM, 100);
+    setTimeout(applyToDOM, 250);
+    setTimeout(applyToDOM, 400);
+    setTimeout(applyToDOM, 800);
+    setTimeout(applyToDOM, 1200);
+    setTimeout(applyToDOM, 2000);
+    setTimeout(applyToDOM, 3000);
+
+    // Запускаем наблюдатель
+    startObserver();
+
+    // Оповещаем модули
     try {
       window.dispatchEvent(new CustomEvent('kut:lang', { detail: { lang: current } }));
     } catch (_) {}
 
-    // Подстраховка на случай, если app.js перерисует дашборд позже
-    window.addEventListener('kut:lang', function () {
-      applyToDOM();
-    });
+    // Ещё раз при смене языка (не должно происходить, т.к. мы reload, но на всякий)
+    window.addEventListener('kut:lang', function () { applyToDOM(); });
 
     console.info(
-      '%cКУТ i18n · язык: ' + current.toUpperCase() + ' · reload-стратегия активна',
+      '%cКУТ i18n v3.0 · язык: ' + current.toUpperCase() + ' · MutationObserver активен',
       'color:#005F40; font-weight:700'
     );
   }
@@ -808,9 +980,10 @@
     boot();
   }
 
-  // Дополнительная страховка: после полной загрузки ещё раз применим
   window.addEventListener('load', function () {
-    setTimeout(applyToDOM, 50);
+    setTimeout(applyToDOM, 20);
     setTimeout(applyToDOM, 300);
+    setTimeout(applyToDOM, 800);
+    setTimeout(applyToDOM, 1500);
   });
 })();
