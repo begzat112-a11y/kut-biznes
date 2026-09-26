@@ -150,7 +150,6 @@
       font-weight: 500;
     }
 
-    /* ============ Phone group ============ */
     .phone-group {
       display: grid;
       grid-template-columns: 140px 1fr;
@@ -247,7 +246,6 @@
 
     .register-footer a:hover { text-decoration: underline; }
 
-    /* Custom alert */
     .kut-alert {
       display: flex;
       align-items: flex-start;
@@ -328,7 +326,6 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Success overlay */
     .success-overlay {
       position: fixed;
       inset: 0;
@@ -541,10 +538,10 @@
     } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
     // =========================================================
-    // FIREBASE CONFIG
+    // FIREBASE CONFIG — точные ключи проекта (те же, что в login.html)
     // =========================================================
     const firebaseConfig = {
-      apiKey:            "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
+      apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
       authDomain:        "kut-biznes.firebaseapp.com",
       projectId:         "kut-biznes",
       storageBucket:     "kut-biznes.firebasestorage.app",
@@ -632,27 +629,24 @@
     }
 
     // =========================================================
-    // СТРАНЫ И МАСКИ ТЕЛЕФОНА
+    // СТРАНЫ И МАСКИ
     // =========================================================
 
     function getSelectedCountry() {
       const opt = countrySelect.options[countrySelect.selectedIndex];
       return {
-        code:    opt.dataset.code,     // "+996"
+        code:    opt.dataset.code,
         digits:  Number(opt.dataset.digits),
-        pattern: opt.dataset.pattern,  // "XXX XXX XXX"
+        pattern: opt.dataset.pattern,
       };
     }
 
-    /** Убирает всё лишнее и обрезает до нужного количества цифр */
     function digitsOnly(raw, maxDigits) {
       let d = String(raw || '').replace(/\D/g, '');
-      // Срезаем ведущий 0 (российская/кыргызская привычка)
       if (d.startsWith('0')) d = d.slice(1);
       return d.slice(0, maxDigits);
     }
 
-    /** Применяет маску к строке цифр согласно pattern ("XXX XXX XX XX") */
     function applyMask(digits, pattern) {
       let out = '';
       let di = 0;
@@ -692,12 +686,10 @@
       return d.length === c.digits;
     }
 
-    // Обновление при вводе
     phoneInput.addEventListener('input', (e) => {
       e.target.value = formatPhoneInput(e.target.value);
     });
 
-    // При смене страны — перемаскируем текущее значение
     countrySelect.addEventListener('change', () => {
       updatePhonePlaceholder();
       phoneInput.value = formatPhoneInput(phoneInput.value);
@@ -749,7 +741,7 @@
     }
 
     // =========================================================
-    // ПЕРЕВОД ОШИБОК FIREBASE
+    // ПЕРЕВОД ОШИБОК
     // =========================================================
 
     function translateAuthError(code) {
@@ -802,7 +794,6 @@
       let businessId = null;
       let authUser = null;
 
-      // ---------- 1. Firebase Auth ----------
       try {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         authUser = cred.user;
@@ -814,14 +805,12 @@
         return;
       }
 
-      // ---------- 2. displayName ----------
       try {
         await updateProfile(authUser, { displayName: companyName });
       } catch (err) {
         console.warn('[register] updateProfile warning:', err.message);
       }
 
-      // ---------- 3. Бизнес ----------
       setLoading(true, 'Создаём бизнес...');
       try {
         const bizRef = await addDoc(collection(db, 'businesses'), {
@@ -836,12 +825,11 @@
       } catch (err) {
         console.error('[register] businesses write error:', err.code, err.message);
         showAlert(translateFirestoreError(err.code) +
-          ' Аккаунт Auth создан, но бизнес не сохранён. Напишите администратору.', 'error');
+          ' Аккаунт Auth создан, но бизнес не сохранён.', 'error');
         setLoading(false);
         return;
       }
 
-      // ---------- 4. Профиль ----------
       setLoading(true, 'Сохраняем профиль...');
       try {
         await setDoc(doc(db, 'users', uid), {
@@ -862,7 +850,6 @@
         return;
       }
 
-      // ---------- 5. Успех ----------
       setLoading(false);
       showSuccessOverlay(companyName);
 
@@ -870,10 +857,6 @@
         window.location.href = './login.html';
       }, 2000);
     }
-
-    // =========================================================
-    // ЗАГРУЗКА КНОПКИ
-    // =========================================================
 
     function setLoading(isLoading, text) {
       submitBtn.disabled = isLoading;
@@ -889,10 +872,6 @@
         `;
       }
     }
-
-    // =========================================================
-    // ОВЕРЛЕЙ УСПЕХА
-    // =========================================================
 
     function showSuccessOverlay(companyName) {
       const overlay = document.createElement('div');
@@ -910,10 +889,6 @@
       document.body.appendChild(overlay);
     }
 
-    // =========================================================
-    // СБРОС ОШИБОК ПРИ ВВОДЕ
-    // =========================================================
-
     [companyInput, emailInput, phoneInput, passwordInput].forEach((input) => {
       input.addEventListener('input', () => {
         if (input.classList.contains('is-invalid')) {
@@ -924,12 +899,10 @@
 
     form.addEventListener('submit', registerOwner);
 
-    // =========================================================
-    // СТАРТОВЫЕ ЗНАЧЕНИЯ
-    // =========================================================
     updatePhonePlaceholder();
 
     console.info('[KUT register] Готово · проект:', firebaseConfig.projectId);
+    console.info('[KUT register] apiKey:', firebaseConfig.apiKey);
     console.info('[KUT register] apiKey длина:', firebaseConfig.apiKey.length);
     console.info('[KUT register] authDomain:', firebaseConfig.authDomain);
   </script>
