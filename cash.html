@@ -1,627 +1,745 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — касса и быстрые продажи.">
-  <title>Касса — КУТ: БИЗНЕС</title>
+/* =========================================================
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v3
+   При продаже сохраняет ФИО кассира, его UID и роль.
+   ========================================================= */
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+(function () {
+  'use strict';
 
-  <link rel="stylesheet" href="./css/style.css">
+  const SCAN_COOLDOWN_MS = 2000;
+  const CATEGORIES_FALLBACK = ['Все', 'Выпечка', 'Напитки', 'Продукты', 'Хозтовары', 'Одежда', 'Услуги', 'Другое'];
 
-  <!-- 📷 Сканер штрихкодов -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
+  const state = {
+    products: [],
+    cart: [],
+    category: 'Все',
+    search: '',
+    paymentMethod: null,
+    customer: '',
+    unsubProducts: null,
+  };
 
-  <style>
-    :root {
-      --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
-      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-bg: #F4F7F5;
-      --kut-surface: #FFFFFF; --kut-border: #E3EAE6; --kut-text: #14211C;
-      --kut-muted: #64776E; --kut-danger: #C0392B;
-      --radius-sm: 10px; --radius: 14px; --radius-lg: 22px;
-      --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
-      --shadow-md: 0 6px 18px rgba(16,32,25,.08);
-      --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
-    }
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; }
+  let lastScannedBarcode = null;
+  let lastScannedAt = 0;
 
-    body.page-cash {
-      margin: 0;
-      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: var(--kut-bg); color: var(--kut-text);
-      display: flex; flex-direction: column; min-height: 100dvh;
-      -webkit-font-smoothing: antialiased;
-    }
+  const $ = (s) => document.querySelector(s);
+  const el = {
+    categories:    $('#categories'),
+    productsGrid:  $('#productsGrid'),
+    searchInput:   $('#searchInput'),
 
-    .topbar {
-      background: var(--kut-green); color: #fff;
-      box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 40;
-    }
-    .topbar__inner {
-      max-width: 1400px; margin: 0 auto; padding: 12px 16px;
-      display: flex; align-items: center; gap: 16px; justify-content: space-between;
-    }
-    .topbar__brand {
-      display: inline-flex; align-items: center; gap: 10px;
-      color: #fff; text-decoration: none; font-weight: 700;
-    }
-    .brand__mark {
-      width: 34px; height: 34px; border-radius: 10px;
-      background: var(--kut-gold); color: var(--kut-green-dark);
-      display: grid; place-items: center; font-weight: 800;
-    }
-    .brand__name { font-size: 15px; }
-    .topbar__nav {
-      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
-    }
-    .topbar__nav::-webkit-scrollbar { display: none; }
-    .topbar__nav a {
-      color: rgba(255,255,255,.85); text-decoration: none;
-      padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: 500;
-      white-space: nowrap; transition: background .18s ease;
-    }
-    .topbar__nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
-    .topbar__nav a.active {
-      background: var(--kut-gold); color: var(--kut-green-dark); font-weight: 600;
-    }
+    cart:          $('#cart'),
+    cartItems:     $('#cartItems'),
+    cartEmpty:     $('#cartEmpty'),
+    cartCount:     $('#cartCount'),
+    cartTotal:     $('#cartTotal'),
+    clearCartBtn:  $('#clearCartBtn'),
+    checkoutBtn:   $('#checkoutBtn'),
 
-    .pos {
-      flex: 1; width: 100%; max-width: 1400px; margin: 0 auto;
-      padding: 16px; display: grid; grid-template-columns: 1fr; gap: 16px;
-    }
-    @media (min-width: 980px) {
-      .pos { grid-template-columns: minmax(0, 1fr) 400px; padding: 20px; gap: 20px; }
-    }
+    cartToggle:      $('#cartToggle'),
+    cartToggleCount: $('#cartToggleCount'),
+    cartToggleSum:   $('#cartToggleSum'),
 
-    .pos__catalog { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    paymentModal:   $('#paymentModal'),
+    paymentTotal:   $('#paymentTotal'),
+    payMethods:     $('#payMethods'),
+    debtBlock:      $('#debtBlock'),
+    debtCustomer:   $('#debtCustomer'),
+    debtList:       $('#debtCustomersList'),
+    confirmPayBtn:  $('#confirmPayBtn'),
 
-    .scan-controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
-    .scan-btn {
-      width: 100%; padding: 14px 16px; border: none; border-radius: 14px;
-      background: linear-gradient(135deg, #005F40, #003F2A);
-      color: #fff; font-family: inherit; font-size: 15px; font-weight: 700;
-      cursor: pointer; box-shadow: 0 8px 20px rgba(0,95,64,.28);
-      transition: transform .12s ease;
-    }
-    .scan-btn:active { transform: scale(.98); }
+    successModal:   $('#successModal'),
+    successTotal:   $('#successTotal'),
 
-    .scan-manual { display: flex; gap: 8px; align-items: stretch; }
-    .scan-manual input {
-      flex: 1; min-width: 0; padding: 12px 14px;
-      border: 1px solid var(--kut-border); border-radius: 12px;
-      font-size: 15px; font-family: inherit; color: var(--kut-text);
-      outline: none; background: #fff;
-    }
-    .scan-manual input:focus {
-      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
-    }
-    .scan-manual__btn {
-      padding: 0 16px; border: 1px solid var(--kut-border); background: #fff;
-      border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 600;
-      color: var(--kut-text); cursor: pointer; white-space: nowrap;
-      transition: all .18s ease;
-    }
-    .scan-manual__btn:hover {
-      background: var(--kut-green-soft); border-color: var(--kut-green);
-      color: var(--kut-green);
-    }
+    scanBtn:           $('#cashScanBtn'),
+    barcodeInput:      $('#cashBarcodeInput'),
+    barcodeSearchBtn:  $('#cashBarcodeSearchBtn'),
+  };
 
-    .search { position: relative; }
-    .search input {
-      width: 100%; padding: 14px 16px 14px 44px;
-      border: 1px solid var(--kut-border); background: var(--kut-surface);
-      border-radius: var(--radius); font-size: 15px; font-family: inherit;
-      color: var(--kut-text); outline: none;
-      transition: border-color .18s ease, box-shadow .18s ease;
-    }
-    .search input:focus {
-      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
-    }
-    .search::before {
-      content: "🔍"; position: absolute; left: 14px; top: 50%;
-      transform: translateY(-50%); font-size: 15px; opacity: .7;
-      pointer-events: none;
-    }
+  const fmt = (n) =>
+    new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
 
-    .categories {
-      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
-      scrollbar-width: none;
-    }
-    .categories::-webkit-scrollbar { display: none; }
-    .cat-chip {
-      border: 1px solid var(--kut-border); background: var(--kut-surface);
-      color: var(--kut-text); padding: 9px 14px; border-radius: 999px;
-      font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;
-      transition: all .18s ease; font-family: inherit;
-    }
-    .cat-chip:hover { border-color: var(--kut-green); color: var(--kut-green); }
-    .cat-chip.is-active {
-      background: var(--kut-green); color: #fff; border-color: var(--kut-green);
-      box-shadow: 0 4px 10px rgba(0,95,64,.22);
-    }
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[ch]));
+  }
 
-    .products {
-      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
-    }
-    @media (min-width: 560px) { .products { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } }
-    @media (min-width: 1280px) { .products { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  function notify(message, isError) {
+    if (window.KUT?.toast) window.KUT.toast(message, isError);
+    else console.log('[cash]', message);
+  }
 
-    .product {
-      appearance: none; border: 1px solid var(--kut-border); background: var(--kut-surface);
-      border-radius: var(--radius); padding: 14px 12px; text-align: left;
-      cursor: pointer; font-family: inherit; color: inherit;
-      display: flex; flex-direction: column; gap: 6px; min-height: 118px;
-      transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease;
-      position: relative; overflow: hidden;
-    }
-    .product:hover { border-color: var(--kut-green); box-shadow: var(--shadow-md); }
-    .product:active { transform: scale(.97); }
-    .product__emoji {
-      font-size: 26px; line-height: 1; width: 44px; height: 44px;
-      display: grid; place-items: center;
-      background: var(--kut-green-soft); border-radius: 12px;
-    }
-    .product__name {
-      font-size: 14px; font-weight: 600; line-height: 1.25; color: var(--kut-text);
-    }
-    .product__price {
-      margin-top: auto; font-size: 15px; font-weight: 700; color: var(--kut-green);
-    }
-    .product__price small {
-      font-size: 11px; color: var(--kut-muted); font-weight: 500; margin-left: 3px;
-    }
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-    .products__empty {
-      grid-column: 1 / -1; text-align: center; padding: 40px 16px;
-      color: var(--kut-muted); font-size: 14px;
+  async function waitForReady(timeoutMs) {
+    timeoutMs = timeoutMs || 25000;
+    const start = Date.now();
+    while (!window.KUT) {
+      if (Date.now() - start > timeoutMs) return null;
+      await sleep(50);
     }
+    while (true) {
+      const st = window.KUT.getState ? window.KUT.getState() : null;
+      if (st && st.businessId) return st;
+      if (Date.now() - start > timeoutMs) return null;
+      await sleep(100);
+    }
+  }
 
-    .empty-stock {
-      grid-column: 1 / -1; padding: 60px 20px; text-align: center;
+  function emojiForCategory(cat) {
+    switch (cat) {
+      case 'Одежда':    return '👕';
+      case 'Продукты':  return '🥫';
+      case 'Напитки':   return '🥤';
+      case 'Выпечка':   return '🥖';
+      case 'Услуги':    return '✂️';
+      case 'Хозтовары': return '🧴';
+      default:          return '📦';
     }
-    .empty-stock__icon { font-size: 48px; margin-bottom: 12px; opacity: .8; }
-    .empty-stock h3 {
-      margin: 0 0 8px; color: var(--kut-text); font-size: 17px; font-weight: 700;
-    }
-    .empty-stock p {
-      margin: 0 0 18px; color: var(--kut-muted); font-size: 14px;
-    }
-    .empty-stock a {
-      display: inline-block; padding: 12px 22px; border-radius: 12px;
-      background: var(--kut-gold); color: var(--kut-green-dark);
-      text-decoration: none; font-weight: 700; font-size: 14px;
-    }
+  }
 
-    /* Корзина */
-    .cart {
-      background: var(--kut-surface); border-radius: var(--radius-lg);
-      border: 1px solid var(--kut-border); box-shadow: var(--shadow-md);
-      display: flex; flex-direction: column; overflow: hidden; min-height: 380px;
-    }
-    @media (min-width: 980px) {
-      .cart { position: sticky; top: 84px; max-height: calc(100dvh - 104px); }
-    }
+  function stockToCashProduct(p) {
+    return {
+      id: p.id,
+      name: p.name || '',
+      price: Number(p.salePrice) || 0,
+      costPrice: Number(p.costPrice) || 0,
+      category: p.category || 'Другое',
+      unit: p.unit || 'шт',
+      qty: Number(p.qty) || 0,
+      barcode: p.barcode || '',
+      emoji: emojiForCategory(p.category),
+    };
+  }
 
-    .cart__head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px; border-bottom: 1px solid var(--kut-border);
+  // ===== Звук =====
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx();
     }
-    .cart__head h2 {
-      margin: 0; font-size: 16px; font-weight: 700;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .cart__count {
-      display: inline-grid; place-items: center; min-width: 24px; height: 24px;
-      padding: 0 6px; border-radius: 999px; background: var(--kut-green);
-      color: #fff; font-size: 12px; font-weight: 700;
-    }
-    .btn-ghost {
-      background: transparent; border: 1px solid var(--kut-border);
-      color: var(--kut-muted); padding: 8px 12px; border-radius: 10px;
-      font-family: inherit; font-size: 13px; font-weight: 500;
-      cursor: pointer; transition: all .18s ease;
-    }
-    .btn-ghost:hover {
-      color: var(--kut-danger); border-color: var(--kut-danger);
-      background: rgba(192,57,43,.06);
-    }
-    .btn-ghost:disabled { opacity: .4; cursor: not-allowed; }
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
+  function playSuccessBeep() {
+    const ctx = getAudioCtx(); if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(2000, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.1);
+  }
+  function playErrorBeep() {
+    const ctx = getAudioCtx(); if (!ctx) return;
+    const now = ctx.currentTime;
+    [0, 0.13].forEach((delay) => {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(320, now + delay);
+      gain.gain.setValueAtTime(0.0001, now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + delay + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.1);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now + delay); osc.stop(now + delay + 0.12);
+    });
+  }
 
-    .cart__body { flex: 1; overflow-y: auto; padding: 8px; }
-    .cart__empty {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 6px;
-      padding: 30px 20px; text-align: center; color: var(--kut-muted);
-    }
-    .cart__empty-icon { font-size: 34px; opacity: .8; }
-    .cart__empty p { margin: 4px 0 0; font-weight: 600; color: var(--kut-text); }
-    .cart__empty span { font-size: 13px; }
+  // ===== Сканер =====
+  let scannerModal = null;
+  let scannerInstance = null;
+  let scanFeedbackTimer = null;
 
-    .cart-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px; border-radius: 12px;
-    }
-    .cart-item + .cart-item { border-top: 1px dashed var(--kut-border); }
-    .cart-item__info { flex: 1; min-width: 0; }
-    .cart-item__name {
-      font-size: 14px; font-weight: 600;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .cart-item__meta { font-size: 12px; color: var(--kut-muted); margin-top: 2px; }
-    .cart-item__total {
-      font-size: 13px; font-weight: 700; color: var(--kut-green); margin-top: 2px;
-    }
-    .cart-item__controls {
-      display: inline-flex; align-items: center; gap: 2px;
-      background: var(--kut-green-soft); border-radius: 10px; padding: 3px;
-    }
-    .qty-btn {
-      width: 32px; height: 32px; display: grid; place-items: center;
-      border: none; background: transparent; color: var(--kut-green);
-      font-size: 18px; font-weight: 700; border-radius: 8px;
-      cursor: pointer; font-family: inherit;
-    }
-    .qty-btn:hover { background: #fff; }
-    .qty-value {
-      min-width: 26px; text-align: center; font-size: 14px; font-weight: 700;
-    }
-    .qty-remove {
-      width: 32px; height: 32px; display: grid; place-items: center;
-      border: none; background: transparent; color: var(--kut-muted);
-      font-size: 18px; border-radius: 8px; cursor: pointer;
-    }
-    .qty-remove:hover { color: var(--kut-danger); background: rgba(192,57,43,.08); }
+  function ensureScannerModal() {
+    if (scannerModal) return scannerModal;
+    scannerModal = document.createElement('div');
+    scannerModal.className = 'modal';
+    scannerModal.id = 'cashScannerModal';
+    scannerModal.hidden = true;
+    scannerModal.innerHTML = `
+      <div class="modal__backdrop" data-close-scanner></div>
+      <div class="modal__dialog" role="dialog" aria-modal="true" style="max-width: 520px;">
+        <h3 style="margin:0 0 4px;">📷 Сканер штрихкода</h3>
+        <p style="margin:0 0 14px; color:#64776E; font-size:13px;">
+          Наводите камеру на штрихкоды — товары добавляются в чек.
+        </p>
+        <div style="position:relative;">
+          <div id="cashScannerReader" style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
+          <div id="cashScannerFeedback" style="position:absolute; left:12px; right:12px; bottom:12px;
+               padding:10px 14px; border-radius:12px; font-family:inherit; font-size:14px;
+               font-weight:600; text-align:center; color:#fff; background:rgba(0,95,64,.92);
+               box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(8px);
+               transition:opacity .2s ease, transform .2s ease; pointer-events:none;"></div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn btn--primary btn--block" type="button" data-close-scanner>Готово</button>
+        </div>
+      </div>`;
+    document.body.appendChild(scannerModal);
+    scannerModal.addEventListener('click', (e) => {
+      if (e.target.matches('[data-close-scanner]')) stopScanner();
+    });
+    return scannerModal;
+  }
 
-    .cart__foot {
-      border-top: 1px solid var(--kut-border);
-      padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px;
-    }
-    .cart__sum {
-      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-    }
-    .cart__sum > span {
-      font-size: 13px; color: var(--kut-muted); text-transform: uppercase;
-      letter-spacing: .6px; font-weight: 600;
-    }
-    .cart__sum strong {
-      font-size: 30px; font-weight: 800; color: var(--kut-green);
-      line-height: 1; font-variant-numeric: tabular-nums;
-    }
-    .cart__sum strong small {
-      font-size: 14px; color: var(--kut-muted); font-weight: 600; margin-left: 4px;
-    }
+  function showScanFeedback(text, kind) {
+    const box = scannerModal?.querySelector('#cashScannerFeedback');
+    if (!box) return;
+    box.textContent = text;
+    box.style.background = (kind === 'error') ? 'rgba(192,57,43,.92)' : 'rgba(0,95,64,.92)';
+    box.style.opacity = '1';
+    box.style.transform = 'translateY(0)';
+    clearTimeout(scanFeedbackTimer);
+    scanFeedbackTimer = setTimeout(() => {
+      box.style.opacity = '0';
+      box.style.transform = 'translateY(8px)';
+    }, 1400);
+  }
 
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center;
-      gap: 8px; padding: 14px 18px; border-radius: 12px;
-      font-family: inherit; font-size: 15px; font-weight: 600;
-      cursor: pointer; border: 1px solid transparent;
-      transition: all .12s ease;
+  async function openScanner() {
+    if (!window.Html5Qrcode) {
+      notify('Сканер ещё загружается. Попробуйте через секунду.', true);
+      return;
     }
-    .btn:active { transform: translateY(1px); }
-    .btn--primary {
-      background: var(--kut-green); color: #fff;
-      box-shadow: 0 8px 18px rgba(0,95,64,.28);
-    }
-    .btn--primary:hover { background: var(--kut-green-dark); }
-    .btn--primary:disabled {
-      background: #C8D3CD; box-shadow: none; cursor: not-allowed;
-    }
-    .btn--gold {
-      background: var(--kut-gold); color: var(--kut-green-dark);
-      box-shadow: 0 8px 18px rgba(212,175,55,.35);
-    }
-    .btn--gold:hover { background: var(--kut-gold-dark); }
-    .btn--block { width: 100%; }
-    .btn--ghost {
-      background: transparent; border-color: var(--kut-border); color: var(--kut-text);
-    }
-    .btn--ghost:hover {
-      background: var(--kut-green-soft); border-color: var(--kut-green);
-      color: var(--kut-green);
-    }
+    try {
+      const Html5Qrcode = window.Html5Qrcode;
+      const modal = ensureScannerModal();
+      const readerEl = modal.querySelector('#cashScannerReader');
+      readerEl.innerHTML = '';
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
 
-    /* Мобильная кнопка чека */
-    .cart-toggle {
-      position: fixed; left: 12px; right: 12px;
-      bottom: calc(12px + env(safe-area-inset-bottom));
-      z-index: 60; display: none; align-items: center; justify-content: space-between;
-      gap: 12px; padding: 14px 18px; background: var(--kut-green); color: #fff;
-      border: none; border-radius: 16px; font-family: inherit;
-      font-size: 15px; font-weight: 600; box-shadow: var(--shadow-lg);
-      cursor: pointer;
+      scannerInstance = new Html5Qrcode('cashScannerReader');
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 280, height: 180 },
+        aspectRatio: 1.0,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.QR_CODE,
+        ],
+      };
+
+      await scannerInstance.start(
+        { facingMode: 'environment' },
+        config,
+        (decodedText) => { handleDecodedBarcode(String(decodedText).trim(), true); },
+        () => {}
+      );
+    } catch (err) {
+      console.error('[scanner]', err);
+      notify('Не удалось запустить камеру. Проверьте разрешения.', true);
+      stopScanner();
     }
-    .cart-toggle b {
-      display: inline-grid; place-items: center; min-width: 22px; height: 22px;
-      padding: 0 6px; background: var(--kut-gold); color: var(--kut-green-dark);
-      border-radius: 999px; font-size: 12px; font-weight: 800;
-    }
-    @media (max-width: 979px) {
-      .cart-toggle { display: flex; }
-      body.page-cash { padding-bottom: 84px; }
-      .cart {
-        position: fixed; left: 0; right: 0; bottom: 0; top: auto;
-        max-height: 88dvh; border-radius: 22px 22px 0 0;
-        transform: translateY(105%);
-        transition: transform .28s cubic-bezier(.2,.8,.2,1);
-        z-index: 70;
+  }
+
+  function stopScanner() {
+    try {
+      if (scannerInstance) {
+        const inst = scannerInstance;
+        scannerInstance = null;
+        inst.stop().then(() => inst.clear()).catch(() => {});
       }
-      .cart.is-open { transform: translateY(0); }
-      .cart__head::before {
-        content: ""; position: absolute; top: 8px; left: 50%;
-        transform: translateX(-50%); width: 44px; height: 4px;
-        background: var(--kut-border); border-radius: 4px;
+    } catch (_) {}
+    if (scannerModal) scannerModal.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  function handleDecodedBarcode(code, fromCamera) {
+    if (!code) return;
+    const now = Date.now();
+    if (code === lastScannedBarcode && (now - lastScannedAt) < SCAN_COOLDOWN_MS) return;
+    lastScannedBarcode = code;
+    lastScannedAt = now;
+
+    const product = state.products.find((p) => String(p.barcode) === String(code));
+    if (!product) {
+      if (fromCamera) {
+        if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+        playErrorBeep();
+        showScanFeedback(`Товар «${code}» не найден на складе`, 'error');
+      } else notify(`Товар со штрихкодом ${code} не найден`, true);
+      return;
+    }
+
+    const existing = state.cart.find((i) => i.id === product.id);
+    const currentQty = existing ? existing.qty : 0;
+    const stockQty = Number(product.qty);
+
+    if (Number.isFinite(stockQty) && currentQty >= stockQty) {
+      const msg = stockQty <= 0
+        ? `«${product.name}» закончился на складе`
+        : `«${product.name}»: осталось всего ${fmt(stockQty)} ${product.unit}`;
+      if (fromCamera) {
+        if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+        playErrorBeep();
+        showScanFeedback(msg, 'error');
+      } else notify(msg, true);
+      return;
+    }
+
+    if (existing) existing.qty += 1;
+    else state.cart.push({ id: product.id, name: product.name, price: product.price, unit: product.unit, qty: 1 });
+
+    if (fromCamera) {
+      if (navigator.vibrate) navigator.vibrate(80);
+      playSuccessBeep();
+      showScanFeedback(`+1 ${product.name}`, 'success');
+    } else {
+      playSuccessBeep();
+      notify(`Добавлено: ${product.name}`);
+    }
+
+    renderCart();
+    pulseCartBadge();
+  }
+
+  // ===== Каталог =====
+  function renderCategories() {
+    if (!el.categories) return;
+    const available = ['Все', ...new Set(state.products.map((p) => p.category).filter(Boolean))];
+    const list = available.length > 1 ? available : CATEGORIES_FALLBACK;
+    el.categories.innerHTML = list.map((cat) => {
+      const active = cat === state.category ? ' is-active' : '';
+      const label = window.KUT_LANG?.tCategory(cat) || cat;
+      return `<button class="cat-chip${active}" type="button" role="tab"
+              aria-selected="${cat === state.category}" data-cat="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
+    }).join('');
+  }
+
+  function getVisibleProducts() {
+    const q = state.search.trim().toLowerCase();
+    return state.products.filter((p) => {
+      const matchCat = state.category === 'Все' || p.category === state.category;
+      const matchSearch = !q || p.name.toLowerCase().includes(q) || String(p.barcode || '').includes(q);
+      return matchCat && matchSearch;
+    });
+  }
+
+  function renderProducts() {
+    if (!el.productsGrid) return;
+    if (state.products.length === 0) {
+      el.productsGrid.innerHTML = `
+        <div class="empty-stock">
+          <div class="empty-stock__icon">📦</div>
+          <h3>На складе нет товаров</h3>
+          <p>Добавьте их в разделе Склад — и они появятся здесь.</p>
+          <a href="./stock.html">Перейти в Склад →</a>
+        </div>`;
+      return;
+    }
+    const items = getVisibleProducts();
+    if (items.length === 0) {
+      el.productsGrid.innerHTML = `<div class="products__empty">Ничего не найдено.</div>`;
+      return;
+    }
+    el.productsGrid.innerHTML = items.map((p) => {
+      const qty = Number(p.qty);
+      const isFiniteQty = Number.isFinite(qty);
+      const isOut = isFiniteQty && qty <= 0;
+      const unit = p.unit || 'шт';
+      const stockLine = isFiniteQty
+        ? `<span style="font-size:11px;font-weight:600;margin-top:2px;color:${
+            isOut ? '#C0392B' : qty < 5 ? '#E08A1E' : '#64776E'
+          };">${isOut ? 'нет в наличии' : 'осталось ' + fmt(qty) + ' ' + escapeHtml(unit)}</span>`
+        : '';
+      return `
+        <button class="product" type="button" data-id="${escapeHtml(p.id)}"
+          ${isOut ? 'aria-disabled="true"' : ''} style="${isOut ? 'opacity:.55;' : ''}">
+          <span class="product__emoji" aria-hidden="true">${p.emoji}</span>
+          <span class="product__name">${escapeHtml(window.KUT_LANG?.tProduct(p.name) || p.name)}</span>
+          <span class="product__price">${fmt(p.price)}<small>KGS</small></span>
+          ${stockLine}
+        </button>`;
+    }).join('');
+  }
+
+  // ===== Корзина =====
+  function addToCart(productId) {
+    const product = state.products.find((p) => p.id === productId);
+    if (!product) return;
+    const existing = state.cart.find((i) => i.id === productId);
+    const currentQty = existing ? existing.qty : 0;
+    const stockQty = Number(product.qty);
+    const unit = product.unit || 'шт';
+    if (Number.isFinite(stockQty) && currentQty >= stockQty) {
+      if (stockQty <= 0) notify(`Товар «${product.name}» закончился.`, true);
+      else notify(`Недостаточно товара! Осталось всего ${fmt(stockQty)} ${unit}.`, true);
+      return;
+    }
+    if (existing) existing.qty += 1;
+    else state.cart.push({ id: product.id, name: product.name, price: product.price, unit, qty: 1 });
+    renderCart();
+    pulseCartBadge();
+  }
+
+  function changeQty(productId, delta) {
+    const item = state.cart.find((i) => i.id === productId);
+    if (!item) return;
+    if (delta > 0) {
+      const product = state.products.find((p) => p.id === productId);
+      const stockQty = product ? Number(product.qty) : Infinity;
+      if (Number.isFinite(stockQty) && item.qty >= stockQty) {
+        const unit = (product && product.unit) || 'шт';
+        notify(`Недостаточно товара! Осталось всего ${fmt(stockQty)} ${unit}.`, true);
+        return;
       }
-      .cart__head { position: relative; padding-top: 20px; }
     }
+    item.qty += delta;
+    if (item.qty <= 0) state.cart = state.cart.filter((i) => i.id !== productId);
+    renderCart();
+  }
 
-    /* Модалки */
-    .modal[hidden] { display: none; }
-    .modal {
-      position: fixed; inset: 0; z-index: 100;
-      display: grid; place-items: center; padding: 16px;
-    }
-    .modal__backdrop {
-      position: absolute; inset: 0;
-      background: rgba(15, 30, 24, .5); backdrop-filter: blur(4px);
-      animation: fadeIn .2s ease;
-    }
-    .modal__dialog {
-      position: relative; width: 100%; max-width: 460px;
-      background: var(--kut-surface); border-radius: var(--radius-lg);
-      padding: 22px; box-shadow: var(--shadow-lg);
-      animation: popIn .22s cubic-bezier(.2,.9,.3,1.2);
-      max-height: 92dvh; overflow-y: auto;
-    }
-    .modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 700; }
-    .modal__subtitle { margin: 0 0 18px; color: var(--kut-muted); font-size: 14px; }
-    .modal__subtitle strong { color: var(--kut-green); }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes popIn {
-      from { opacity: 0; transform: translateY(12px) scale(.96); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
+  function removeFromCart(productId) {
+    state.cart = state.cart.filter((i) => i.id !== productId);
+    renderCart();
+  }
 
-    .pay-methods { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
-    .pay-method {
-      display: flex; align-items: center; gap: 12px; padding: 14px;
-      border: 1.5px solid var(--kut-border); background: #fff;
-      border-radius: 14px; font-family: inherit; font-size: 15px;
-      font-weight: 600; color: var(--kut-text); cursor: pointer; text-align: left;
-      transition: all .18s ease;
-    }
-    .pay-method:hover { border-color: var(--kut-green); background: var(--kut-green-soft); }
-    .pay-method.is-active {
-      border-color: var(--kut-green); background: var(--kut-green-soft);
-      box-shadow: 0 0 0 3px rgba(0,95,64,.14);
-    }
-    .pay-method__icon {
-      width: 42px; height: 42px; display: grid; place-items: center;
-      background: #fff; border-radius: 12px; font-size: 20px;
-      box-shadow: var(--shadow-sm);
-    }
-    .pay-method.is-active .pay-method__icon {
-      background: var(--kut-gold);
-      box-shadow: 0 4px 10px rgba(212,175,55,.35);
-    }
+  function clearCart() {
+    if (state.cart.length === 0) return;
+    state.cart = [];
+    renderCart();
+  }
 
-    .debt-block {
-      margin-top: 14px; padding: 14px; border-radius: 14px;
-      background: #FFF9E6; border: 1px dashed var(--kut-gold);
-    }
-    .debt-block[hidden] { display: none; }
-    .debt-block label {
-      display: block; font-size: 13px; font-weight: 600;
-      margin-bottom: 6px; color: var(--kut-text);
-    }
-    .debt-block input {
-      width: 100%; padding: 12px 14px; border-radius: 10px;
-      border: 1.5px solid var(--kut-border); background: #fff;
-      font-family: inherit; font-size: 15px; outline: none;
-    }
-    .debt-block input:focus {
-      border-color: var(--kut-gold); box-shadow: 0 0 0 4px rgba(212,175,55,.18);
-    }
-    .debt-block .hint {
-      margin: 8px 0 0; font-size: 12px; color: var(--kut-muted); line-height: 1.4;
-    }
+  const getCartTotal = () => state.cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const getCartCount = () => state.cart.reduce((sum, i) => sum + i.qty, 0);
 
-    .modal__actions { display: flex; gap: 10px; margin-top: 20px; }
-    .modal__actions .btn { flex: 1; }
+  function renderCart() {
+    const { cart } = state;
+    const total = getCartTotal();
+    const count = getCartCount();
 
-    .modal__dialog--center { text-align: center; }
-    .success-icon {
-      width: 76px; height: 76px; margin: 4px auto 14px; border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, #EAF6EF, #C6EAD4);
-      color: var(--kut-green); display: grid; place-items: center;
-      font-size: 38px; font-weight: 800;
-      box-shadow: inset 0 -4px 0 rgba(0,95,64,.12);
-    }
-    .modal__dialog--center p {
-      margin: 6px 0 20px; color: var(--kut-muted); font-size: 14px;
-    }
-    .modal__dialog--center p strong { color: var(--kut-green); font-weight: 700; }
-
-    button { -webkit-tap-highlight-color: transparent; }
-  </style>
-</head>
-<body class="page-cash">
-
-  <!-- Kill-switch кэша при обновлении версии -->
-  <script>
-    (function () {
-      var BUILD = 'v4.2-CASH-FIREBASE';
-      var saved = null;
-      try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
-      if (saved === BUILD) return;
-      try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
-      var todo = [];
-      if ('serviceWorker' in navigator) {
-        todo.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
-          return Promise.all(regs.map(function (r) { return r.unregister(); }));
-        }).catch(function () {}));
+    if (cart.length === 0) {
+      if (el.cartItems) el.cartItems.innerHTML = '';
+      if (el.cartEmpty) el.cartEmpty.hidden = false;
+      if (el.cartItems) el.cartItems.hidden = true;
+    } else {
+      if (el.cartEmpty) el.cartEmpty.hidden = true;
+      if (el.cartItems) {
+        el.cartItems.hidden = false;
+        el.cartItems.innerHTML = cart.map((i) => `
+          <div class="cart-item" data-id="${escapeHtml(i.id)}">
+            <div class="cart-item__info">
+              <div class="cart-item__name">${escapeHtml(window.KUT_LANG?.tProduct(i.name) || i.name)}</div>
+              <div class="cart-item__meta">${fmt(i.price)} × ${i.qty} ${escapeHtml(i.unit || 'шт')}</div>
+              <div class="cart-item__total">${fmt(i.price * i.qty)} KGS</div>
+            </div>
+            <div class="cart-item__controls" role="group" aria-label="Количество">
+              <button class="qty-btn" type="button" data-act="dec">−</button>
+              <span class="qty-value">${i.qty}</span>
+              <button class="qty-btn" type="button" data-act="inc">+</button>
+            </div>
+            <button class="qty-remove" type="button" data-act="remove">×</button>
+          </div>`).join('');
       }
-      if ('caches' in window) {
-        todo.push(caches.keys().then(function (keys) {
-          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-        }).catch(function () {}));
-      }
-      Promise.all(todo).then(function () {
-        setTimeout(function () {
-          try {
-            var url = new URL(window.location.href);
-            url.searchParams.set('_cb', Date.now().toString(36));
-            window.location.replace(url.toString());
-          } catch (e) { window.location.reload(); }
-        }, 200);
+    }
+
+    if (el.cartCount) el.cartCount.textContent = count;
+    if (el.cartToggleCount) el.cartToggleCount.textContent = count;
+    if (el.cartTotal) el.cartTotal.innerHTML = `${fmt(total)}<small>KGS</small>`;
+    if (el.cartToggleSum) el.cartToggleSum.textContent = `${fmt(total)} KGS`;
+    if (el.clearCartBtn) el.clearCartBtn.disabled = cart.length === 0;
+    if (el.checkoutBtn) el.checkoutBtn.disabled = cart.length === 0;
+    if (el.paymentModal && !el.paymentModal.hidden && el.paymentTotal) {
+      el.paymentTotal.textContent = `${fmt(total)} KGS`;
+    }
+  }
+
+  function pulseCartBadge() {
+    if (!el.cartCount || !el.cartCount.animate) return;
+    el.cartCount.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }],
+      { duration: 220, easing: 'ease-out' }
+    );
+  }
+
+  // ===== Модалки =====
+  let lastFocused = null;
+  function openModal(modal) {
+    lastFocused = document.activeElement;
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(modal) {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+  }
+
+  // ===== Оплата =====
+  function openPaymentModal() {
+    if (state.cart.length === 0) return;
+    state.paymentMethod = null;
+    state.customer = '';
+    if (el.debtCustomer) el.debtCustomer.value = '';
+    if (el.debtBlock) el.debtBlock.hidden = true;
+    if (el.confirmPayBtn) el.confirmPayBtn.disabled = true;
+    if (el.payMethods) {
+      el.payMethods.querySelectorAll('.pay-method').forEach((btn) => {
+        btn.classList.remove('is-active');
+        btn.setAttribute('aria-checked', 'false');
       });
-    })();
-  </script>
+    }
+    if (el.paymentTotal) el.paymentTotal.textContent = `${fmt(getCartTotal())} KGS`;
+    renderCustomersDatalist();
+    openModal(el.paymentModal);
+  }
 
-  <header class="topbar">
-    <div class="topbar__inner">
-      <a href="./index.html" class="topbar__brand" aria-label="КУТ: БИЗНЕС — на главную">
-        <span class="brand__mark" aria-hidden="true">К</span>
-        <span class="brand__name">КУТ: БИЗНЕС</span>
-      </a>
-      <nav class="topbar__nav" aria-label="Основная навигация">
-        <a href="./index.html">Дашборд</a>
-        <a href="./cash.html" class="active" aria-current="page">Касса</a>
-        <a href="./stock.html">Склад</a>
-        <a href="./debts.html">Несие</a>
-      </nav>
-    </div>
-  </header>
+  function selectPaymentMethod(method) {
+    state.paymentMethod = method;
+    if (el.payMethods) {
+      el.payMethods.querySelectorAll('.pay-method').forEach((btn) => {
+        const isActive = btn.dataset.method === method;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-checked', String(isActive));
+      });
+    }
+    if (method === 'debt') {
+      if (el.debtBlock) el.debtBlock.hidden = false;
+      requestAnimationFrame(() => el.debtCustomer && el.debtCustomer.focus());
+      updateConfirmState();
+    } else {
+      if (el.debtBlock) el.debtBlock.hidden = true;
+      if (el.debtCustomer) el.debtCustomer.value = '';
+      state.customer = '';
+      if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
+    }
+  }
 
-  <main class="pos">
-    <section class="pos__catalog" aria-label="Каталог товаров">
+  function updateConfirmState() {
+    if (!el.confirmPayBtn) return;
+    if (state.paymentMethod !== 'debt') { el.confirmPayBtn.disabled = false; return; }
+    el.confirmPayBtn.disabled = state.customer.trim().length < 2;
+  }
 
-      <div class="scan-controls">
-        <button id="cashScanBtn" type="button" class="scan-btn">
-          📷 Сканировать штрихкод
-        </button>
-        <div class="scan-manual">
-          <input
-            type="text"
-            id="cashBarcodeInput"
-            inputmode="numeric"
-            placeholder="Введите штрихкод вручную"
-            autocomplete="off"
-            aria-label="Штрихкод товара">
-          <button type="button" id="cashBarcodeSearchBtn" class="scan-manual__btn">
-            Поиск
-          </button>
-        </div>
-      </div>
+  function readCustomersLS() {
+    try {
+      const raw = localStorage.getItem('kut_customers');
+      return raw ? JSON.parse(raw) : [];
+    } catch (_) { return []; }
+  }
+  function rememberCustomer(name) {
+    const clean = String(name || '').trim();
+    if (!clean) return;
+    const list = readCustomersLS();
+    if (!list.some((c) => c.toLowerCase() === clean.toLowerCase())) {
+      list.push(clean);
+      try { localStorage.setItem('kut_customers', JSON.stringify(list)); } catch (_) {}
+    }
+  }
+  function renderCustomersDatalist() {
+    if (!el.debtList) return;
+    const list = readCustomersLS();
+    el.debtList.innerHTML = list.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('');
+  }
 
-      <div class="search">
-        <input
-          type="search"
-          id="searchInput"
-          placeholder="Поиск товара по названию..."
-          aria-label="Поиск товара"
-          autocomplete="off">
-      </div>
+  // ===== Подтверждение продажи =====
+  async function confirmPayment() {
+    if (state.cart.length === 0) return;
+    if (!state.paymentMethod) return;
+    if (state.paymentMethod === 'debt' && state.customer.trim().length < 2) return;
 
-      <div class="categories" id="categories" role="tablist" aria-label="Категории товаров"></div>
+    if (!window.KUT || typeof window.KUT.registerSale !== 'function') {
+      notify('Ошибка: ядро не загружено.', true);
+      return;
+    }
 
-      <div class="products" id="productsGrid" aria-live="polite"></div>
-    </section>
+    // ⬇️ Вот ключевое дополнение: берём профиль текущего кассира
+    const currentState = window.KUT.getState ? window.KUT.getState() : null;
+    const profile = currentState?.profile || null;
+    const cashier = profile ? {
+      uid:        profile.uid || '',
+      name:       profile.displayName || profile.email || '',
+      email:      profile.email || '',
+      role:       profile.role || 'cashier',
+    } : null;
 
-    <aside class="cart" id="cart" aria-label="Текущий чек">
-      <header class="cart__head">
-        <h2>Чек <span class="cart__count" id="cartCount" aria-live="polite">0</span></h2>
-        <button class="btn-ghost" id="clearCartBtn" type="button" disabled>Очистить</button>
-      </header>
+    const total = getCartTotal();
 
-      <div class="cart__body" id="cartItems"></div>
+    if (el.confirmPayBtn) {
+      el.confirmPayBtn.disabled = true;
+      el.confirmPayBtn.textContent = 'Сохраняем...';
+    }
 
-      <div class="cart__empty" id="cartEmpty">
-        <div class="cart__empty-icon" aria-hidden="true">🛒</div>
-        <p>Чек пуст</p>
-        <span>Нажмите на товар слева, чтобы добавить его</span>
-      </div>
+    const result = await window.KUT.registerSale({
+      cart: state.cart.map((i) => ({
+        id: i.id, name: i.name, price: i.price,
+        unit: i.unit || 'шт', qty: i.qty,
+      })),
+      total,
+      paymentMethod: state.paymentMethod,
+      customer: state.customer,
+      customerPhone: '',
+      cashier: cashier,
+    });
 
-      <footer class="cart__foot">
-        <div class="cart__sum">
-          <span>Итого</span>
-          <strong id="cartTotal">0<small>KGS</small></strong>
-        </div>
-        <button
-          class="btn btn--primary btn--block"
-          id="checkoutBtn"
-          type="button"
-          disabled>
-          Оформить продажу
-        </button>
-      </footer>
-    </aside>
-  </main>
+    if (el.confirmPayBtn) {
+      el.confirmPayBtn.disabled = false;
+      el.confirmPayBtn.textContent = 'Подтвердить';
+    }
 
-  <button class="cart-toggle" id="cartToggle" type="button" aria-controls="cart">
-    <span>🛒 Чек <b id="cartToggleCount">0</b></span>
-    <span id="cartToggleSum">0 KGS</span>
-  </button>
+    if (!result.ok) {
+      if (result.error === 'stock') {
+        const it = result.item;
+        const msg = result.reason === 'missing'
+          ? `Товар «${it.name}» больше не найден на складе.`
+          : `Недостаточно товара «${it.name}»: осталось ${fmt(it.available)} ${it.unit}.`;
+        notify(msg, true);
+      } else {
+        notify('Не удалось сохранить продажу. Проверьте интернет.', true);
+      }
+      return;
+    }
 
-  <!-- Модалка оплаты -->
-  <div class="modal" id="paymentModal" hidden>
-    <div class="modal__backdrop" data-close></div>
-    <div class="modal__dialog" role="dialog" aria-modal="true">
-      <h3>Способ оплаты</h3>
-      <p class="modal__subtitle">Сумма к оплате: <strong id="paymentTotal">0 KGS</strong></p>
+    if (state.paymentMethod === 'debt' && state.customer.trim()) {
+      rememberCustomer(state.customer.trim());
+    }
 
-      <div class="pay-methods" id="payMethods" role="radiogroup">
-        <button class="pay-method" data-method="cash" type="button" role="radio" aria-checked="false">
-          <span class="pay-method__icon" aria-hidden="true">💵</span>
-          <span>Наличные</span>
-        </button>
-        <button class="pay-method" data-method="wallet" type="button" role="radio" aria-checked="false">
-          <span class="pay-method__icon" aria-hidden="true">📱</span>
-          <span>MBANK / Элсом / О!Деньги</span>
-        </button>
-        <button class="pay-method" data-method="debt" type="button" role="radio" aria-checked="false">
-          <span class="pay-method__icon" aria-hidden="true">📝</span>
-          <span>В долг (Несие)</span>
-        </button>
-      </div>
+    closeModal(el.paymentModal);
+    if (el.successTotal) el.successTotal.textContent = `${fmt(total)} KGS`;
+    openModal(el.successModal);
 
-      <div class="debt-block" id="debtBlock" hidden>
-        <label for="debtCustomer">Имя клиента</label>
-        <input
-          type="text"
-          id="debtCustomer"
-          list="debtCustomersList"
-          placeholder="Например: Азамат"
-          autocomplete="off">
-        <datalist id="debtCustomersList"></datalist>
-        <p class="hint">Начните вводить имя — появятся ранее сохранённые должники.</p>
-      </div>
+    state.cart = [];
+    state.paymentMethod = null;
+    state.customer = '';
+    renderCart();
+    if (el.cart) el.cart.classList.remove('is-open');
+  }
 
-      <div class="modal__actions">
-        <button class="btn btn--ghost" type="button" data-close>Отмена</button>
-        <button class="btn btn--primary" id="confirmPayBtn" type="button" disabled>Подтвердить</button>
-      </div>
-    </div>
-  </div>
+  function setupManualBarcode() {
+    const input = el.barcodeInput;
+    const btn = el.barcodeSearchBtn;
+    if (!input || !btn) return;
+    const doSearch = () => {
+      const code = input.value.trim();
+      if (!code) return;
+      if (code === lastScannedBarcode && (Date.now() - lastScannedAt) < SCAN_COOLDOWN_MS) {
+        lastScannedBarcode = null;
+      }
+      handleDecodedBarcode(code, false);
+      input.value = '';
+    };
+    btn.addEventListener('click', doSearch);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+    });
+  }
 
-  <!-- Модалка успеха -->
-  <div class="modal" id="successModal" hidden>
-    <div class="modal__backdrop" data-close></div>
-    <div class="modal__dialog modal__dialog--center" role="dialog" aria-modal="true">
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <h3>Продажа успешно проведена!</h3>
-      <p>Чек сохранён. Сумма: <strong id="successTotal">0 KGS</strong></p>
-      <button class="btn btn--gold btn--block" type="button" data-close>Отлично</button>
-    </div>
-  </div>
+  function bindEvents() {
+    if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
+      state.search = e.target.value; renderProducts();
+    });
+    if (el.categories) el.categories.addEventListener('click', (e) => {
+      const chip = e.target.closest('.cat-chip');
+      if (!chip) return;
+      state.category = chip.dataset.cat;
+      renderCategories(); renderProducts();
+    });
+    if (el.productsGrid) el.productsGrid.addEventListener('click', (e) => {
+      const card = e.target.closest('.product');
+      if (!card || card.getAttribute('aria-disabled') === 'true') return;
+      addToCart(card.dataset.id);
+    });
+    if (el.cartItems) el.cartItems.addEventListener('click', (e) => {
+      const row = e.target.closest('.cart-item');
+      if (!row) return;
+      const btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      const id = row.dataset.id;
+      const act = btn.dataset.act;
+      if (act === 'inc') changeQty(id, +1);
+      else if (act === 'dec') changeQty(id, -1);
+      else if (act === 'remove') removeFromCart(id);
+    });
+    if (el.clearCartBtn) el.clearCartBtn.addEventListener('click', () => {
+      if (state.cart.length === 0) return;
+      if (confirm('Очистить чек полностью?')) clearCart();
+    });
+    if (el.checkoutBtn) el.checkoutBtn.addEventListener('click', openPaymentModal);
+    if (el.payMethods) el.payMethods.addEventListener('click', (e) => {
+      const btn = e.target.closest('.pay-method');
+      if (!btn) return;
+      selectPaymentMethod(btn.dataset.method);
+    });
+    if (el.debtCustomer) el.debtCustomer.addEventListener('input', (e) => {
+      state.customer = e.target.value; updateConfirmState();
+    });
+    if (el.confirmPayBtn) el.confirmPayBtn.addEventListener('click', confirmPayment);
+    if (el.scanBtn) el.scanBtn.addEventListener('click', openScanner);
 
-  <script type="module" src="./js/app.js"></script>
-  <script type="module" src="./js/cash.js"></script>
-  <script src="./js/lang.js"></script>
-</body>
-</html>
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('[data-close]')) {
+        const modal = e.target.closest('.modal');
+        if (modal) closeModal(modal);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (el.paymentModal && !el.paymentModal.hidden) closeModal(el.paymentModal);
+      else if (el.successModal && !el.successModal.hidden) closeModal(el.successModal);
+      else if (scannerModal && !scannerModal.hidden) stopScanner();
+      else if (el.cart) el.cart.classList.remove('is-open');
+    });
+
+    if (el.cartToggle) el.cartToggle.addEventListener('click', () => {
+      el.cart.classList.toggle('is-open');
+      if (el.cart.classList.contains('is-open')) {
+        const closeBtn = el.cart.querySelector('[data-close-cart]');
+        if (!closeBtn) {
+          const btn = document.createElement('button');
+          btn.className = 'btn-ghost';
+          btn.type = 'button';
+          btn.dataset.closeCart = 'true';
+          btn.textContent = 'Свернуть';
+          btn.addEventListener('click', () => el.cart.classList.remove('is-open'));
+          el.cart.querySelector('.cart__head').appendChild(btn);
+        }
+      }
+    });
+
+    window.addEventListener('kut:lang', () => {
+      renderCategories(); renderProducts(); renderCart();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (state.unsubProducts) state.unsubProducts();
+    });
+  }
+
+  async function init() {
+    const st = await waitForReady();
+    if (!st) { console.warn('[cash] Не дождались businessId'); return; }
+
+    state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
+      state.products = items.map(stockToCashProduct);
+      renderCategories();
+      renderProducts();
+    });
+
+    renderCategories();
+    renderProducts();
+    renderCart();
+    setupManualBarcode();
+    bindEvents();
+
+    console.info('[cash] Касса подключена · бизнес:', st.businessId);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
