@@ -424,7 +424,7 @@
       ожидание загрузки скриптов...
     </div>
 
-    <div class="version-badge">версия файла: v3.5-DIAG</div>
+    <div class="version-badge">версия файла: v3.6-FIXED</div>
   </div>
 
   <script>
@@ -499,13 +499,13 @@
     }
 
     const firebaseConfig = {
-      apiKey: "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
+      apiKey: "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
       authDomain: "kut-biznes.firebaseapp.com",
       projectId: "kut-biznes",
       storageBucket: "kut-biznes.firebasestorage.app",
       messagingSenderId: "699153181693",
-      appId: "1:699153181693:web:2f10e57664e8a0cefc4794",
-      measurementId: "G-VTZ49G26SB"
+      appId: "1:699153181693:web:2f10e57664a8a0cefc4794",
+      measurementId: "G-VTZ49G265B"
     };
 
     const WA_CONFIG = {
@@ -523,7 +523,9 @@
       db   = getFirestore(app);
       window.__kutDiag('✓ Firebase инициализирован: ' + firebaseConfig.projectId);
       window.__kutDiag('  authDomain: ' + firebaseConfig.authDomain);
+      window.__kutDiag('  apiKey: ' + firebaseConfig.apiKey);
       window.__kutDiag('  apiKey длина: ' + firebaseConfig.apiKey.length);
+      window.__kutDiag('  appId: ' + firebaseConfig.appId);
     } catch (initErr) {
       window.__kutDiag('✗ Ошибка initializeApp: ' + initErr.message);
       throw initErr;
