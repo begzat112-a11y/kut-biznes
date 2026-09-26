@@ -66,6 +66,27 @@
     .page-head h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
     .page-head p { margin: 6px 0 0; color: var(--kut-muted); font-size: 14px; }
 
+    /* Диагностика — вне контента, чтобы всегда была видна */
+    .diag-banner {
+      max-width: 1400px; margin: 16px auto 0;
+      padding: 14px 20px;
+      background: #F7F9F8;
+      border: 1px solid var(--kut-border);
+      border-radius: 14px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 11px;
+      color: #4A5C54;
+      line-height: 1.55;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .diag-banner strong { color: #14211C; display: block; margin-bottom: 4px; }
+    .diag-banner .ok { color: #1E7F4A; }
+    .diag-banner .err { color: #C0392B; font-weight: 600; }
+    .diag-banner .warn { color: #B87117; font-weight: 600; }
+
     .stats { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 22px; }
     @media (min-width: 640px) { .stats { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
     .stat {
@@ -117,19 +138,6 @@
       color: var(--kut-green);
     }
 
-    .diag {
-      padding: 12px 20px; background: #F7F9F8;
-      border-bottom: 1px solid var(--kut-border);
-      font-family: ui-monospace, Menlo, monospace; font-size: 11px;
-      color: #4A5C54; line-height: 1.55;
-      max-height: 200px; overflow-y: auto;
-      white-space: pre-wrap; word-break: break-word;
-    }
-    .diag strong { color: #14211C; }
-    .diag .ok { color: #1E7F4A; }
-    .diag .err { color: #C0392B; font-weight: 600; }
-    .diag .warn { color: #B87117; font-weight: 600; }
-
     .table-wrap { overflow-x: auto; }
     .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .admin-table thead th {
@@ -146,7 +154,7 @@
     .admin-table tbody tr:hover { background: #FAFCFB; }
 
     .biz-name { font-weight: 700; color: var(--kut-text); }
-    .biz-sub { font-size: 13px; color: var(--kut-muted); margin-top: 2px; }
+    .biz-sub { font-size: 13px; color: var(--kut-muted); margin-top: 2px; word-break: break-all; }
 
     .status-badge {
       display: inline-flex; align-items: center; gap: 6px;
@@ -155,7 +163,6 @@
     }
     .status-badge--active { background: rgba(30,190,90,.12); color: #0F7F3A; }
     .status-badge--blocked { background: rgba(192,57,43,.10); color: var(--kut-danger); }
-    .status-badge--unknown { background: rgba(100,119,110,.12); color: var(--kut-muted); }
     .status-badge__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
     .empty-row, .loading-row {
@@ -193,10 +200,17 @@
     }
 
     .no-access {
-      text-align: center; padding: 100px 20px;
-      color: var(--kut-muted); font-size: 15px;
+      max-width: 480px; margin: 60px auto; padding: 30px;
+      background: #fff; border: 1px solid var(--kut-border);
+      border-radius: 22px; text-align: center; box-shadow: var(--shadow-md);
     }
-    .no-access h2 { margin: 0 0 8px; color: var(--kut-text); font-size: 22px; }
+    .no-access h2 { margin: 0 0 8px; color: var(--kut-text); font-size: 20px; font-weight: 800; }
+    .no-access p { margin: 0 0 20px; color: var(--kut-muted); font-size: 14px; }
+    .no-access a {
+      display: inline-block; padding: 12px 22px; background: var(--kut-green);
+      color: #fff; text-decoration: none; border-radius: 12px;
+      font-weight: 600; font-size: 14px;
+    }
 
     .hidden { display: none !important; }
     ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
@@ -217,7 +231,14 @@
     </div>
   </header>
 
-  <main class="wrap" id="adminContent" hidden>
+  <!-- Диагностика — вне основного контента -->
+  <div class="diag-banner" id="diagBox">
+    <strong>Диагностика:</strong>
+    <span>Инициализация...</span>
+  </div>
+
+  <!-- Основной контент — виден по умолчанию -->
+  <main class="wrap" id="adminContent">
     <div class="page-head">
       <h1>Панель супер-администратора</h1>
       <p>Управление всеми зарегистрированными бизнесами системы</p>
@@ -255,8 +276,6 @@
         </div>
       </div>
 
-      <div class="diag" id="diagBox"><strong>Диагностика:</strong></div>
-
       <div class="table-wrap">
         <table class="admin-table">
           <thead>
@@ -279,10 +298,7 @@
   <div class="no-access hidden" id="noAccess">
     <h2>Доступ запрещён</h2>
     <p>Эта страница доступна только супер-администратору.</p>
-    <a href="./login.html" style="display:inline-block; margin-top:16px; padding:12px 22px;
-       background:#005F40; color:#fff; border-radius:12px; text-decoration:none; font-weight:600;">
-      Перейти к входу
-    </a>
+    <a href="./login.html">Перейти к входу</a>
   </div>
 
   <script type="module">
@@ -300,9 +316,6 @@
       getDocs,
     } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-    // =========================================================
-    // CONFIG
-    // =========================================================
     const firebaseConfig = {
       apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
       authDomain:        "kut-biznes.firebaseapp.com",
@@ -320,7 +333,7 @@
     const $ = (s) => document.querySelector(s);
 
     // =========================================================
-    // Диагностика
+    // ДИАГНОСТИКА
     // =========================================================
     const diagBox = $('#diagBox');
     function diag(text, cls) {
@@ -334,15 +347,9 @@
       diagBox.innerHTML = '<strong>Диагностика:</strong>\n';
     }
 
-    // =========================================================
-    // СОСТОЯНИЕ
-    // =========================================================
     let allBusinesses = [];
     let allUsers = [];
 
-    // =========================================================
-    // DOM
-    // =========================================================
     const tbody = $('#bizTableBody');
 
     function formatDate(ts) {
@@ -362,59 +369,7 @@
     }
 
     // =========================================================
-    // ПРОВЕРКА РОЛИ
-    // =========================================================
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        diag('✗ Нет пользователя → login.html', 'err');
-        window.location.href = './login.html';
-        return;
-      }
-
-      diag('✓ Auth OK: ' + user.uid, 'ok');
-
-      try {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (!snap.exists()) {
-          diag('✗ users/' + user.uid + ' не найден → login.html', 'err');
-          await signOut(auth);
-          window.location.href = './login.html';
-          return;
-        }
-
-        const profile = snap.data();
-        diag('✓ Роль: ' + (profile.role || '—'), 'ok');
-
-        if (profile.active === false) {
-          diag('✗ Аккаунт заблокирован', 'err');
-          await signOut(auth);
-          window.location.href = './login.html';
-          return;
-        }
-
-        if (profile.role !== 'super_admin') {
-          diag('✗ Роль не super_admin → index.html', 'err');
-          $('#noAccess').classList.remove('hidden');
-          return;
-        }
-
-        $('#adminEmail').textContent = profile.email || user.email || '—';
-        $('#adminContent').classList.remove('hidden');
-
-        diag('→ Загружаем businesses...', 'warn');
-        await loadBusinesses();
-
-        diag('→ Загружаем users...', 'warn');
-        await loadUsers();
-
-        renderAll();
-      } catch (err) {
-        diag('✗ Ошибка проверки: ' + err.code + ' ' + err.message, 'err');
-      }
-    });
-
-    // =========================================================
-    // ЗАГРУЗКА BUSINESSES
+    // ЗАГРУЗКА
     // =========================================================
     async function loadBusinesses() {
       try {
@@ -427,9 +382,6 @@
       }
     }
 
-    // =========================================================
-    // ЗАГРУЗКА USERS
-    // =========================================================
     async function loadUsers() {
       try {
         const snap = await getDocs(collection(db, 'users'));
@@ -442,7 +394,7 @@
     }
 
     // =========================================================
-    // СТАТИСТИКА
+    // СТАТИСТИКА И ТАБЛИЦА
     // =========================================================
     function renderStats() {
       const total = allBusinesses.length;
@@ -454,9 +406,6 @@
       $('#statBlockedBiz').innerHTML = blocked + '<small>комп.</small>';
     }
 
-    // =========================================================
-    // РЕНДЕР ТАБЛИЦЫ
-    // =========================================================
     function renderAll() {
       renderStats();
 
@@ -517,6 +466,61 @@
     }
 
     // =========================================================
+    // ПРОВЕРКА АВТОРИЗАЦИИ И РОЛИ
+    // =========================================================
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        diag('✗ Нет пользователя → login.html', 'err');
+        window.location.href = './login.html';
+        return;
+      }
+
+      diag('✓ Auth OK: ' + user.uid, 'ok');
+
+      let profile = null;
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (!snap.exists()) {
+          diag('✗ users/' + user.uid + ' не найден → login.html', 'err');
+          await signOut(auth);
+          window.location.href = './login.html';
+          return;
+        }
+        profile = snap.data();
+        diag('✓ Роль: ' + (profile.role || '—'), 'ok');
+      } catch (err) {
+        diag('✗ Ошибка чтения профиля: ' + err.code + ' ' + err.message, 'err');
+        return;
+      }
+
+      if (profile.active === false) {
+        diag('✗ Аккаунт заблокирован', 'err');
+        await signOut(auth);
+        window.location.href = './login.html';
+        return;
+      }
+
+      if (profile.role !== 'super_admin') {
+        diag('✗ Роль не super_admin → показываю "Доступ запрещён"', 'err');
+        $('#adminContent').classList.add('hidden');
+        $('#noAccess').classList.remove('hidden');
+        return;
+      }
+
+      // Всё ок — заполняем шапку и грузим данные
+      $('#adminEmail').textContent = profile.email || user.email || '—';
+
+      diag('→ Загружаем businesses...', 'warn');
+      await loadBusinesses();
+
+      diag('→ Загружаем users...', 'warn');
+      await loadUsers();
+
+      diag('✓ Готово. Рендерю таблицу.', 'ok');
+      renderAll();
+    });
+
+    // =========================================================
     // КНОПКА «ОБНОВИТЬ»
     // =========================================================
     $('#refreshBtn').addEventListener('click', async () => {
@@ -525,6 +529,7 @@
       await loadBusinesses();
       await loadUsers();
       renderAll();
+      diag('✓ Готово', 'ok');
     });
 
     // =========================================================
