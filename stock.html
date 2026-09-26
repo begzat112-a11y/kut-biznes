@@ -167,6 +167,9 @@
       background: var(--kut-green-soft); color: var(--kut-green);
       white-space: nowrap;
     }
+    .badge--custom {
+      background: #FFF8E1; color: var(--kut-gold-dark);
+    }
     .price { font-variant-numeric: tabular-nums; white-space: nowrap; }
     .price--cost { color: var(--kut-muted); }
     .price--sale { color: var(--kut-green); font-weight: 700; }
@@ -287,6 +290,31 @@
       .barcode-row__btn { width: 100%; justify-content: center; padding: 12px; }
     }
 
+    /* Кастомное поле категории — плавное появление */
+    .custom-category {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .25s ease, opacity .2s ease, margin-top .25s ease;
+      opacity: 0;
+      margin-top: 0;
+    }
+    .custom-category.is-visible {
+      max-height: 120px;
+      opacity: 1;
+      margin-top: 8px;
+    }
+    .custom-category input {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1.5px solid var(--kut-border); background: #fff;
+      font-family: inherit; font-size: 15px; color: var(--kut-text); outline: none;
+    }
+    .custom-category input:focus {
+      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .custom-category input.is-invalid {
+      border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+
     .margin-preview {
       margin-top: 6px; padding: 12px 14px; background: var(--kut-green-soft);
       border-radius: 12px; display: flex; align-items: center;
@@ -308,7 +336,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v6.0-COSTPRICE';
+      var BUILD = 'v6.1-CUSTOM-CATEGORY';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -438,6 +466,11 @@
           <div class="field">
             <label for="fCategory">Категория <span class="req">*</span></label>
             <select id="fCategory" required></select>
+            <div class="custom-category" id="customCategoryWrap">
+              <input type="text" id="fCustomCategory"
+                placeholder="Введите название своей категории"
+                maxlength="40" autocomplete="off">
+            </div>
             <div class="field__hint" data-for="fCategory"></div>
           </div>
 
