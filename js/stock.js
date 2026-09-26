@@ -1,8 +1,6 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v5
-   + Складской журнал (warehouse_logs)
-   + Категории подтягиваются из существующих товаров
-   + Своя категория через «Другое»
+   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · v6
+   + Складской журнал (триггеры при +/− и создании товара)
    ========================================================= */
 
 (function () {
@@ -103,9 +101,21 @@
   }
 
   // =========================================================
+  // ЖУРНАЛ — хелпер (безопасный вызов)
+  // =========================================================
+  function logWarehouse(params) {
+    if (!window.WAREHOUSE_LOG) {
+      console.warn('[stock] WAREHOUSE_LOG не подключён');
+      return;
+    }
+    window.WAREHOUSE_LOG.saveLog(params).catch((e) => {
+      console.warn('[stock] ошибка лога:', e);
+    });
+  }
+
+  // =========================================================
   // КАТЕГОРИИ
   // =========================================================
-
   function getAllCategories() {
     const set = new Set(BASE_CATEGORIES);
     (state.products || []).forEach((p) => {
@@ -161,14 +171,13 @@
   function resolveCategory() {
     const sel = el.fCategory.value;
     if (sel === OTHER_LABEL) {
-      const custom = (el.fCustomCategory.value || '').trim();
-      return custom;
+      return (el.fCustomCategory.value || '').trim();
     }
     return sel;
   }
 
   // =========================================================
-  // СКАНЕР ШТРИХКОДА
+  // СКАНЕР
   // =========================================================
   let scannerModal = null;
   let scannerInstance = null;
@@ -186,9 +195,7 @@
       <div class="modal__backdrop" data-close-scan></div>
       <div class="modal__dialog" role="dialog" aria-modal="true" style="max-width:520px;">
         <h3 style="margin:0 0 4px;">📷 Сканер штрихкода</h3>
-        <p style="margin:0 0 14px; color:#64776E; font-size:13px;">
-          Наведите камеру на штрихкод товара.
-        </p>
+        <p style="margin:0 0 14px; color:#64776E; font-size:13px;">Наведите камеру на штрихкод.</p>
         <div id="stockScannerReader" style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
         <div style="display:flex; gap:10px; margin-top:16px;">
           <button class="btn btn--ghost btn--block" type="button" data-close-scan>Отмена</button>
@@ -204,7 +211,7 @@
 
   async function openScanner() {
     if (!window.Html5Qrcode) {
-      showToast('Сканер ещё загружается. Попробуйте через секунду.', true);
+      showToast('Сканер загружается. Попробуйте ещё раз.', true);
       return;
     }
     const Html5Qrcode = window.Html5Qrcode;
@@ -237,14 +244,14 @@
           const code = String(decodedText).trim();
           if (el.fBarcode) el.fBarcode.value = code;
           if (navigator.vibrate) navigator.vibrate(80);
-          showToast('Штрихкод считан: ' + code);
+          showToast('Штрихкод: ' + code);
           stopScanner();
         },
         () => {}
       );
     } catch (err) {
       console.error('[stock scanner]', err);
-      showToast('Не удалось запустить камеру.', true);
+      showToast('Не удалось открыть камеру.', true);
       stopScanner();
     }
   }
@@ -333,11 +340,8 @@
         <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
         <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">🗑️</button>
       ` : '';
-      const qtyBtns = state.canEdit
-        ? `<button class="qty-btn" type="button" data-act="dec">−</button>` : '';
-      const qtyBtns2 = state.canEdit
-        ? `<button class="qty-btn" type="button" data-act="inc">+</button>` : '';
-
+      const qtyBtns  = state.canEdit ? `<button class="qty-btn" type="button" data-act="dec">−</button>` : '';
+      const qtyBtns2 = state.canEdit ? `<button class="qty-btn" type="button" data-act="inc">+</button>` : '';
       const isCustom = !isBaseCategory(p.category);
       const badgeCls = isCustom ? 'badge badge--custom' : 'badge';
 
@@ -385,7 +389,6 @@
   // =========================================================
   // ОПЕРАЦИИ
   // =========================================================
-
   async function changeQty(productId, delta) {
     if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
@@ -394,17 +397,15 @@
     try {
       await window.FB.updateItem('products', productId, { qty: Number(next.toFixed(2)) });
 
-      // Запись в складской журнал
-      if (delta !== 0 && window.WAREHOUSE_LOG) {
-        const actionType = delta > 0 ? 'in' : 'out';
-        window.WAREHOUSE_LOG.saveLog({
-          actionType,
-          itemName: p.name,
-          quantity: Math.abs(delta),
-          unit: p.unit || 'шт',
+      // ⬇️ ТРИГГЕР ЖУРНАЛА
+      if (delta !== 0) {
+        logWarehouse({
+          actionType: delta > 0 ? 'in' : 'out',
+          itemName:   p.name,
+          quantity:   Math.abs(delta),
+          unit:       p.unit || 'шт',
           totalPrice: Math.abs(delta) * (Number(p.costPrice) || 0),
-          workerName: null,
-        }).catch(() => {});
+        });
       }
     } catch (err) {
       console.error('[stock] changeQty:', err);
@@ -431,7 +432,6 @@
     if (el.fCustomCategory) el.fCustomCategory.value = '';
 
     el.customCategoryWrap.classList.remove('is-visible');
-
     clearFieldErrors();
     updateMarginPreview();
     openModal(el.productModal);
@@ -544,16 +544,15 @@
         await window.FB.addItem('products', data);
         showToast(`Товар «${data.name}» добавлен`);
 
-        // Первый приход нового товара — тоже фиксируем
-        if (window.WAREHOUSE_LOG && Number(data.qty) > 0) {
-          window.WAREHOUSE_LOG.saveLog({
+        // ⬇️ ТРИГГЕР ЖУРНАЛА: первый приход нового товара
+        if (Number(data.qty) > 0) {
+          logWarehouse({
             actionType: 'in',
-            itemName: data.name,
-            quantity: Number(data.qty),
-            unit: data.unit || 'шт',
+            itemName:   data.name,
+            quantity:   Number(data.qty),
+            unit:       data.unit || 'шт',
             totalPrice: Number(data.qty) * (Number(data.costPrice) || 0),
-            workerName: null,
-          }).catch(() => {});
+          });
         }
       }
       closeModal(el.productModal);
@@ -582,8 +581,7 @@
   }
   function clearFieldErrors() {
     document.querySelectorAll('.field__hint').forEach((h) => {
-      h.textContent = '';
-      h.classList.remove('is-error');
+      h.textContent = ''; h.classList.remove('is-error');
     });
     document.querySelectorAll('#productForm input, #productForm select')
       .forEach((i) => i.classList.remove('is-invalid'));
@@ -603,9 +601,6 @@
         setFieldError('fCategory', 'Введите название категории (мин. 2 символа)');
         if (el.fCustomCategory) el.fCustomCategory.classList.add('is-invalid');
         ok = false;
-      } else if (finalCat === OTHER_LABEL) {
-        setFieldError('fCategory', 'Введите название своей категории');
-        ok = false;
       }
     } else if (!finalCat) {
       setFieldError('fCategory', 'Выберите категорию');
@@ -618,13 +613,13 @@
     }
     const cost = Number(el.fCost.value);
     if (el.fCost.value === '' || Number.isNaN(cost) || cost < 0) {
-      setFieldError('fCost', 'Введите себестоимость (0 или больше)'); ok = false;
+      setFieldError('fCost', 'Введите себестоимость'); ok = false;
     }
     const sale = Number(el.fSale.value);
     if (el.fSale.value === '' || Number.isNaN(sale) || sale < 0) {
       setFieldError('fSale', 'Введите цену продажи'); ok = false;
     }
-    if (ok && sale < cost) setFieldError('fSale', 'Цена продажи ниже себестоимости — проверьте');
+    if (ok && sale < cost) setFieldError('fSale', 'Цена продажи ниже себестоимости');
 
     return ok;
   }
@@ -694,9 +689,7 @@
       else if (act === 'delete') openDeleteModal(id);
     });
 
-    if (el.fCategory) {
-      el.fCategory.addEventListener('change', syncCustomCategoryVisibility);
-    }
+    if (el.fCategory) el.fCategory.addEventListener('change', syncCustomCategoryVisibility);
     if (el.fCustomCategory) {
       el.fCustomCategory.addEventListener('input', () => {
         if (el.fCustomCategory.classList.contains('is-invalid')) {
@@ -711,7 +704,7 @@
     ['input', 'change'].forEach((ev) => {
       if (el.fCost) el.fCost.addEventListener(ev, updateMarginPreview);
       if (el.fSale) el.fSale.addEventListener(ev, updateMarginPreview);
-      if (el.fQty) el.fQty.addEventListener(ev, updateMarginPreview);
+      if (el.fQty)  el.fQty.addEventListener(ev, updateMarginPreview);
     });
     if (el.barcodeScanBtn) el.barcodeScanBtn.addEventListener('click', openScanner);
     if (el.confirmDeleteBtn) el.confirmDeleteBtn.addEventListener('click', confirmDelete);
@@ -741,7 +734,7 @@
   // =========================================================
   async function init() {
     const st = await waitForReady();
-    if (!st) { console.warn('[stock] Не дождались businessId'); return; }
+    if (!st) { console.warn('[stock] нет businessId'); return; }
 
     const role = st.profile?.role;
     state.canEdit = role === 'owner' || role === 'manager' || role === 'super_admin';
@@ -759,14 +752,13 @@
       renderStats();
       renderTable();
       renderChips();
-
       if (!el.productModal || el.productModal.hidden) {
         renderCategoryOptions(el.fCategory.value || BASE_CATEGORIES[0]);
       }
     });
 
     bindEvents();
-    console.info('[stock] Подключено · роль:', role, '· canEdit:', state.canEdit);
+    console.info('[stock] подключено · роль:', role, '· canEdit:', state.canEdit);
   }
 
   if (document.readyState === 'loading') {
