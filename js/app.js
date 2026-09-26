@@ -1,1321 +1,655 @@
-/* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v10
-   + Умная центральная кнопка сканера (сквозная по всем страницам)
-   + Подсветка активной вкладки по URL
-   + Профиль и кнопка «Выйти» в сайдбаре
-   + Модалка «Мой профиль» с системой заявок
-   + QR-оплата: registerSale принимает paymentMethod: 'qr'
-   ========================================================= */
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#005F40">
+  <title>Несие — КУТ: БИЗНЕС</title>
 
-import './firebase-config.js';
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
 
-// =========================================================
-// УТИЛИТЫ
-// =========================================================
-const fmt = (n) =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
-const fmtMoney = (n) => fmt(n) + ' KGS';
-
-function uid(prefix) {
-  return (prefix || 'id_') + Date.now().toString(36) + '_' +
-    Math.random().toString(36).slice(2, 7);
-}
-function todayISO() {
-  const d = new Date();
-  const z = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
-}
-function nowTimeHHMM() {
-  const d = new Date();
-  const z = (n) => String(n).padStart(2, '0');
-  return `${z(d.getHours())}:${z(d.getMinutes())}`;
-}
-function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[ch]));
-}
-function normalizePhone(raw) {
-  let d = String(raw || '').replace(/\D/g, '');
-  if (!d) return '';
-  if (d.startsWith('996')) d = d.slice(3);
-  else if (d.startsWith('0')) d = d.slice(1);
-  d = d.slice(0, 9);
-  return '+996' + d;
-}
-function toDate(ts) {
-  if (!ts) return null;
-  if (typeof ts.toDate === 'function') return ts.toDate();
-  if (ts.seconds) return new Date(ts.seconds * 1000);
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? null : d;
-}
-function getInitials(name) {
-  const parts = String(name || '').trim().split(/\s+/);
-  if (!parts[0]) return '—';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return ((parts[0][0] || '') + (parts[1][0] || '')).toUpperCase();
-}
-function roleLabel(role) {
-  switch (role) {
-    case 'owner':       return 'Владелец';
-    case 'manager':     return 'Менеджер';
-    case 'cashier':     return 'Кассир';
-    case 'super_admin': return 'Администратор';
-    default:            return 'Пользователь';
-  }
-}
-function roleClass(role) {
-  switch (role) {
-    case 'owner':       return 'owner';
-    case 'manager':     return 'manager';
-    case 'cashier':     return 'cashier';
-    case 'super_admin': return 'admin';
-    default:            return 'user';
-  }
-}
-
-function getCurrentPage() {
-  let file = (window.location.pathname || '').split('/').pop().toLowerCase();
-  if (!file || file === '') file = 'index.html';
-  const map = {
-    'index.html':  'index',
-    '':            'index',
-    'cash.html':   'cash',
-    'stock.html':  'stock',
-    'debts.html':  'debts',
-    'staff.html':  'staff',
-  };
-  return map[file] || null;
-}
-
-// =========================================================
-// ТОСТ
-// =========================================================
-function toast(message, isError) {
-  let el = document.getElementById('kut-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'kut-toast';
-    el.setAttribute('role', 'status');
-    el.setAttribute('aria-live', 'polite');
-    el.style.cssText =
-      'position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));' +
-      'transform:translate(-50%,120%);background:#005F40;color:#fff;' +
-      'padding:12px 18px;border-radius:12px;font-family:Inter,sans-serif;' +
-      'font-size:14px;font-weight:500;box-shadow:0 18px 48px rgba(16,32,25,.20);' +
-      'z-index:300;transition:transform .3s cubic-bezier(.2,.8,.2,1);' +
-      'max-width:90vw;text-align:center;pointer-events:none;';
-    document.body.appendChild(el);
-  }
-  el.textContent = message;
-  el.style.background = isError ? '#C0392B' : '#005F40';
-  el.style.transform = 'translate(-50%, 0)';
-  clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.style.transform = 'translate(-50%, 120%)'; }, 2800);
-}
-
-// =========================================================
-// СОСТОЯНИЕ
-// =========================================================
-const state = {
-  businessId: null,
-  profile: null,
-  products: [],
-  sales: [],
-  debts: [],
-  staff: [],
-  requests: [],
-  unsubRequests: null,
-};
-
-// =========================================================
-// АГРЕГАТЫ
-// =========================================================
-function startOfMonth() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-}
-function getMonthSales() {
-  const start = startOfMonth();
-  return (state.sales || []).filter((s) => {
-    const t = toDate(s.createdAt)?.getTime() || 0;
-    return t >= start;
-  });
-}
-function sumOfSale(s) {
-  return Number(s.totalSum != null ? s.totalSum : s.total) || 0;
-}
-function costOfSale(s) {
-  if (!Array.isArray(s.items)) return 0;
-  return s.items.reduce((sum, it) => {
-    const qty = Number(it.quantity != null ? it.quantity : it.qty) || 0;
-    const cost = Number(it.costPrice) || 0;
-    return sum + qty * cost;
-  }, 0);
-}
-function aggregateRevenue() {
-  const m = getMonthSales();
-  const total  = m.reduce((s, x) => s + sumOfSale(x), 0);
-  const cash   = m.filter((s) => s.paymentMethod === 'cash').reduce((s, x) => s + sumOfSale(x), 0);
-  const wallet = m.filter((s) => s.paymentMethod === 'wallet').reduce((s, x) => s + sumOfSale(x), 0);
-  const qr     = m.filter((s) => s.paymentMethod === 'qr').reduce((s, x) => s + sumOfSale(x), 0);
-  const debt   = m.filter((s) => s.paymentMethod === 'debt').reduce((s, x) => s + sumOfSale(x), 0);
-  return { total, cash, wallet, qr, debt, count: m.length };
-}
-function aggregateProfit() {
-  const m = getMonthSales();
-  const revenue = m.reduce((s, x) => s + sumOfSale(x), 0);
-  const cost = m.reduce((s, x) => s + costOfSale(x), 0);
-  return { revenue, cost, profit: revenue - cost };
-}
-function aggregateStock() {
-  const products = state.products || [];
-  const costValue = products.reduce(
-    (sum, p) => sum + (Number(p.qty) || 0) * (Number(p.costPrice) || 0), 0);
-  const lowStock = products.filter((p) => Number(p.qty) < 5).length;
-  return { count: products.length, costValue, lowStock };
-}
-function aggregateDebts() {
-  const debts = state.debts || [];
-  const active = debts.filter((d) => d.status !== 'paid' && Number(d.amount) > 0);
-  const sum = active.reduce((s, d) => s + (Number(d.amount) || 0), 0);
-  return { count: active.length, sum };
-}
-function aggregateStaff() {
-  const staff = state.staff || [];
-  return {
-    total: staff.length,
-    active: staff.filter((s) => s.active !== false && s.uid).length,
-    pending: staff.filter((s) => !s.uid).length,
-  };
-}
-function aggregateWeekChart() {
-  const now = new Date();
-  const day = now.getDay();
-  const diffToMonday = (day === 0 ? -6 : 1 - day);
-  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
-  const labels = ['пн','вт','ср','чт','пт','сб','вс'];
-  const buckets = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
-    buckets.push({ label: labels[i], date: d, total: 0, isToday: d.toDateString() === now.toDateString() });
-  }
-  (state.sales || []).forEach((s) => {
-    const dt = toDate(s.createdAt);
-    if (!dt) return;
-    const idx = buckets.findIndex((b) => b.date.toDateString() === dt.toDateString());
-    if (idx >= 0) buckets[idx].total += sumOfSale(s);
-  });
-  return buckets;
-}
-
-// =========================================================
-// РЕНДЕР ДАШБОРДА
-// =========================================================
-function pick(attr, fallbackIds) {
-  const byData = document.querySelector(`[data-kut="${attr}"]`);
-  if (byData) return byData;
-  if (fallbackIds) for (const id of fallbackIds) {
-    const el = document.getElementById(id);
-    if (el) return el;
-  }
-  return null;
-}
-function setNum(attr, value, fallbackIds) {
-  const el = pick(attr, fallbackIds); if (el) el.textContent = fmt(value);
-}
-function setText(attr, value, fallbackIds) {
-  const el = pick(attr, fallbackIds); if (el) el.textContent = value;
-}
-
-function renderAnalytics() {
-  const rev = aggregateRevenue();
-  const profit = aggregateProfit();
-  const stock = aggregateStock();
-
-  const elRev = document.getElementById('analyticsRevenue');
-  const elProfit = document.getElementById('analyticsProfit');
-  const elStock = document.getElementById('analyticsStockValue');
-
-  if (elRev)    elRev.innerHTML    = `${fmt(Math.round(rev.total))}<small>KGS</small>`;
-  if (elProfit) elProfit.innerHTML = `${fmt(Math.round(profit.profit))}<small>KGS</small>`;
-  if (elStock)  elStock.innerHTML  = `${fmt(Math.round(stock.costValue))}<small>KGS</small>`;
-
-  const period = document.getElementById('analytics-period');
-  if (period) {
-    const now = new Date();
-    const monthNames = ['январь','февраль','март','апрель','май','июнь',
-                        'июль','август','сентябрь','октябрь','ноябрь','декабрь'];
-    period.textContent = 'за ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
-  }
-
-  renderWeekChart();
-}
-
-function renderWeekChart() {
-  const chart = document.getElementById('weekChart');
-  const totalEl = document.getElementById('weekTotal');
-  if (!chart) return;
-  const buckets = aggregateWeekChart();
-  const weekTotal = buckets.reduce((s, b) => s + b.total, 0);
-  const max = Math.max(...buckets.map((b) => b.total), 1);
-  if (totalEl) totalEl.textContent = fmt(Math.round(weekTotal)) + ' KGS';
-
-  chart.innerHTML = buckets.map((b) => {
-    const h = max > 0 ? Math.max(3, (b.total / max) * 100) : 3;
-    const valText = b.total > 0 ? fmt(Math.round(b.total)) : '';
-    return `
-      <div class="chart__col">
-        <div class="chart__bar ${b.isToday ? 'is-today' : ''}" style="height: ${h}%;">
-          ${valText ? `<span class="chart__bar-value">${valText}</span>` : ''}
-        </div>
-        <span class="chart__label">${b.label}</span>
-      </div>`;
-  }).join('');
-}
-
-function renderDashboard() {
-  const revenue = aggregateRevenue();
-  const stock = aggregateStock();
-  const debts = aggregateDebts();
-  const staff = aggregateStaff();
-
-  setNum('revenue-total', Math.round(revenue.total), ['dashboard-total-sales']);
-  setNum('stock-value', Math.round(stock.costValue), ['dashboard-stock-value']);
-  setNum('debts-sum', Math.round(debts.sum), ['dashboard-total-debts']);
-
-  setText('revenue-sub',
-    revenue.count > 0
-      ? `Продаж за месяц: ${revenue.count} · нал. ${fmt(revenue.cash)} · QR ${fmt(revenue.qr)} · несие ${fmt(revenue.debt)}`
-      : 'Продаж пока не было',
-    ['sales-sub']);
-
-  setText('stock-sub',
-    stock.count > 0 ? `Позиций: ${stock.count} · заканчивается: ${stock.lowStock}` : 'Склад пуст',
-    ['stock-sub']);
-
-  setText('debts-sub',
-    debts.count > 0 ? `Активных должников: ${debts.count}` : 'Активных должников нет',
-    ['debts-sub']);
-
-  const badge = document.getElementById('nav-debts-count');
-  if (badge) {
-    if (debts.count > 0) { badge.textContent = String(debts.count); badge.hidden = false; }
-    else badge.hidden = true;
-  }
-
-  renderAnalytics();
-
-  const isManager = state.profile?.role === 'owner' || state.profile?.role === 'manager';
-  if (isManager) {
-    const sec = document.getElementById('staff-section');
-    if (sec) sec.hidden = false;
-    const st = document.getElementById('staff-total');
-    const sa = document.getElementById('staff-active');
-    const sp = document.getElementById('staff-pending');
-    if (st) st.textContent = String(staff.total);
-    if (sa) sa.textContent = String(staff.active);
-    if (sp) sp.textContent = String(staff.pending);
-    const navBadge = document.getElementById('nav-staff-count');
-    if (navBadge) {
-      if (staff.pending > 0) { navBadge.textContent = String(staff.pending); navBadge.hidden = false; }
-      else navBadge.hidden = true;
+  <style>
+    :root {
+      --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
+      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-bg: #F4F7F5;
+      --kut-surface: #FFFFFF; --kut-border: #E3EAE6; --kut-text: #14211C;
+      --kut-muted: #64776E; --kut-danger: #C0392B; --kut-warn: #E08A1E;
+      --kut-whatsapp: #25D366;
+      --radius-sm: 10px; --radius: 14px; --radius-lg: 22px;
+      --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
+      --shadow-md: 0 6px 18px rgba(16,32,25,.08);
+      --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
     }
-  }
-
-  const upd = document.getElementById('updated-at');
-  if (upd) upd.textContent = nowTimeHHMM();
-
-  renderRecentSales();
-}
-
-function renderRecentSales() {
-  const container = document.getElementById('recent-sales');
-  if (!container) return;
-  const sales = (state.sales || []).slice()
-    .sort((a, b) => {
-      const ta = toDate(a.createdAt)?.getTime() || 0;
-      const tb = toDate(b.createdAt)?.getTime() || 0;
-      return tb - ta;
-    }).slice(0, 20);
-
-  if (sales.length === 0) {
-    container.innerHTML = `<div class="recent__empty"><span>🧾</span>Продаж ещё не было. Начните с кассы.</div>`;
-    return;
-  }
-
-  container.innerHTML = sales.map((s) => {
-    const itemsCount = Array.isArray(s.items)
-      ? s.items.reduce((n, i) => n + (Number(i.quantity != null ? i.quantity : i.qty) || 0), 0) : 0;
-    const emoji = methodEmoji(s.paymentMethod);
-    const title = methodTitle(s.paymentMethod, s.customer);
-    const cashierLabel = s.cashierName ? ` · 🧑‍💼 ${escapeHtml(s.cashierName)}` : '';
-    const amountCls = s.paymentMethod === 'debt' ? ' sale-row__amount--debt' : '';
-    return `
-      <div class="sale-row">
-        <div class="sale-row__avatar">${emoji}</div>
-        <div class="sale-row__info">
-          <div class="sale-row__title">${escapeHtml(title)}</div>
-          <div class="sale-row__meta">${formatSaleDate(s.createdAt)} · ${itemsCount} поз.${cashierLabel}</div>
-        </div>
-        <div class="sale-row__amount${amountCls}">${fmtMoney(sumOfSale(s))}</div>
-      </div>`;
-  }).join('');
-}
-
-function methodEmoji(m) {
-  switch (m) {
-    case 'cash':   return '💵';
-    case 'wallet': return '📱';
-    case 'qr':     return '🔳';
-    case 'debt':   return '📝';
-    default:       return '🧾';
-  }
-}
-function methodTitle(m, customer) {
-  switch (m) {
-    case 'cash':   return 'Продажа · Наличные';
-    case 'wallet': return 'Продажа · MBANK/Элсом/О!Деньги';
-    case 'qr':     return 'Продажа · QR-оплата';
-    case 'debt':   return `Продажа · Несие${customer ? ' — ' + customer : ''}`;
-    default:       return 'Продажа';
-  }
-}
-function formatSaleDate(ts) {
-  const d = toDate(ts); if (!d) return '—';
-  const now = new Date();
-  const z = (n) => String(n).padStart(2, '0');
-  if (d.toDateString() === now.toDateString()) return `сегодня, ${z(d.getHours())}:${z(d.getMinutes())}`;
-  const y = new Date(now); y.setDate(now.getDate() - 1);
-  if (d.toDateString() === y.toDateString()) return `вчера, ${z(d.getHours())}:${z(d.getMinutes())}`;
-  return `${z(d.getDate())}.${z(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
-
-// =========================================================
-// РОЛЬ — БЕЙДЖ
-// =========================================================
-function renderRoleBadge(profile) {
-  const role = profile?.role || '';
-  const label = roleLabel(role);
-  const cls = 'role-badge--' + roleClass(role);
-
-  const big = document.getElementById('role-badge');
-  if (big) {
-    big.textContent = label;
-    big.className = 'role-badge ' + cls;
-  }
-  const small = document.getElementById('mobile-role-badge');
-  if (small) {
-    small.textContent = label;
-    small.style.display = '';
-  }
-}
-
-// =========================================================
-// НИЖНЯЯ ПАНЕЛЬ — ПОДСВЕТКА
-// =========================================================
-function setupBottomNavHighlight() {
-  const nav = document.getElementById('bottomNav') || document.querySelector('.bottom-nav');
-  if (!nav) return;
-  const current = getCurrentPage();
-  nav.querySelectorAll('.bottom-nav__item').forEach((a) => {
-    const isActive = a.dataset.page === current;
-    a.classList.toggle('active', isActive);
-    a.classList.toggle('is-active', isActive);
-    if (isActive) a.setAttribute('aria-current', 'page');
-    else a.removeAttribute('aria-current');
-  });
-}
-
-// =========================================================
-// УМНАЯ ЦЕНТРАЛЬНАЯ КНОПКА СКАНЕРА — СКВОЗНАЯ ПО СТРАНИЦАМ
-// =========================================================
-function setupBottomNavScan() {
-  const btn = document.getElementById('bottomNavScan');
-  if (!btn) return;
-
-  btn.addEventListener('click', () => {
-    const page = getCurrentPage();
-
-    // ---------- КАССА ----------
-    // Кликаем по скрытой кнопке cash.js — она поднимает камеру.
-    // После скана cash.js сам найдёт товар по barcode и положит в корзину.
-    if (page === 'cash') {
-      const cashScan = document.getElementById('cashScanBtn');
-      if (cashScan) { cashScan.click(); return; }
-      // Fallback — редирект в кассу с флагом автоскана
-      window.location.href = './cash.html?scan=1';
-      return;
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body.page-debts {
+      margin: 0; font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--kut-bg); color: var(--kut-text);
+      display: flex; flex-direction: column; min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
     }
 
-    // ---------- СКЛАД ----------
-    // 1) Открываем модалку добавления товара (если ещё закрыта)
-    // 2) Кликаем скрытую кнопку сканера внутри модалки — она подставит
-    //    barcode прямо в поле fBarcode.
-    if (page === 'stock') {
-      const modal = document.getElementById('productModal');
-      const isOpen = modal && !modal.hidden;
-
-      if (!isOpen) {
-        const addBtn = document.getElementById('openAddBtn');
-        if (addBtn) addBtn.click();
-      }
-      setTimeout(() => {
-        const scanBtn = document.getElementById('barcodeScanBtn');
-        if (scanBtn) scanBtn.click();
-      }, 250);
-      return;
-    }
-
-    // ---------- ГЛАВНАЯ / ДОЛГИ / СОТРУДНИКИ ----------
-    // Плавный редирект в кассу + автостарт сканера через ?scan=1
-    window.location.href = './cash.html?scan=1';
-  });
-}
-
-/** Автостарт сканера, если URL = cash.html?scan=1 */
-function handleAutoScanParam() {
-  if (getCurrentPage() !== 'cash') return;
-  let params;
-  try { params = new URLSearchParams(window.location.search); }
-  catch (_) { return; }
-
-  if (params.get('scan') !== '1') return;
-
-  // Чистим URL, чтобы при F5 скан не запускался снова
-  try {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('scan');
-    history.replaceState({}, '', url.toString());
-  } catch (_) {}
-
-  // Кликаем скрытую кнопку cash.js через паузу, чтобы модуль успел подняться
-  let tries = 0;
-  const tick = () => {
-    const cashScan = document.getElementById('cashScanBtn');
-    if (cashScan) { cashScan.click(); return; }
-    if (tries++ < 20) setTimeout(tick, 150);
-  };
-  setTimeout(tick, 800);
-}
-
-// =========================================================
-// САЙДБАР
-// =========================================================
-function setupSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('overlay');
-  const burger = document.getElementById('burger');
-  if (!sidebar || !burger) return;
-  const open = () => {
-    sidebar.classList.add('is-open');
-    if (overlay) overlay.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
-  };
-  const close = () => {
-    sidebar.classList.remove('is-open');
-    if (overlay) overlay.classList.remove('is-open');
-    document.body.style.overflow = '';
-  };
-  burger.addEventListener('click', () => {
-    sidebar.classList.contains('is-open') ? close() : open();
-  });
-  if (overlay) overlay.addEventListener('click', close);
-  sidebar.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sidebar.classList.contains('is-open')) close();
-  });
-  window.addEventListener('resize', () => { if (window.innerWidth >= 1000) close(); });
-}
-
-// =========================================================
-// ПРОФИЛЬ + КНОПКА ВЫХОДА
-// =========================================================
-function mountProfileBlock() {
-  const slot = document.getElementById('sidebar-profile-slot');
-  if (!slot) return;
-  const p = state.profile || {};
-  const name = p.displayName || p.email || 'Пользователь';
-  const role = roleLabel(p.role);
-  const roleCls = roleClass(p.role);
-  const initials = getInitials(name);
-
-  slot.innerHTML = `
-    <button class="sidebar-profile" id="sidebarProfileBtn" type="button" aria-label="Открыть профиль">
-      <span class="sidebar-profile__avatar sidebar-profile__avatar--${roleCls}">${escapeHtml(initials)}</span>
-      <span class="sidebar-profile__info">
-        <span class="sidebar-profile__name">${escapeHtml(name)}</span>
-        <span class="sidebar-profile__role">${escapeHtml(role)}</span>
-      </span>
-      <span class="sidebar-profile__chevron" aria-hidden="true">›</span>
-    </button>
-  `;
-  const btn = document.getElementById('sidebarProfileBtn');
-  if (btn) btn.addEventListener('click', openProfileModal);
-}
-
-function mountLogoutBlock() {
-  const slot = document.getElementById('sidebar-logout-slot');
-  if (!slot) return;
-  slot.innerHTML = `
-    <button class="sidebar-logout" id="sidebarLogoutBtn" type="button">
-      <span class="sidebar-logout__icon" aria-hidden="true">🚪</span>
-      <span class="sidebar-logout__text">Выйти из аккаунта</span>
-    </button>
-  `;
-  const btn = document.getElementById('sidebarLogoutBtn');
-  if (btn) btn.addEventListener('click', () => {
-    if (!confirm('Выйти из аккаунта?')) return;
-    window.FB.logout();
-  });
-}
-
-function injectProfileStyles() {
-  if (document.getElementById('kut-profile-styles')) return;
-  const css = `
-    .sidebar-profile {
-      display: flex; align-items: center; gap: 10px;
-      width: 100%; padding: 10px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 14px; cursor: pointer;
-      font-family: inherit; color: #fff; text-align: left;
-      transition: background .18s ease, border-color .18s ease;
-      margin-bottom: 4px;
-    }
-    .sidebar-profile:hover {
-      background: rgba(255,255,255,.14);
-      border-color: rgba(212,175,55,.35);
-    }
-    .sidebar-profile__avatar {
-      width: 42px; height: 42px; border-radius: 50%;
-      display: grid; place-items: center;
-      font-size: 15px; font-weight: 800; letter-spacing: .5px;
-      background: linear-gradient(135deg, #D4AF37, #B8952A);
-      color: #003F2A; flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(0,0,0,.20);
-      text-transform: uppercase;
-    }
-    .sidebar-profile__avatar--owner   { background: linear-gradient(135deg, #D4AF37, #B8952A); color: #003F2A; }
-    .sidebar-profile__avatar--manager { background: linear-gradient(135deg, #F0B458, #B87117); color: #3F2400; }
-    .sidebar-profile__avatar--cashier { background: linear-gradient(135deg, #7FE4A5, #1EBE5A); color: #003F2A; }
-    .sidebar-profile__avatar--admin   { background: linear-gradient(135deg, #E0F0FF, #7FB8E0); color: #003F5C; }
-    .sidebar-profile__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .sidebar-profile__name {
-      font-size: 14px; font-weight: 700; color: #fff;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .sidebar-profile__role {
-      font-size: 11px; font-weight: 600;
-      color: rgba(212,175,55,.95);
-      text-transform: uppercase; letter-spacing: .3px;
-    }
-    .sidebar-profile__chevron {
-      font-size: 20px; color: rgba(255,255,255,.5);
-      flex-shrink: 0; line-height: 1;
-    }
-    .sidebar-logout {
-      display: flex; align-items: center; gap: 10px;
-      width: 100%; padding: 12px 14px;
-      background: rgba(192,57,43,.14);
-      border: 1px solid rgba(192,57,43,.30);
-      color: #FFD0C8; border-radius: 12px;
-      font-family: inherit; font-size: 14px; font-weight: 600;
-      cursor: pointer; text-align: left;
-      transition: background .18s ease, color .18s ease, border-color .18s ease;
-      margin-top: 8px;
-    }
-    .sidebar-logout:hover {
-      background: rgba(192,57,43,.24); color: #fff;
-      border-color: rgba(192,57,43,.50);
-    }
-    .sidebar-logout__icon { font-size: 16px; flex-shrink: 0; }
-    .sidebar-logout__text { flex: 1; }
-
-    .kut-modal[hidden] { display: none; }
-    .kut-modal {
-      position: fixed; inset: 0; z-index: 110;
-      display: grid; place-items: center; padding: 16px;
-    }
-    .kut-modal__backdrop {
-      position: absolute; inset: 0;
-      background: rgba(15,30,24,.55);
-      backdrop-filter: blur(4px);
-      animation: kutFadeIn .2s ease;
-    }
-    .kut-modal__dialog {
-      position: relative; width: 100%; max-width: 500px;
-      background: #fff; border-radius: 22px; padding: 22px;
-      box-shadow: 0 18px 48px rgba(16,32,25,.28);
-      max-height: 92dvh; overflow-y: auto;
-      animation: kutPopIn .22s cubic-bezier(.2,.9,.3,1.2);
-    }
-    .kut-modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: #14211C; }
-    .kut-modal__subtitle { margin: 0 0 18px; color: #64776E; font-size: 13px; line-height: 1.4; }
-    @keyframes kutFadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes kutPopIn {
-      from { opacity: 0; transform: translateY(12px) scale(.96); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .kut-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-    .kut-field label { font-size: 13px; font-weight: 600; color: #14211C; }
-    .kut-field label .kut-req { color: #C0392B; margin-left: 2px; }
-    .kut-field input {
-      width: 100%; padding: 12px 14px;
-      border-radius: 10px; border: 1.5px solid #E3EAE6;
-      background: #fff; font-family: inherit; font-size: 15px;
-      color: #14211C; outline: none;
-      transition: border-color .18s ease, box-shadow .18s ease;
-    }
-    .kut-field input:focus { border-color: #005F40; box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
-    .kut-field input.is-invalid { border-color: #C0392B; box-shadow: 0 0 0 4px rgba(192,57,43,.12); }
-    .kut-field__hint { font-size: 12px; color: #64776E; min-height: 14px; }
-    .kut-field__hint.is-error { color: #C0392B; font-weight: 500; }
-    .kut-requests { margin-top: 20px; padding-top: 16px; border-top: 1px solid #E3EAE6; }
-    .kut-requests h4 {
-      margin: 0 0 10px; font-size: 13px; font-weight: 800;
-      text-transform: uppercase; letter-spacing: .5px; color: #005F40;
+    /* ===== Единая верхняя шапка ===== */
+    .mobile-bar {
       display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px;
+      background: var(--kut-green); color: #fff;
+      position: sticky; top: 0; z-index: 40;
+      width: 100%; max-width: 100%;
+      box-shadow: var(--shadow-sm);
     }
-    .kut-requests__badge {
-      display: inline-grid; place-items: center;
+    .mobile-bar__title {
+      font-weight: 700; font-size: 15px;
+      overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; min-width: 0; flex: 1;
+      margin-left: 2px;
+    }
+
+    /* Индикатор сети */
+    .net-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 9px; border-radius: 999px;
+      font-size: 11px; font-weight: 700;
+      background: rgba(30,190,90,.20); color: #B9F5CE;
+      border: 1px solid rgba(30,190,90,.35);
+      white-space: nowrap; flex-shrink: 0;
+      transition: background .18s ease, color .18s ease, border-color .18s ease;
+    }
+    .net-pill__dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #1EBE5A; flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(30,190,90,.8);
+      animation: netPulse 2s ease-in-out infinite;
+    }
+    .net-pill.is-offline {
+      background: rgba(192,57,43,.20); color: #FFD0C8;
+      border-color: rgba(192,57,43,.45);
+    }
+    .net-pill.is-offline .net-pill__dot {
+      background: #C0392B; box-shadow: 0 0 8px rgba(192,57,43,.8);
+      animation: netPulse 1s ease-in-out infinite;
+    }
+    .net-pill__qty {
+      display: none; background: #C0392B; color: #fff;
+      padding: 1px 6px; border-radius: 999px;
+      font-size: 10px; margin-left: 2px;
+    }
+    .net-pill.is-offline[data-queue]:not([data-queue="0"]) .net-pill__qty {
+      display: inline-block;
+    }
+    @keyframes netPulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: .35; }
+    }
+    @media (max-width: 380px) {
+      .net-pill__label { display: none; }
+      .net-pill { padding: 5px 7px; }
+    }
+
+    .wrap { width: 100%; max-width: 1400px; margin: 0 auto; padding: 16px; }
+    @media (min-width: 980px) { .wrap { padding: 20px; } }
+    @media (max-width: 999px) {
+      body.page-debts .wrap { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+    }
+
+    .page-head { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    @media (min-width: 720px) {
+      .page-head { flex-direction: row; align-items: center; justify-content: space-between; }
+    }
+    .page-head h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+    .page-head p { margin: 4px 0 0; color: var(--kut-muted); font-size: 14px; }
+
+    .stats { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px; }
+    @media (min-width: 640px) { .stats { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
+    .stat { background: var(--kut-surface); border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg); padding: 16px;
+      display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-sm); }
+    .stat__icon { width: 46px; height: 46px; border-radius: 12px;
+      display: grid; place-items: center; font-size: 22px;
+      background: var(--kut-green-soft); color: var(--kut-green); flex-shrink: 0; }
+    .stat--gold .stat__icon { background: #FFF8E1; color: var(--kut-gold-dark); }
+    .stat--warn .stat__icon { background: #FFF2DE; color: var(--kut-warn); }
+    .stat__label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
+      font-weight: 600; color: var(--kut-muted); margin-bottom: 4px; }
+    .stat__value { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .stat__value small { font-size: 12px; font-weight: 600; color: var(--kut-muted); margin-left: 4px; }
+
+    .tabs { display: flex; gap: 6px; background: var(--kut-surface);
+      border: 1px solid var(--kut-border); border-radius: 14px;
+      padding: 5px; margin-bottom: 14px;
+      box-shadow: var(--shadow-sm); width: fit-content; max-width: 100%; }
+    .tab { border: none; background: transparent; padding: 10px 18px;
+      border-radius: 10px; font-family: inherit; font-size: 14px;
+      font-weight: 600; color: var(--kut-muted); cursor: pointer;
+      transition: all .18s ease; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 8px; }
+    .tab:hover { color: var(--kut-green); }
+    .tab.is-active { background: var(--kut-green); color: #fff; box-shadow: 0 4px 10px rgba(0,95,64,.22); }
+    .tab__badge { display: inline-grid; place-items: center;
       min-width: 22px; height: 22px; padding: 0 6px;
-      background: #D4AF37; color: #003F2A;
-      border-radius: 999px; font-size: 11px; font-weight: 800;
-    }
-    .kut-request {
-      background: #FBFDFC; border: 1px solid #E3EAE6;
-      border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
-    }
-    .kut-request:last-child { margin-bottom: 0; }
-    .kut-request__head {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; margin-bottom: 8px;
-    }
-    .kut-request__name { font-weight: 700; font-size: 14px; color: #14211C; }
-    .kut-request__date { font-size: 11px; color: #64776E; font-variant-numeric: tabular-nums; }
-    .kut-request__diff { font-size: 12px; color: #64776E; line-height: 1.6; margin-bottom: 10px; }
-    .kut-request__diff b { color: #14211C; }
-    .kut-request__arrow { color: #005F40; font-weight: 700; margin: 0 6px; }
-    .kut-request__actions { display: flex; gap: 8px; }
-    .kut-request__actions button {
-      flex: 1; padding: 9px 12px; border-radius: 10px;
-      border: 1px solid transparent;
-      font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
-    }
-    .kut-btn-approve { background: #005F40; color: #fff; }
-    .kut-btn-approve:hover { background: #003F2A; }
-    .kut-btn-reject {
-      background: transparent; color: #C0392B;
-      border-color: rgba(192,57,43,.30) !important;
-    }
-    .kut-btn-reject:hover { background: rgba(192,57,43,.08); border-color: #C0392B !important; }
-    .kut-requests__empty { font-size: 13px; color: #64776E; padding: 10px 0; text-align: center; }
-    .kut-actions { display: flex; gap: 10px; margin-top: 20px; }
-    .kut-actions button {
-      flex: 1; padding: 13px 16px;
-      border-radius: 12px; border: 1px solid transparent;
-      font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
-    }
-    .kut-btn-primary { background: #005F40; color: #fff; }
-    .kut-btn-primary:hover { background: #003F2A; }
-    .kut-btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-    .kut-btn-ghost {
-      background: transparent; color: #14211C;
-      border-color: #E3EAE6 !important;
-    }
-    .kut-btn-ghost:hover { background: #E6F1ED; border-color: #005F40 !important; color: #005F40; }
-    .kut-info-box {
-      padding: 10px 12px; background: #FFF8E1;
-      border: 1px solid #E3C97A; border-radius: 10px;
-      color: #7A5E00; font-size: 12px; line-height: 1.5; margin-bottom: 14px;
-    }
-  `;
-  const style = document.createElement('style');
-  style.id = 'kut-profile-styles';
-  style.textContent = css;
-  document.head.appendChild(style);
-}
+      border-radius: 999px; background: rgba(255,255,255,.2); font-size: 12px; font-weight: 700; }
+    .tab:not(.is-active) .tab__badge { background: var(--kut-green-soft); color: var(--kut-green); }
 
-// =========================================================
-// МОДАЛКА ПРОФИЛЯ
-// =========================================================
-function ensureProfileModal() {
-  let modal = document.getElementById('kutProfileModal');
-  if (modal) return modal;
+    .toolbar { background: var(--kut-surface); border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg); padding: 12px;
+      margin-bottom: 14px; box-shadow: var(--shadow-sm); }
+    .search { position: relative; }
+    .search input { width: 100%; padding: 12px 16px 12px 42px;
+      border: 1px solid var(--kut-border); background: #FBFDFC;
+      border-radius: var(--radius); font-size: 15px;
+      font-family: inherit; color: var(--kut-text); outline: none; }
+    .search input:focus { background: #fff; border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
+    .search::before { content: "🔍"; position: absolute; left: 14px; top: 50%;
+      transform: translateY(-50%); font-size: 14px; opacity: .65; pointer-events: none; }
 
-  modal = document.createElement('div');
-  modal.className = 'kut-modal';
-  modal.id = 'kutProfileModal';
-  modal.hidden = true;
-  modal.innerHTML = `
-    <div class="kut-modal__backdrop" data-close-profile></div>
-    <div class="kut-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="kutProfileTitle">
-      <h3 id="kutProfileTitle">Мой профиль</h3>
-      <p class="kut-modal__subtitle" id="kutProfileSub">Измените свои данные. Изменения сохранятся.</p>
+    .btn { display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 18px; border-radius: 12px;
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent;
+      transition: all .12s ease; white-space: nowrap; }
+    .btn:active { transform: translateY(1px); }
+    .btn--primary { background: var(--kut-green); color: #fff; box-shadow: 0 8px 18px rgba(0,95,64,.24); }
+    .btn--primary:hover { background: var(--kut-green-dark); }
+    .btn--gold { background: var(--kut-gold); color: var(--kut-green-dark); box-shadow: 0 8px 18px rgba(212,175,55,.32); }
+    .btn--gold:hover { background: var(--kut-gold-dark); }
+    .btn--ghost { background: transparent; border-color: var(--kut-border); color: var(--kut-text); }
+    .btn--ghost:hover { background: var(--kut-green-soft); border-color: var(--kut-green); color: var(--kut-green); }
+    .btn--danger { background: var(--kut-danger); color: #fff; }
+    .btn--danger:hover { background: #A0301F; }
+    .btn--block { width: 100%; }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
 
-      <div class="kut-info-box" id="kutProfileInfo" hidden></div>
+    .debts-card { background: var(--kut-surface); border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
+    .debts-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .debts-table thead th { text-align: left; font-size: 12px; text-transform: uppercase;
+      letter-spacing: .6px; color: var(--kut-muted); font-weight: 700;
+      padding: 14px 16px; background: #FBFDFC;
+      border-bottom: 1px solid var(--kut-border); white-space: nowrap; }
+    .debts-table tbody td { padding: 14px 16px; border-bottom: 1px solid var(--kut-border); vertical-align: middle; }
+    .debts-table tbody tr:last-child td { border-bottom: none; }
+    .debts-table tbody tr:hover { background: #FAFCFB; }
+    .debts-table tbody tr.is-overdue { background: rgba(224,138,30,.04); }
 
-      <form id="kutProfileForm" novalidate>
-        <div class="kut-field">
-          <label for="kutPfName">Имя <span class="kut-req">*</span></label>
-          <input type="text" id="kutPfName" placeholder="Как вас зовут" maxlength="60" autocomplete="name" required>
-          <div class="kut-field__hint" data-for="kutPfName"></div>
+    .client { display: flex; align-items: center; gap: 12px; min-width: 180px; }
+    .client__avatar { width: 42px; height: 42px; display: grid; place-items: center;
+      background: var(--kut-green-soft); color: var(--kut-green);
+      border-radius: 50%; font-size: 16px; font-weight: 700;
+      flex-shrink: 0; text-transform: uppercase; }
+    .client__text { min-width: 0; }
+    .client__name { font-weight: 600; font-size: 14px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+    .client__note { font-size: 12px; color: var(--kut-muted); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+
+    .phone-link { display: inline-flex; align-items: center; gap: 6px;
+      color: var(--kut-green); text-decoration: none;
+      font-weight: 600; font-variant-numeric: tabular-nums; font-size: 13px; }
+    .phone-link:hover { color: var(--kut-green-dark); text-decoration: underline; }
+
+    .amount { font-size: 16px; font-weight: 800; color: var(--kut-green);
+      font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .amount small { font-size: 11px; color: var(--kut-muted); font-weight: 600; margin-left: 3px; }
+    .amount--paid { color: var(--kut-muted); text-decoration: line-through; }
+
+    .date-cell { font-size: 13px; color: var(--kut-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .date-cell__sub { font-size: 12px; color: var(--kut-muted); margin-top: 2px; }
+    .date-cell__sub.is-overdue { color: var(--kut-warn); font-weight: 600; }
+    .date-cell__sub.is-danger  { color: var(--kut-danger); font-weight: 600; }
+
+    .row-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .icon-btn { width: 36px; height: 36px; display: grid; place-items: center;
+      border: 1px solid var(--kut-border); background: #fff;
+      color: var(--kut-muted); border-radius: 10px; cursor: pointer;
+      font-family: inherit; font-size: 16px; transition: all .15s ease; }
+    .icon-btn:hover { color: var(--kut-green); border-color: var(--kut-green); background: var(--kut-green-soft); }
+    .icon-btn--wa { color: var(--kut-whatsapp); border-color: rgba(37,211,102,.3); }
+    .icon-btn--wa:hover { color: #fff; background: var(--kut-whatsapp); border-color: var(--kut-whatsapp); }
+    .icon-btn--pay { color: var(--kut-green); border-color: rgba(0,95,64,.3); background: var(--kut-green-soft); }
+    .icon-btn--pay:hover { color: #fff; background: var(--kut-green); border-color: var(--kut-green); }
+    .icon-btn--danger:hover { color: var(--kut-danger); border-color: var(--kut-danger); background: rgba(192,57,43,.06); }
+
+    .empty { padding: 60px 20px; text-align: center; color: var(--kut-muted); }
+    .empty__icon { font-size: 42px; margin-bottom: 12px; opacity: .85; }
+    .empty h3 { margin: 0 0 6px; color: var(--kut-text); font-size: 17px; }
+    .empty p { margin: 0 0 18px; font-size: 14px; }
+
+    @media (max-width: 860px) {
+      .debts-table thead { display: none; }
+      .debts-table, .debts-table tbody, .debts-table tr, .debts-table td { display: block; width: 100%; }
+      .debts-table tr { border-bottom: 1px solid var(--kut-border); padding: 14px; }
+      .debts-table tr:last-child { border-bottom: none; }
+      .debts-table td { border: none; padding: 4px 0;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .debts-table td::before { content: attr(data-label);
+        font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
+        font-weight: 700; color: var(--kut-muted); flex-shrink: 0; }
+      .debts-table td[data-label="Клиент"] { display: block; padding-bottom: 8px; }
+      .debts-table td[data-label="Клиент"]::before { display: none; }
+      .client__name, .client__note { max-width: none; white-space: normal; }
+      .row-actions { justify-content: flex-start; padding-top: 6px; }
+    }
+
+    .modal[hidden] { display: none; }
+    .modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; }
+    .modal__backdrop { position: absolute; inset: 0;
+      background: rgba(15, 30, 24, .5); backdrop-filter: blur(4px); }
+    .modal__dialog { position: relative; width: 100%; max-width: 520px;
+      background: var(--kut-surface); border-radius: var(--radius-lg);
+      padding: 22px; box-shadow: var(--shadow-lg);
+      max-height: 92dvh; overflow-y: auto; }
+    .modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 700; }
+    .modal__subtitle { margin: 0 0 18px; color: var(--kut-muted); font-size: 13px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field--full { grid-column: 1 / -1; }
+    .field label { font-size: 13px; font-weight: 600; color: var(--kut-text); }
+    .field label .req { color: var(--kut-danger); margin-left: 2px; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1.5px solid var(--kut-border); background: #fff;
+      font-family: inherit; font-size: 15px; color: var(--kut-text); outline: none; }
+    .field textarea { resize: vertical; min-height: 70px; }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
+    .field input.is-invalid { border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12); }
+    .field__hint { font-size: 12px; color: var(--kut-muted); min-height: 14px; }
+    .field__hint.is-error { color: var(--kut-danger); font-weight: 500; }
+
+    .input-group { display: flex; align-items: stretch; }
+    .input-group input { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; }
+    .input-group__suffix { display: inline-flex; align-items: center; padding: 0 12px;
+      background: #FBFDFC; border: 1.5px solid var(--kut-border);
+      border-left: none; border-top-right-radius: 10px; border-bottom-right-radius: 10px;
+      font-size: 13px; font-weight: 600; color: var(--kut-muted); }
+
+    .modal__actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal__actions .btn { flex: 1; }
+
+    .lang-options { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
+    .lang-option { display: flex; align-items: center; gap: 12px; padding: 14px;
+      border: 1.5px solid var(--kut-border); background: #fff;
+      border-radius: 14px; font-family: inherit; font-size: 15px;
+      font-weight: 600; color: var(--kut-text); cursor: pointer;
+      text-align: left; transition: all .18s ease; }
+    .lang-option:hover { border-color: var(--kut-green); background: var(--kut-green-soft); }
+    .lang-option__flag { width: 42px; height: 42px; display: grid; place-items: center;
+      background: #fff; border-radius: 12px; font-size: 22px;
+      box-shadow: var(--shadow-sm); flex-shrink: 0; }
+    .lang-option__preview { font-size: 12px; font-weight: 500;
+      color: var(--kut-muted); margin-top: 2px; line-height: 1.3; }
+
+    .info-panel { background: var(--kut-green-soft); border-radius: 12px;
+      padding: 14px; margin-bottom: 14px; }
+    .info-panel__row { display: flex; justify-content: space-between;
+      align-items: baseline; gap: 12px; font-size: 14px; }
+    .info-panel__row + .info-panel__row { margin-top: 8px; padding-top: 8px;
+      border-top: 1px dashed rgba(0,95,64,.15); }
+    .info-panel__label { color: var(--kut-muted); font-size: 13px; }
+    .info-panel__value { font-weight: 700; color: var(--kut-green); font-variant-numeric: tabular-nums; }
+    .info-panel__value--big { font-size: 20px; }
+
+    .quick-amounts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .quick-amount { border: 1px solid var(--kut-border); background: #fff;
+      padding: 6px 12px; border-radius: 999px;
+      font-size: 13px; font-weight: 600; color: var(--kut-text);
+      cursor: pointer; font-family: inherit; }
+    .quick-amount:hover { border-color: var(--kut-green); color: var(--kut-green); background: var(--kut-green-soft); }
+
+    .payments-list { margin-top: 14px; border-top: 1px solid var(--kut-border); padding-top: 12px; }
+    .payments-list h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--kut-muted); font-weight: 700; }
+    .payment-row { display: flex; justify-content: space-between; font-size: 13px;
+      padding: 6px 0; border-bottom: 1px dashed var(--kut-border); }
+    .payment-row:last-child { border-bottom: none; }
+    .payment-row__amount { font-weight: 700; color: var(--kut-green); font-variant-numeric: tabular-nums; }
+    .payment-row__date { color: var(--kut-muted); }
+
+    button { -webkit-tap-highlight-color: transparent; }
+
+    /* ===== BOTTOM NAV ===== */
+    .bottom-nav {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; height: 68px;
+      display: grid; grid-template-columns: 1fr 1fr 88px 1fr 1fr; align-items: center;
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(0,95,64,.10);
+      padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+      box-shadow: 0 -8px 28px rgba(16,32,25,.08);
+    }
+    .bottom-nav__item {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; padding: 6px 2px; border-radius: 12px;
+      text-decoration: none; color: var(--kut-muted);
+      font-family: inherit; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .3px;
+      transition: background .18s ease, color .18s ease, transform .12s ease;
+      -webkit-tap-highlight-color: transparent; min-width: 0;
+    }
+    .bottom-nav__item:active { transform: scale(.94); }
+    .bottom-nav__icon { font-size: 22px; line-height: 1;
+      filter: grayscale(.4) opacity(.85);
+      transition: filter .18s ease, transform .18s ease; }
+    .bottom-nav__item.active { color: var(--kut-green); background: var(--kut-green-soft); }
+    .bottom-nav__item.active .bottom-nav__icon { filter: none; transform: translateY(-1px); }
+    .bottom-nav__scan {
+      position: relative; display: grid; place-items: center;
+      width: 76px; height: 76px; margin: -24px auto 0; border-radius: 50%;
+      border: 5px solid #fff; background: linear-gradient(135deg, #FFD86B, #D4AF37);
+      color: #003F2A; font-size: 34px; cursor: pointer; padding: 0;
+      box-shadow: 0 10px 24px rgba(212,175,55,.55), 0 4px 10px rgba(16,32,25,.18);
+      transition: transform .15s ease, box-shadow .18s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .bottom-nav__scan:active { transform: scale(.94); }
+    .bottom-nav__scan::after {
+      content: ""; position: absolute; inset: -8px; border-radius: 50%;
+      border: 2px solid rgba(212,175,55,.35);
+      animation: navScanPulse 2.2s ease-in-out infinite; pointer-events: none;
+    }
+    @keyframes navScanPulse {
+      0%, 100% { transform: scale(1); opacity: .55; }
+      50%      { transform: scale(1.12); opacity: .15; }
+    }
+    @media (min-width: 1000px) { .bottom-nav { display: none !important; } }
+  </style>
+</head>
+<body class="page-debts">
+
+  <script>
+    (function () {
+      var BUILD = 'v8.1-NET-PILL-DEBTS';
+      var saved = null;
+      try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
+      if (saved === BUILD) return;
+      try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
+      var todo = [];
+      if ('serviceWorker' in navigator) {
+        todo.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }).catch(function () {}));
+      }
+      if ('caches' in window) {
+        todo.push(caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }).catch(function () {}));
+      }
+      Promise.all(todo).then(function () {
+        setTimeout(function () {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.set('_cb', Date.now().toString(36));
+            window.location.replace(url.toString());
+          } catch (e) { window.location.reload(); }
+        }, 200);
+      });
+    })();
+  </script>
+
+  <!-- Единая шапка: бренд + сеть + язык (без навигации) -->
+  <header class="mobile-bar">
+    <span class="mobile-bar__title">КУТ: БИЗНЕС · Несие</span>
+
+    <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
+      <span class="net-pill__dot" aria-hidden="true"></span>
+      <span class="net-pill__label">онлайн</span>
+      <span class="net-pill__qty" id="net-queue-qty">0</span>
+    </span>
+
+    <div data-kut-lang></div>
+  </header>
+
+  <main class="wrap">
+    <div class="page-head">
+      <div>
+        <h1>Несие — учёт долгов</h1>
+        <p>Тетрадь долгов в облаке: WhatsApp-напоминания, частичное погашение, архив</p>
+      </div>
+      <button class="btn btn--primary" id="openAddBtn" type="button">
+        <span aria-hidden="true">＋</span> Записать новый долг
+      </button>
+    </div>
+
+    <section class="stats">
+      <div class="stat">
+        <div class="stat__icon" aria-hidden="true">💵</div>
+        <div>
+          <div class="stat__label">Общая сумма долгов</div>
+          <div class="stat__value" id="statTotal">0<small>KGS</small></div>
         </div>
-
-        <div class="kut-field">
-          <label for="kutPfPhone">Телефон (WhatsApp)</label>
-          <input type="tel" id="kutPfPhone" placeholder="+996 700 123 456" inputmode="tel" autocomplete="tel">
-          <div class="kut-field__hint" data-for="kutPfPhone"></div>
+      </div>
+      <div class="stat stat--gold">
+        <div class="stat__icon" aria-hidden="true">👥</div>
+        <div>
+          <div class="stat__label">Должников</div>
+          <div class="stat__value" id="statCount">0<small>чел.</small></div>
         </div>
+      </div>
+      <div class="stat stat--warn">
+        <div class="stat__icon" aria-hidden="true">⏰</div>
+        <div>
+          <div class="stat__label">Просрочено &gt; 30 дней</div>
+          <div class="stat__value" id="statOverdue">0<small>чел.</small></div>
+        </div>
+      </div>
+    </section>
 
-        <div class="kut-requests" id="kutRequestsBlock" hidden>
-          <h4>Заявки от сотрудников <span class="kut-requests__badge" id="kutRequestsCount">0</span></h4>
-          <div id="kutRequestsList">
-            <div class="kut-requests__empty">Пока нет активных заявок</div>
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" type="button" role="tab" data-tab="active">
+        Активные <span class="tab__badge" id="tabActiveCount">0</span>
+      </button>
+      <button class="tab" type="button" role="tab" data-tab="paid">
+        Архив (погашено) <span class="tab__badge" id="tabPaidCount">0</span>
+      </button>
+    </div>
+
+    <section class="toolbar">
+      <div class="search">
+        <input type="search" id="searchInput"
+          placeholder="Поиск по имени или номеру телефона..." autocomplete="off">
+      </div>
+    </section>
+
+    <section class="debts-card">
+      <table class="debts-table" id="debtsTable">
+        <thead>
+          <tr>
+            <th>Клиент</th>
+            <th>Телефон</th>
+            <th>Сумма долга</th>
+            <th>Дата</th>
+            <th aria-label="Действия"></th>
+          </tr>
+        </thead>
+        <tbody id="debtsBody"></tbody>
+      </table>
+      <div id="debtsEmpty" class="empty" hidden>
+        <div class="empty__icon" aria-hidden="true">📒</div>
+        <h3 id="emptyTitle">Пока долгов нет</h3>
+        <p id="emptyText">Отличная работа — все клиенты расплатились!</p>
+        <button class="btn btn--gold" type="button" id="emptyAddBtn">＋ Записать долг</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="debtModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3 id="debtModalTitle">Новый долг</h3>
+      <p class="modal__subtitle" id="debtModalSub">Запишите клиента и сумму — потом напомним в WhatsApp.</p>
+
+      <form id="debtForm" novalidate>
+        <input type="hidden" id="debtId">
+        <div class="form-grid">
+          <div class="field field--full">
+            <label for="fName">Имя клиента <span class="req">*</span></label>
+            <input type="text" id="fName" placeholder="Например: Азамат"
+              maxlength="60" autocomplete="off" required>
+            <div class="field__hint" data-for="fName"></div>
+          </div>
+
+          <div class="field field--full">
+            <label for="fPhone">Телефон <span class="req">*</span></label>
+            <input type="tel" id="fPhone"
+              placeholder="0700 12 34 56 или +996 700 123 456"
+              inputmode="tel" autocomplete="off" required>
+            <div class="field__hint" data-for="fPhone">Можно вводить с нуля — код +996 подставится автоматически.</div>
+          </div>
+
+          <div class="field">
+            <label for="fAmount">Сумма долга <span class="req">*</span></label>
+            <div class="input-group">
+              <input type="number" id="fAmount" inputmode="decimal" min="0" step="0.01"
+                placeholder="0" required>
+              <span class="input-group__suffix">KGS</span>
+            </div>
+            <div class="field__hint" data-for="fAmount"></div>
+          </div>
+
+          <div class="field">
+            <label for="fDate">Дата взятия <span class="req">*</span></label>
+            <input type="date" id="fDate" required>
+            <div class="field__hint" data-for="fDate"></div>
+          </div>
+
+          <div class="field field--full">
+            <label for="fDueDate">Срок возврата (необязательно)</label>
+            <input type="date" id="fDueDate">
+            <div class="field__hint">Если указать — напомним заранее.</div>
+          </div>
+
+          <div class="field field--full">
+            <label for="fNote">Заметка (необязательно)</label>
+            <textarea id="fNote" maxlength="200"
+              placeholder="Например: обещал вернуть после зарплаты 10-го"></textarea>
+            <div class="field__hint" data-for="fNote"></div>
           </div>
         </div>
 
-        <div class="kut-actions">
-          <button type="button" class="kut-btn-ghost" data-close-profile>Закрыть</button>
-          <button type="submit" class="kut-btn-primary" id="kutProfileSaveBtn">Сохранить</button>
+        <div class="modal__actions">
+          <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+          <button class="btn btn--primary" type="submit" id="saveBtn">Записать долг</button>
         </div>
       </form>
     </div>
-  `;
-  document.body.appendChild(modal);
+  </div>
 
-  modal.addEventListener('click', (e) => {
-    if (e.target.matches('[data-close-profile]')) closeProfileModal();
-  });
+  <div class="modal" id="payModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Погашение долга</h3>
+      <p class="modal__subtitle" id="payClientName"></p>
 
-  const form = modal.querySelector('#kutProfileForm');
-  form.addEventListener('submit', saveProfile);
-
-  return modal;
-}
-
-function openProfileModal() {
-  injectProfileStyles();
-  const modal = ensureProfileModal();
-  const p = state.profile || {};
-
-  const nameEl = modal.querySelector('#kutPfName');
-  const phoneEl = modal.querySelector('#kutPfPhone');
-  const subEl = modal.querySelector('#kutProfileSub');
-  const infoEl = modal.querySelector('#kutProfileInfo');
-  const reqBlock = modal.querySelector('#kutRequestsBlock');
-  const reqCount = modal.querySelector('#kutRequestsCount');
-  const reqList = modal.querySelector('#kutRequestsList');
-
-  nameEl.value = p.displayName || '';
-  phoneEl.value = p.phone || '';
-
-  modal.querySelectorAll('.kut-field__hint').forEach((h) => {
-    h.textContent = ''; h.classList.remove('is-error');
-  });
-  modal.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
-
-  const isOwner = p.role === 'owner';
-  const isEmployee = p.role === 'cashier' || p.role === 'manager';
-
-  if (isEmployee) {
-    subEl.textContent = 'Заполните новые данные — они отправятся владельцу на подтверждение.';
-    infoEl.hidden = false;
-    infoEl.innerHTML = '⚠️ Ваши изменения будут сохранены только после одобрения владельцем бизнеса.';
-  } else if (isOwner) {
-    subEl.textContent = 'Измените свои данные — они сохранятся мгновенно.';
-    infoEl.hidden = true;
-  } else {
-    subEl.textContent = 'Измените свои данные.';
-    infoEl.hidden = true;
-  }
-
-  if (isOwner) {
-    reqBlock.hidden = false;
-    renderRequests(reqList, reqCount);
-  } else {
-    reqBlock.hidden = true;
-  }
-
-  modal.hidden = false;
-  document.body.style.overflow = 'hidden';
-  requestAnimationFrame(() => nameEl.focus());
-}
-
-function closeProfileModal() {
-  const modal = document.getElementById('kutProfileModal');
-  if (!modal) return;
-  modal.hidden = true;
-  document.body.style.overflow = '';
-}
-
-// =========================================================
-// СОХРАНЕНИЕ ПРОФИЛЯ
-// =========================================================
-async function saveProfile(event) {
-  event.preventDefault();
-  const modal = document.getElementById('kutProfileModal');
-  const p = state.profile || {};
-  const nameEl = modal.querySelector('#kutPfName');
-  const phoneEl = modal.querySelector('#kutPfPhone');
-  const saveBtn = modal.querySelector('#kutProfileSaveBtn');
-  const infoEl = modal.querySelector('#kutProfileInfo');
-
-  modal.querySelectorAll('.kut-field__hint').forEach((h) => {
-    h.textContent = ''; h.classList.remove('is-error');
-  });
-  modal.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
-
-  const newName = nameEl.value.trim();
-  const newPhoneRaw = phoneEl.value.trim();
-
-  let ok = true;
-  if (newName.length < 2) {
-    const hint = modal.querySelector('.kut-field__hint[data-for="kutPfName"]');
-    const input = modal.querySelector('#kutPfName');
-    input.classList.add('is-invalid');
-    if (hint) { hint.textContent = 'Имя минимум 2 символа'; hint.classList.add('is-error'); }
-    ok = false;
-  }
-
-  let newPhone = '';
-  if (newPhoneRaw) {
-    const digits = newPhoneRaw.replace(/\D/g, '');
-    if (digits.length < 7) {
-      const hint = modal.querySelector('.kut-field__hint[data-for="kutPfPhone"]');
-      const input = modal.querySelector('#kutPfPhone');
-      input.classList.add('is-invalid');
-      if (hint) { hint.textContent = 'Введите корректный номер или оставьте пустым'; hint.classList.add('is-error'); }
-      ok = false;
-    } else {
-      newPhone = newPhoneRaw;
-    }
-  }
-
-  if (!ok) return;
-
-  const oldData = {
-    displayName: p.displayName || '',
-    phone: p.phone || '',
-  };
-  const newData = {
-    displayName: newName,
-    phone: newPhone,
-  };
-
-  if (oldData.displayName === newData.displayName && oldData.phone === newData.phone) {
-    toast('Изменений нет');
-    closeProfileModal();
-    return;
-  }
-
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Сохраняем...';
-
-  try {
-    const { db, doc, updateDoc, addDoc, collection, serverTimestamp } = window.FB;
-    const isOwner = p.role === 'owner';
-
-    if (isOwner) {
-      await updateDoc(doc(db, 'users', p.uid), {
-        displayName: newData.displayName,
-        phone: newData.phone,
-        updatedAt: serverTimestamp(),
-      });
-      state.profile = { ...p, displayName: newData.displayName, phone: newData.phone };
-      mountProfileBlock();
-      renderRoleBadge(state.profile);
-      toast('Профиль обновлён');
-      closeProfileModal();
-    } else {
-      if (!state.businessId) {
-        toast('Нет привязанного бизнеса', true);
-        return;
-      }
-      await addDoc(collection(db, 'businesses', state.businessId, 'requests'), {
-        uid: p.uid,
-        role: p.role,
-        email: p.email || '',
-        oldData,
-        newData,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-      });
-      if (infoEl) {
-        infoEl.hidden = false;
-        infoEl.innerHTML = '✅ Изменения отправлены на подтверждение владельцу.';
-      }
-      toast('Изменения отправлены на подтверждение владельцу');
-      setTimeout(() => closeProfileModal(), 1200);
-    }
-  } catch (err) {
-    console.error('[profile] save failed:', err);
-    toast('Не удалось сохранить: ' + (err.code || err.message), true);
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Сохранить';
-  }
-}
-
-// =========================================================
-// ЗАЯВКИ
-// =========================================================
-function renderRequests(listEl, countEl) {
-  if (!listEl) return;
-  const list = (state.requests || []).filter((r) => r.status === 'pending');
-  if (countEl) countEl.textContent = String(list.length);
-
-  if (list.length === 0) {
-    listEl.innerHTML = '<div class="kut-requests__empty">Пока нет активных заявок</div>';
-    return;
-  }
-
-  listEl.innerHTML = list.map((r) => {
-    const name = (r.oldData && r.oldData.displayName) || r.email || 'Сотрудник';
-    const role = roleLabel(r.role);
-    const oldName = (r.oldData && r.oldData.displayName) || '—';
-    const newName = (r.newData && r.newData.displayName) || '—';
-    const oldPhone = (r.oldData && r.oldData.phone) || '—';
-    const newPhone = (r.newData && r.newData.phone) || '—';
-    const created = toDate(r.createdAt);
-    const dateStr = created
-      ? `${String(created.getDate()).padStart(2,'0')}.${String(created.getMonth()+1).padStart(2,'0')} ${String(created.getHours()).padStart(2,'0')}:${String(created.getMinutes()).padStart(2,'0')}`
-      : '—';
-
-    const nameLine = oldName !== newName
-      ? `<div><b>Имя:</b> ${escapeHtml(oldName)}<span class="kut-request__arrow">→</span>${escapeHtml(newName)}</div>`
-      : '';
-    const phoneLine = oldPhone !== newPhone
-      ? `<div><b>Телефон:</b> ${escapeHtml(oldPhone)}<span class="kut-request__arrow">→</span>${escapeHtml(newPhone)}</div>`
-      : '';
-
-    return `
-      <div class="kut-request" data-request-id="${escapeHtml(r.id)}">
-        <div class="kut-request__head">
-          <div class="kut-request__name">${escapeHtml(name)} <span style="color:#64776E; font-weight:500; font-size:12px;">· ${escapeHtml(role)}</span></div>
-          <div class="kut-request__date">${dateStr}</div>
+      <div class="info-panel">
+        <div class="info-panel__row">
+          <span class="info-panel__label">Текущий долг</span>
+          <span class="info-panel__value info-panel__value--big" id="payCurrentDebt">0 KGS</span>
         </div>
-        <div class="kut-request__diff">
-          ${nameLine || phoneLine || '<div>Нет изменений</div>'}
+        <div class="info-panel__row">
+          <span class="info-panel__label">Взято</span>
+          <span class="info-panel__value" id="payOriginalDate">—</span>
         </div>
-        <div class="kut-request__actions">
-          <button class="kut-btn-approve" type="button" data-act="approve" data-uid="${escapeHtml(r.uid)}" data-req="${escapeHtml(r.id)}">✓ Одобрить</button>
-          <button class="kut-btn-reject" type="button" data-act="reject" data-req="${escapeHtml(r.id)}">✕ Отклонить</button>
+      </div>
+
+      <form id="payForm" novalidate>
+        <div class="form-grid">
+          <div class="field field--full">
+            <label for="payAmount">Сумма к оплате <span class="req">*</span></label>
+            <div class="input-group">
+              <input type="number" id="payAmount" inputmode="decimal" min="0" step="0.01"
+                placeholder="0" required>
+              <span class="input-group__suffix">KGS</span>
+            </div>
+            <div class="field__hint" data-for="payAmount"></div>
+            <div class="quick-amounts" id="quickAmounts">
+              <button class="quick-amount" type="button" data-q="full">Весь долг</button>
+              <button class="quick-amount" type="button" data-q="1000">1 000</button>
+              <button class="quick-amount" type="button" data-q="500">500</button>
+              <button class="quick-amount" type="button" data-q="200">200</button>
+            </div>
+          </div>
         </div>
-      </div>`;
-  }).join('');
 
-  listEl.querySelectorAll('button[data-act]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const act = btn.dataset.act;
-      const reqId = btn.dataset.req;
-      const uid = btn.dataset.uid;
-      btn.disabled = true;
+        <div class="payments-list" id="paymentsHistory"></div>
 
-      try {
-        const { db, doc, deleteDoc, updateDoc, serverTimestamp } = window.FB;
-        if (act === 'approve') {
-          const req = state.requests.find((r) => r.id === reqId);
-          if (!req) throw new Error('Заявка не найдена');
-          await updateDoc(doc(db, 'users', uid), {
-            displayName: req.newData.displayName,
-            phone: req.newData.phone,
-            updatedAt: serverTimestamp(),
-          });
-          await deleteDoc(doc(db, 'businesses', state.businessId, 'requests', reqId));
-          toast('Заявка одобрена');
-        } else {
-          await deleteDoc(doc(db, 'businesses', state.businessId, 'requests', reqId));
-          toast('Заявка отклонена');
-        }
-      } catch (err) {
-        console.error('[requests] action failed:', err);
-        toast('Ошибка: ' + (err.code || err.message), true);
-        btn.disabled = false;
-      }
-    });
-  });
-}
+        <div class="modal__actions">
+          <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+          <button class="btn btn--primary" type="submit" id="confirmPayBtn">Погасить</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-function subscribeRequests() {
-  if (!state.businessId) return;
-  if (state.profile?.role !== 'owner') return;
+  <div class="modal" id="waModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Напомнить в WhatsApp</h3>
+      <p class="modal__subtitle" id="waClientInfo"></p>
 
-  try {
-    const { db, collection, query, where, onSnapshot } = window.FB;
-    const q = query(
-      collection(db, 'businesses', state.businessId, 'requests'),
-      where('status', '==', 'pending')
-    );
-    state.unsubRequests = onSnapshot(q, (snap) => {
-      state.requests = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const modal = document.getElementById('kutProfileModal');
-      if (modal && !modal.hidden) {
-        const listEl = modal.querySelector('#kutRequestsList');
-        const countEl = modal.querySelector('#kutRequestsCount');
-        renderRequests(listEl, countEl);
-      }
-    }, (err) => {
-      console.warn('[requests] subscribe error:', err);
-    });
-  } catch (err) {
-    console.warn('[requests] subscribe init:', err);
-  }
-}
+      <div class="lang-options">
+        <button class="lang-option" type="button" data-lang="ru">
+          <span class="lang-option__flag">🇷🇺</span>
+          <span>
+            <span>По-русски</span>
+            <span class="lang-option__preview" id="previewRu"></span>
+          </span>
+        </button>
+        <button class="lang-option" type="button" data-lang="kg">
+          <span class="lang-option__flag">🇰🇬</span>
+          <span>
+            <span>Кыргызча</span>
+            <span class="lang-option__preview" id="previewKg"></span>
+          </span>
+        </button>
+      </div>
 
-// =========================================================
-// АВТО-ПРИВЯЗКА КАССИРА
-// =========================================================
-async function tryClaimStaffInvite(profile, user) {
-  const phone = profile.phone;
-  if (!phone || !/^\+\d{8,15}$/.test(phone)) return null;
-  const phoneKey = phone.replace(/\D/g, '');
-  const { db, doc, getDoc, updateDoc, serverTimestamp } = window.FB;
-  try {
-    const staffRef = doc(db, 'staff', phoneKey);
-    const snap = await getDoc(staffRef);
-    if (!snap.exists()) return null;
-    const staff = snap.data();
-    if (!staff.businessId) return null;
-    if (staff.active === false) return null;
-    await updateDoc(doc(db, 'users', user.uid), {
-      businessId: staff.businessId,
-      updatedAt: serverTimestamp(),
-    });
-    await updateDoc(staffRef, { uid: user.uid, claimedAt: serverTimestamp() });
-    return { ...profile, businessId: staff.businessId };
-  } catch (err) {
-    console.error('[KUT] tryClaimStaffInvite failed:', err);
-    return null;
-  }
-}
+      <div class="modal__actions">
+        <button class="btn btn--ghost btn--block" type="button" data-close>Отмена</button>
+      </div>
+    </div>
+  </div>
 
-// =========================================================
-// PUBLIC API
-// =========================================================
-const KEYS = {
-  products:  'kut_products',
-  sales:     'kut:sales',
-  debts:     'kut_debts',
-  customers: 'kut:customers',
-};
-const getProducts = () => state.products || [];
-const getSales    = () => state.sales || [];
-const getDebts    = () => state.debts || [];
+  <div class="modal" id="deleteModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Удалить запись о долге?</h3>
+      <p class="modal__subtitle" id="deleteName"></p>
+      <p style="color:var(--kut-muted); font-size:13px; margin:0 0 4px;">Действие нельзя отменить.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+        <button class="btn btn--danger" type="button" id="confirmDeleteBtn">Удалить</button>
+      </div>
+    </div>
+  </div>
 
-async function reloadAll() {
-  if (!state.businessId) return;
-  const [products, sales, debts] = await Promise.all([
-    window.FB.getCollection('products'),
-    window.FB.getCollection('sales'),
-    window.FB.getCollection('debts'),
-  ]);
-  state.products = products;
-  state.sales = sales;
-  state.debts = debts;
-}
+  <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
+    <a href="./index.html" class="bottom-nav__item" data-page="index">
+      <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
+      <span>Главная</span>
+    </a>
+    <a href="./stock.html" class="bottom-nav__item" data-page="stock">
+      <span class="bottom-nav__icon" aria-hidden="true">📦</span>
+      <span>Склад</span>
+    </a>
+    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать штрихкод">
+      <span aria-hidden="true">📷</span>
+    </button>
+    <a href="./cash.html" class="bottom-nav__item" data-page="cash">
+      <span class="bottom-nav__icon" aria-hidden="true">⚡</span>
+      <span>Касса</span>
+    </a>
+    <a href="./debts.html" class="bottom-nav__item" data-page="debts">
+      <span class="bottom-nav__icon" aria-hidden="true">📒</span>
+      <span>Несие</span>
+    </a>
+  </nav>
 
-async function registerSale({ cart, total, paymentMethod, customer, customerPhone, cashier }) {
-  if (!state.businessId) return { ok: false, error: 'no_business' };
-
-  for (const item of cart) {
-    const p = state.products.find((x) => x.id === (item.productId || item.id));
-    if (!p) return { ok: false, error: 'stock', reason: 'missing',
-      item: { name: item.name, available: 0, unit: 'шт' } };
-    const available = Number(p.qty) || 0;
-    const need = Number(item.quantity != null ? item.quantity : item.qty) || 0;
-    if (available < need) {
-      return { ok: false, error: 'stock', reason: 'insufficient',
-        item: { name: p.name, available, unit: p.unit || 'шт' } };
-    }
-  }
-
-  const bizId = state.businessId;
-  const { db, collection, doc, writeBatch, serverTimestamp } = window.FB;
-
-  const staffInfo = cashier || {
-    uid:  state.profile?.uid || '',
-    name: state.profile?.displayName || state.profile?.email || '',
-    email: state.profile?.email || '',
-    role: state.profile?.role || 'cashier',
-  };
-
-  try {
-    const batch = writeBatch(db);
-
-    const items = cart.map((i) => {
-      const pid = i.productId || i.id;
-      const stockProd = state.products.find((x) => x.id === pid);
-      const costPrice = Number(
-        i.costPrice != null ? i.costPrice :
-        (stockProd ? stockProd.costPrice : 0)
-      ) || 0;
-      const quantity = Number(i.quantity != null ? i.quantity : i.qty) || 0;
-      const price = Number(i.price) || 0;
-      return {
-        productId: pid, id: pid,
-        name: i.name, price, costPrice,
-        unit: i.unit || 'шт',
-        quantity, qty: quantity,
-      };
-    });
-
-    const saleRef = doc(collection(db, 'businesses', bizId, 'sales'));
-    batch.set(saleRef, {
-      items,
-      total: Number(total) || 0,
-      totalSum: Number(total) || 0,
-      paymentMethod,
-      customer: paymentMethod === 'debt' ? String(customer || '').trim() : null,
-      cashierUid:  staffInfo.uid,
-      cashierName: staffInfo.name,
-      cashierRole: staffInfo.role,
-      createdAt: serverTimestamp(),
-    });
-
-    for (const item of items) {
-      const stockProd = state.products.find((x) => x.id === item.productId);
-      if (!stockProd) continue;
-      const newQty = Math.max(0, (Number(stockProd.qty) || 0) - item.quantity);
-      const pRef = doc(db, 'businesses', bizId, 'products', item.productId);
-      batch.update(pRef, { qty: Number(newQty.toFixed(2)), updatedAt: serverTimestamp() });
-    }
-
-    if (paymentMethod === 'debt') {
-      const debtRef = doc(collection(db, 'businesses', bizId, 'debts'));
-      batch.set(debtRef, {
-        name: String(customer || '').trim(),
-        phone: customerPhone ? normalizePhone(customerPhone) : '',
-        initialAmount: Number(total) || 0,
-        amount: Number(total) || 0,
-        date: todayISO(),
-        dueDate: '',
-        note: 'Автоматически из продажи в кассе',
-        status: 'active',
-        payments: [],
-        saleId: saleRef.id,
-        source: 'cash',
-        cashierUid: staffInfo.uid,
-        cashierName: staffInfo.name,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
-
-    await batch.commit();
-    await reloadAll();
-    renderDashboard();
-    return { ok: true, sale: { id: saleRef.id } };
-  } catch (err) {
-    console.error('[KUT] registerSale failed:', err);
-    return { ok: false, error: 'firestore', message: err.message };
-  }
-}
-
-window.KUT = {
-  keys: KEYS,
-  fmt, fmtMoney, uid, todayISO, normalizePhone, escapeHtml, toast, toDate,
-  getProducts, getSales, getDebts,
-  registerSale, reloadAll,
-  aggregateRevenue, aggregateProfit, aggregateStock, aggregateDebts, aggregateStaff, aggregateWeekChart,
-  renderDashboard,
-  getState: () => state,
-  read: () => null, write: () => false, onStorage: () => {},
-};
-
-// =========================================================
-// АВТОЗАПУСК
-// =========================================================
-async function boot() {
-  const { user, profile } = await window.FB.waitForAuth();
-  if (!user || !profile) { window.location.href = './login.html'; return; }
-  if (profile.active === false) {
-    alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
-    await window.FB.logout(); return;
-  }
-  if (profile.role === 'super_admin') { window.location.href = './admin.html'; return; }
-
-  state.profile = profile;
-  state.businessId = profile.businessId;
-
-  if (!state.businessId && profile.role === 'cashier') {
-    const claimed = await tryClaimStaffInvite(profile, user);
-    if (claimed) { state.profile = claimed; state.businessId = claimed.businessId; }
-  }
-
-  renderRoleBadge(state.profile);
-
-  const isManager = profile.role === 'owner' || profile.role === 'manager';
-  if (isManager) {
-    const navStaff = document.getElementById('nav-staff-link');
-    if (navStaff) navStaff.hidden = false;
-  }
-
-  setupSidebar();
-  injectProfileStyles();
-  mountProfileBlock();
-  mountLogoutBlock();
-  ensureProfileModal();
-
-  // Нижняя панель: подсветка + центральная кнопка + автостарт сканера
-  setupBottomNavHighlight();
-  setupBottomNavScan();
-  handleAutoScanParam();
-
-  const yearEl = document.getElementById('year');
-  if (yearEl) yearEl.textContent = String(new Date().getFullYear());
-
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) logoutBtn.addEventListener('click', () => {
-    if (!confirm('Выйти из аккаунта?')) return;
-    window.FB.logout();
-  });
-
-  if (!state.businessId) {
-    const box = document.querySelector('.main-content') || document.querySelector('.wrap') || document.querySelector('.pos');
-    if (box) {
-      box.insertAdjacentHTML('afterbegin',
-        '<div style="padding:14px 16px;background:#FFF8E1;border:1px solid #E3C97A;border-radius:14px;color:#7A5E00;font-size:13px;margin-bottom:16px;">' +
-        '⚠️ У вашего аккаунта пока нет привязанного бизнеса. Попросите владельца пригласить вас в разделе «Сотрудники».</div>');
-    }
-    return;
-  }
-
-  await reloadAll();
-  renderDashboard();
-
-  window.FB.subscribeCollection('products', (items) => { state.products = items; renderDashboard(); });
-  window.FB.subscribeCollection('sales',    (items) => { state.sales = items;    renderDashboard(); });
-  window.FB.subscribeCollection('debts',    (items) => { state.debts = items;    renderDashboard(); });
-
-  if (isManager) {
-    try {
-      const { db, collection, query, where, onSnapshot } = window.FB;
-      const q = query(collection(db, 'staff'), where('businessId', '==', state.businessId));
-      onSnapshot(q, (snap) => {
-        state.staff = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        renderDashboard();
-      }, (err) => console.warn('[KUT] staff subscribe error:', err));
-    } catch (err) {
-      console.warn('[KUT] staff subscribe init:', err);
-    }
-  }
-
-  subscribeRequests();
-
-  window.addEventListener('kut:lang', () => renderDashboard());
-
-  window.addEventListener('beforeunload', () => {
-    if (state.unsubRequests) state.unsubRequests();
-  });
-
-  console.info('[KUT] Ядро готово · бизнес:', state.businessId, '· роль:', profile.role);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', boot);
-} else {
-  boot();
-}
+  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/debts.js"></script>
+  <script src="./js/lang.js"></script>
+</body>
+</html>
