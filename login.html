@@ -40,6 +40,28 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    #error-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #C0392B;
+      color: #fff;
+      padding: 10px 14px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      z-index: 9999;
+      display: none;
+      max-height: 40vh;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: 0 6px 20px rgba(0,0,0,.3);
+    }
+    #error-banner.is-visible { display: block; }
+    #error-banner strong { display: block; margin-bottom: 4px; font-size: 13px; }
+
     .auth-card {
       width: 100%;
       max-width: 460px;
@@ -255,11 +277,37 @@
     }
     .forgot-link button:hover { text-decoration: underline; }
 
+    .diag {
+      margin-top: 16px;
+      padding: 10px 12px;
+      background: #F7F9F8;
+      border: 1px dashed #C7D4CE;
+      border-radius: 10px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 11px;
+      color: #4A5C54;
+      line-height: 1.5;
+      word-break: break-word;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .diag strong { color: #14211C; }
+
+    .version-badge {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--kut-muted);
+      font-family: ui-monospace, Menlo, monospace;
+    }
+
     .hidden { display: none !important; }
     ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
   </style>
 </head>
 <body>
+
+  <div id="error-banner" role="alert"></div>
 
   <div class="auth-card">
     <div class="auth-brand">
@@ -370,26 +418,85 @@
         </div>
       </form>
     </div>
+
+    <div class="diag" id="diagBox">
+      <strong>Диагностика:</strong><br>
+      ожидание загрузки скриптов...
+    </div>
+
+    <div class="version-badge">версия файла: v3.5-DIAG</div>
   </div>
 
+  <script>
+    (function () {
+      var banner = document.getElementById('error-banner');
+      var diag = document.getElementById('diagBox');
+
+      function showBanner(label, msg) {
+        banner.innerHTML = '<strong>' + label + '</strong>' + String(msg);
+        banner.classList.add('is-visible');
+      }
+
+      window.__kutDiag = function (line) {
+        if (!diag) return;
+        diag.innerHTML += '<br>' + line;
+        diag.scrollTop = diag.scrollHeight;
+      };
+
+      window.__kutResetDiag = function () {
+        if (!diag) return;
+        diag.innerHTML = '<strong>Диагностика:</strong>';
+      };
+
+      window.addEventListener('error', function (e) {
+        showBanner('JS ошибка:', (e.message || 'неизвестно') +
+          '\n' + (e.filename || '') + ':' + (e.lineno || ''));
+      });
+
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e.reason;
+        var msg = (r && r.message) ? r.message : String(r);
+        showBanner('Promise ошибка:', msg);
+      });
+
+      window.__kutDiag('HTML загружен, ожидание модуля...');
+    })();
+  </script>
+
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      signOut,
-      onAuthStateChanged,
-      sendPasswordResetEmail,
-    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc,
-      deleteDoc,
-      serverTimestamp,
-    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    window.__kutResetDiag();
+    window.__kutDiag('Модуль начал выполняться');
+
+    let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+        signOut, onAuthStateChanged, sendPasswordResetEmail, getFirestore,
+        doc, getDoc, setDoc, deleteDoc, serverTimestamp;
+
+    try {
+      const appMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+      initializeApp = appMod.initializeApp;
+      window.__kutDiag('✓ firebase-app.js загружен');
+
+      const authMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+      getAuth = authMod.getAuth;
+      signInWithEmailAndPassword = authMod.signInWithEmailAndPassword;
+      createUserWithEmailAndPassword = authMod.createUserWithEmailAndPassword;
+      signOut = authMod.signOut;
+      onAuthStateChanged = authMod.onAuthStateChanged;
+      sendPasswordResetEmail = authMod.sendPasswordResetEmail;
+      window.__kutDiag('✓ firebase-auth.js загружен');
+
+      const fsMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      getFirestore = fsMod.getFirestore;
+      doc = fsMod.doc;
+      getDoc = fsMod.getDoc;
+      setDoc = fsMod.setDoc;
+      deleteDoc = fsMod.deleteDoc;
+      serverTimestamp = fsMod.serverTimestamp;
+      window.__kutDiag('✓ firebase-firestore.js загружен');
+    } catch (e) {
+      window.__kutDiag('✗ Ошибка загрузки Firebase SDK: ' + e.message);
+      throw e;
+    }
 
     const firebaseConfig = {
       apiKey: "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
@@ -414,12 +521,12 @@
       app  = initializeApp(firebaseConfig);
       auth = getAuth(app);
       db   = getFirestore(app);
-      console.log('[KUT] Firebase инициализирован:', firebaseConfig.projectId);
-      console.log('[KUT] apiKey:', firebaseConfig.apiKey, '(длина ' + firebaseConfig.apiKey.length + ')');
-      console.log('[KUT] authDomain:', firebaseConfig.authDomain);
+      window.__kutDiag('✓ Firebase инициализирован: ' + firebaseConfig.projectId);
+      window.__kutDiag('  authDomain: ' + firebaseConfig.authDomain);
+      window.__kutDiag('  apiKey длина: ' + firebaseConfig.apiKey.length);
     } catch (initErr) {
-      console.error('[KUT] Ошибка инициализации:', initErr);
-      alert('Ошибка инициализации Firebase: ' + initErr.message);
+      window.__kutDiag('✗ Ошибка initializeApp: ' + initErr.message);
+      throw initErr;
     }
 
     const $ = (s) => document.querySelector(s);
@@ -474,30 +581,21 @@
 
     function redirectByRole(profile) {
       if (!profile) {
-        alert('Ошибка роли: профиль не найден');
+        window.__kutDiag('✗ Профиль не найден при редиректе');
         window.location.href = './login.html';
         return;
       }
       if (profile.active === false) {
-        alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
+        window.__kutDiag('✗ Аккаунт заблокирован');
         signOut(auth);
         return;
       }
       const role = profile.role;
-      console.log('[KUT] Роль:', role);
-      if (role === 'super_admin') {
-        window.location.href = './admin.html';
-        return;
-      }
-      if (role === 'owner') {
-        window.location.href = './index.html';
-        return;
-      }
-      if (role === 'cashier') {
-        window.location.href = './cash.html';
-        return;
-      }
-      window.location.href = './index.html';
+      window.__kutDiag('→ Роль: ' + role);
+      if (role === 'super_admin')      window.location.href = './admin.html';
+      else if (role === 'owner')       window.location.href = './index.html';
+      else if (role === 'cashier')     window.location.href = './cash.html';
+      else                             window.location.href = './index.html';
     }
 
     const phoneTab = $('#phoneTab');
@@ -524,6 +622,7 @@
       e.preventDefault();
       clearErrors(emailForm);
       clearMessage();
+      window.__kutDiag('--- Попытка входа по email ---');
 
       const email = $('#emailInput').value.trim();
       const password = $('#passwordInput').value;
@@ -537,7 +636,10 @@
         setError('passwordInput', 'Пароль минимум 6 символов');
         ok = false;
       }
-      if (!ok) return;
+      if (!ok) {
+        window.__kutDiag('✗ Валидация формы не пройдена');
+        return;
+      }
 
       const btn = $('#emailLoginBtn');
       btn.disabled = true;
@@ -546,14 +648,13 @@
       let user = null;
 
       try {
-        console.log('[KUT] Вход:', email, '| apiKey:', firebaseConfig.apiKey);
+        window.__kutDiag('→ signInWithEmailAndPassword(' + email + ')');
         const cred = await signInWithEmailAndPassword(auth, email, password);
         user = cred.user;
-        console.log('[KUT] Auth OK. UID:', user.uid);
+        window.__kutDiag('✓ Auth OK. UID: ' + user.uid);
       } catch (error) {
-        console.error('[KUT] Ошибка Auth:', error.code, error.message);
-        alert("Код ошибки от Google: " + error.code + " | Сообщение: " + error.message);
-        showMessage('Ошибка входа: ' + (error.code || error.message), 'error');
+        window.__kutDiag('✗ Auth ошибка: ' + error.code + ' | ' + error.message);
+        showMessage('Ошибка входа: ' + error.code, 'error');
         btn.disabled = false;
         btn.textContent = 'Войти';
         return;
@@ -561,30 +662,30 @@
 
       let profile = null;
       try {
-        console.log('[KUT] Читаем users/' + user.uid);
+        window.__kutDiag('→ getDoc(users/' + user.uid + ')');
         const snap = await getDoc(doc(db, 'users', user.uid));
         if (!snap.exists()) {
-          alert("Ошибка роли: в Firestore нет документа для UID: " + user.uid);
+          window.__kutDiag('✗ Документ users/' + user.uid + ' не найден');
+          showMessage('Профиль не найден в Firestore', 'error');
           await signOut(auth).catch(() => {});
           btn.disabled = false;
           btn.textContent = 'Войти';
           return;
         }
         profile = { uid: user.uid, ...snap.data() };
-        console.log('[KUT] Профиль:', profile);
+        window.__kutDiag('✓ Профиль: role=' + (profile.role || '(пусто)'));
       } catch (err) {
-        console.error('[KUT] Ошибка чтения профиля:', err);
-        alert("Ошибка чтения профиля: " + err.code + " | " + err.message);
+        window.__kutDiag('✗ Firestore ошибка: ' + err.code + ' | ' + err.message);
+        showMessage('Ошибка чтения профиля: ' + err.code, 'error');
         await signOut(auth).catch(() => {});
         btn.disabled = false;
         btn.textContent = 'Войти';
         return;
       }
 
-      alert("Авторизация успешна!\nUID: " + user.uid + "\nРоль: " + (profile.role || '(пусто)'));
-
       if (!profile.role) {
-        alert("Ошибка роли: поле role пустое в Firestore");
+        window.__kutDiag('✗ Поле role пустое');
+        showMessage('Поле role пустое в Firestore', 'error');
         await signOut(auth).catch(() => {});
         btn.disabled = false;
         btn.textContent = 'Войти';
@@ -609,7 +710,7 @@
         await sendPasswordResetEmail(auth, email);
         showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
       } catch (err) {
-        alert("Ошибка сброса пароля: " + err.code + " | " + err.message);
+        window.__kutDiag('✗ resetPassword: ' + err.code + ' | ' + err.message);
         showMessage('Не удалось отправить письмо.', 'error');
       }
     });
@@ -627,6 +728,7 @@
       const code = generateOtpCode();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
+      window.__kutDiag('→ setDoc(otp_sessions/' + phone.replace(/\D/g, '') + ')');
       await setDoc(doc(db, 'otp_sessions', phone.replace(/\D/g, '')), {
         phone,
         code,
@@ -634,12 +736,14 @@
         createdAt: serverTimestamp(),
         attempts: 0,
       });
+      window.__kutDiag('✓ OTP записан в Firestore');
 
       const phoneDigits = phone.replace(/\D/g, '');
       const message =
         `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\n` +
         `Никому не сообщайте этот код. Действителен 5 минут.`;
 
+      window.__kutDiag('→ fetch Green-API');
       const res = await fetch(WA_CONFIG.buildUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -651,11 +755,11 @@
 
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
-        console.error('[KUT OTP] Green-API ошибка:', res.status, errText);
+        window.__kutDiag('✗ Green-API: ' + res.status + ' ' + errText);
         throw new Error('WHATSAPP_FAILED');
       }
 
-      console.info('[KUT OTP] Код', code, 'отправлен на', phone);
+      window.__kutDiag('✓ Green-API: код отправлен');
       return true;
     }
 
@@ -738,6 +842,7 @@
       e.preventDefault();
       clearErrors(phoneForm);
       clearMessage();
+      window.__kutDiag('--- Попытка входа по номеру ---');
 
       const phoneNorm = normalizePhone(phoneInput.value);
       if (!isValidPhone(phoneNorm)) {
@@ -758,7 +863,7 @@
         $('#otpInput').focus();
         startOtpTimer(300);
       } catch (err) {
-        console.error('[login] send OTP failed:', err);
+        window.__kutDiag('✗ sendOtp: ' + err.message);
         let msg = 'Не удалось отправить код. Попробуйте ещё раз.';
         if (err.message === 'INVALID_PHONE') msg = 'Некорректный номер телефона.';
         else if (err.message === 'WHATSAPP_FAILED') msg = 'WhatsApp-шлюз не смог отправить код.';
@@ -773,6 +878,7 @@
       e.preventDefault();
       clearErrors(otpForm);
       clearMessage();
+      window.__kutDiag('--- Проверка OTP ---');
 
       const code = $('#otpInput').value.trim();
       if (!/^\d{4}$/.test(code)) {
@@ -786,6 +892,7 @@
 
       try {
         const { profile } = await verifyWhatsAppOtp(currentPhone, code);
+        window.__kutDiag('✓ OTP подтверждён, роль: ' + (profile.role || '—'));
 
         if (!profile) {
           showMessage('Профиль не найден.', 'error');
@@ -800,7 +907,7 @@
         showMessage('Успешно! Перенаправляем...', 'success');
         setTimeout(() => redirectByRole(profile), 400);
       } catch (err) {
-        console.error('[login] verify OTP failed:', err);
+        window.__kutDiag('✗ verifyOtp: ' + err.message);
         let msg = 'Неверный код. Попробуйте ещё раз.';
         if (err.message === 'OTP_EXPIRED') msg = 'Код истёк. Запросите новый.';
         else if (err.message === 'OTP_NOT_FOUND') msg = 'Код не найден. Запросите новый.';
@@ -857,18 +964,14 @@
           await signOut(auth).catch(() => {});
           return;
         }
-        console.log('[KUT] Уже авторизован, роль:', profile.role);
+        window.__kutDiag('→ Уже авторизован как ' + (profile.role || '—'));
         redirectByRole(profile);
       } catch (err) {
-        console.warn('[KUT] Ошибка авто-редиректа:', err.message);
+        window.__kutDiag('✗ авто-редирект: ' + err.message);
       }
     });
 
-    console.info('[KUT] login.html загружен');
-    console.info('[KUT] apiKey:', firebaseConfig.apiKey);
-    console.info('[KUT] authDomain:', firebaseConfig.authDomain);
-    console.info('[KUT] appId:', firebaseConfig.appId);
-    console.info('[KUT] Green-API instance:', WA_CONFIG.idInstance);
+    window.__kutDiag('✓ Модуль загружен полностью, ожидание ввода');
   </script>
 </body>
 </html>
