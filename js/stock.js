@@ -1,6 +1,6 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v3
-   + менеджер имеет те же права на склад, что и владелец
+   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v4
+   Себестоимость costPrice — обязательное число.
    ========================================================= */
 
 (function () {
@@ -16,7 +16,7 @@
     category: 'Все',
     editingId: null,
     deletingId: null,
-    canEdit: false,   // ← owner или manager
+    canEdit: false,
     unsubProducts: null,
   };
 
@@ -283,8 +283,18 @@
               ${qtyBtns2}
             </div>
           </td>
-          <td data-label="Закупка"><span class="price price--cost">${fmt(cost)} KGS</span></td>
-          <td data-label="Продажа"><span class="price price--sale">${fmt(sale)} KGS</span></td>
+          <td data-label="Себестоимость">
+            <div class="price-block">
+              <span class="price price--cost">${fmt(cost)} KGS</span>
+              <small>за 1 ${escapeHtml(p.unit || 'шт')}</small>
+            </div>
+          </td>
+          <td data-label="Цена продажи">
+            <div class="price-block">
+              <span class="price price--sale">${fmt(sale)} KGS</span>
+              <small>за 1 ${escapeHtml(p.unit || 'шт')}</small>
+            </div>
+          </td>
           <td data-label="Маржа">
             <span class="price" style="${profit < 0 ? 'color:var(--kut-danger);' : 'color:var(--kut-green); font-weight:600;'}">${profitLabel}</span>
           </td>
@@ -402,6 +412,7 @@
       }
     }
 
+    // ⬇️ Себестоимость и цена продажи сохраняются КАК ЧИСЛА (Number)
     const data = {
       name: el.fName.value.trim(),
       category: el.fCategory.value,
@@ -442,7 +453,7 @@
     const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
     if (input) input.classList.add('is-invalid');
     if (hint) {
-      hint.textContent = message || '';
+      hint.textContent = message || (fieldId === 'fCost' ? 'Сколько вы заплатили поставщику за 1 единицу' : '');
       hint.classList.toggle('is-error', Boolean(message));
     }
   }
@@ -461,10 +472,10 @@
     const qty = Number(el.fQty.value);
     if (el.fQty.value === '' || Number.isNaN(qty) || qty < 0) { setFieldError('fQty', 'Введите количество'); ok = false; }
     const cost = Number(el.fCost.value);
-    if (el.fCost.value === '' || Number.isNaN(cost) || cost < 0) { setFieldError('fCost', 'Введите цену закупки'); ok = false; }
+    if (el.fCost.value === '' || Number.isNaN(cost) || cost < 0) { setFieldError('fCost', 'Введите себестоимость (0 или больше)'); ok = false; }
     const sale = Number(el.fSale.value);
     if (el.fSale.value === '' || Number.isNaN(sale) || sale < 0) { setFieldError('fSale', 'Введите цену продажи'); ok = false; }
-    if (ok && sale < cost) setFieldError('fSale', 'Продажа ниже закупки — проверьте цены');
+    if (ok && sale < cost) setFieldError('fSale', 'Цена продажи ниже себестоимости — проверьте');
     return ok;
   }
   function updateMarginPreview() {
@@ -488,7 +499,6 @@
     }
   }
 
-  // ===== Модалки =====
   let lastFocused = null;
   function openModal(modal) {
     lastFocused = document.activeElement;
@@ -501,21 +511,17 @@
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
-  // ===== События =====
   function bindEvents() {
     if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
     if (el.emptyAddBtn) el.emptyAddBtn.addEventListener('click', openAddModal);
-
     if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
-      state.search = e.target.value;
-      renderTable();
+      state.search = e.target.value; renderTable();
     });
     if (el.chips) el.chips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
       state.category = chip.dataset.cat;
-      renderChips();
-      renderTable();
+      renderChips(); renderTable();
     });
     if (el.stockBody) el.stockBody.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-act]');
@@ -538,7 +544,6 @@
     });
     if (el.barcodeScanBtn) el.barcodeScanBtn.addEventListener('click', openScanner);
     if (el.confirmDeleteBtn) el.confirmDeleteBtn.addEventListener('click', confirmDelete);
-
     document.addEventListener('click', (e) => {
       if (e.target.matches('[data-close]')) {
         const modal = e.target.closest('.modal');
@@ -552,16 +557,13 @@
       else stopScanner();
     });
     window.addEventListener('kut:lang', () => {
-      renderChips();
-      renderTable();
-      renderStats();
+      renderChips(); renderTable(); renderStats();
     });
     window.addEventListener('beforeunload', () => {
       if (state.unsubProducts) state.unsubProducts();
     });
   }
 
-  // ===== Инициализация =====
   function renderCategoryOptions() {
     if (!el.fCategory) return;
     el.fCategory.innerHTML = CATEGORIES
@@ -572,29 +574,20 @@
   async function init() {
     const st = await waitForReady();
     if (!st) { console.warn('[stock] Не дождались businessId'); return; }
-
     const role = st.profile?.role;
-    // ⬇️ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: и owner, и manager могут редактировать склад
     state.canEdit = role === 'owner' || role === 'manager' || role === 'super_admin';
-
     if (!state.canEdit) {
       if (el.openAddBtn) el.openAddBtn.style.display = 'none';
       if (el.emptyAddBtn) el.emptyAddBtn.style.display = 'none';
-    } else {
-      if (el.openAddBtn) el.openAddBtn.style.display = '';
-      if (el.emptyAddBtn) el.emptyAddBtn.style.display = '';
     }
-
     renderCategoryOptions();
     renderChips();
     renderStats();
-
     state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
       state.products = items;
       renderStats();
       renderTable();
     });
-
     bindEvents();
     console.info('[stock] Подключено · роль:', role, '· canEdit:', state.canEdit);
   }
