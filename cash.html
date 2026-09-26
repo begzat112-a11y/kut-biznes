@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — касса и быстрые продажи для малого бизнеса Кыргызстана.">
+  <meta name="description" content="КУТ: БИЗНЕС — касса и быстрые продажи.">
   <title>Касса — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,25 +13,16 @@
 
   <link rel="stylesheet" href="./css/style.css">
 
-  <!-- 📷 Сканер штрихкодов — библиотека html5-qrcode -->
+  <!-- 📷 Сканер штрихкодов -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 
   <style>
     :root {
-      --kut-green: #005F40;
-      --kut-green-dark: #003F2A;
-      --kut-green-soft: #E6F1ED;
-      --kut-gold: #D4AF37;
-      --kut-gold-dark: #B8952A;
-      --kut-bg: #F4F7F5;
-      --kut-surface: #FFFFFF;
-      --kut-border: #E3EAE6;
-      --kut-text: #14211C;
-      --kut-muted: #64776E;
-      --kut-danger: #C0392B;
-      --radius-sm: 10px;
-      --radius: 14px;
-      --radius-lg: 22px;
+      --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
+      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-bg: #F4F7F5;
+      --kut-surface: #FFFFFF; --kut-border: #E3EAE6; --kut-text: #14211C;
+      --kut-muted: #64776E; --kut-danger: #C0392B;
+      --radius-sm: 10px; --radius: 14px; --radius-lg: 22px;
       --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
       --shadow-md: 0 6px 18px rgba(16,32,25,.08);
       --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
@@ -42,778 +33,456 @@
     body.page-cash {
       margin: 0;
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: var(--kut-bg);
-      color: var(--kut-text);
-      display: flex;
-      flex-direction: column;
-      min-height: 100dvh;
+      background: var(--kut-bg); color: var(--kut-text);
+      display: flex; flex-direction: column; min-height: 100dvh;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ========== Верхняя навигация ========== */
     .topbar {
-      background: var(--kut-green);
-      color: #fff;
-      box-shadow: var(--shadow-sm);
-      position: sticky;
-      top: 0;
-      z-index: 40;
+      background: var(--kut-green); color: #fff;
+      box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 40;
     }
     .topbar__inner {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      justify-content: space-between;
+      max-width: 1400px; margin: 0 auto; padding: 12px 16px;
+      display: flex; align-items: center; gap: 16px; justify-content: space-between;
     }
     .topbar__brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      color: #fff;
-      text-decoration: none;
-      font-weight: 700;
-      letter-spacing: .2px;
+      display: inline-flex; align-items: center; gap: 10px;
+      color: #fff; text-decoration: none; font-weight: 700;
     }
     .brand__mark {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
-      background: var(--kut-gold);
-      color: var(--kut-green-dark);
-      display: grid;
-      place-items: center;
-      font-weight: 800;
-      box-shadow: inset 0 -2px 0 rgba(0,0,0,.12);
+      width: 34px; height: 34px; border-radius: 10px;
+      background: var(--kut-gold); color: var(--kut-green-dark);
+      display: grid; place-items: center; font-weight: 800;
     }
     .brand__name { font-size: 15px; }
     .topbar__nav {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      scrollbar-width: none;
+      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
     }
     .topbar__nav::-webkit-scrollbar { display: none; }
     .topbar__nav a {
-      color: rgba(255,255,255,.85);
-      text-decoration: none;
-      padding: 8px 12px;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 500;
-      white-space: nowrap;
-      transition: background .18s ease, color .18s ease;
+      color: rgba(255,255,255,.85); text-decoration: none;
+      padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: 500;
+      white-space: nowrap; transition: background .18s ease;
     }
     .topbar__nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
     .topbar__nav a.active {
-      background: var(--kut-gold);
-      color: var(--kut-green-dark);
-      font-weight: 600;
+      background: var(--kut-gold); color: var(--kut-green-dark); font-weight: 600;
     }
 
-    /* ========== POS-каркас ========== */
     .pos {
-      flex: 1;
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 16px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
+      flex: 1; width: 100%; max-width: 1400px; margin: 0 auto;
+      padding: 16px; display: grid; grid-template-columns: 1fr; gap: 16px;
     }
     @media (min-width: 980px) {
-      .pos {
-        grid-template-columns: minmax(0, 1fr) 400px;
-        padding: 20px;
-        gap: 20px;
-      }
+      .pos { grid-template-columns: minmax(0, 1fr) 400px; padding: 20px; gap: 20px; }
     }
 
-    /* ========== Каталог ========== */
-    .pos__catalog {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-width: 0;
-    }
+    .pos__catalog { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
-    /* --- Блок сканирования --- */
-    .scan-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
+    .scan-controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
     .scan-btn {
-      width: 100%;
-      padding: 14px 16px;
-      border: none;
-      border-radius: 14px;
+      width: 100%; padding: 14px 16px; border: none; border-radius: 14px;
       background: linear-gradient(135deg, #005F40, #003F2A);
-      color: #fff;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 8px 20px rgba(0,95,64,.28);
-      transition: transform .12s ease, box-shadow .18s ease;
-      -webkit-tap-highlight-color: transparent;
+      color: #fff; font-family: inherit; font-size: 15px; font-weight: 700;
+      cursor: pointer; box-shadow: 0 8px 20px rgba(0,95,64,.28);
+      transition: transform .12s ease;
     }
-    .scan-btn:hover { box-shadow: 0 10px 24px rgba(0,95,64,.36); }
     .scan-btn:active { transform: scale(.98); }
 
-    .scan-manual {
-      display: flex;
-      gap: 8px;
-      align-items: stretch;
-    }
+    .scan-manual { display: flex; gap: 8px; align-items: stretch; }
     .scan-manual input {
-      flex: 1;
-      min-width: 0;
-      padding: 12px 14px;
-      border: 1px solid var(--kut-border);
-      border-radius: 12px;
-      font-size: 15px;
-      font-family: inherit;
-      color: var(--kut-text);
-      outline: none;
-      background: #fff;
-      transition: border-color .18s ease, box-shadow .18s ease;
+      flex: 1; min-width: 0; padding: 12px 14px;
+      border: 1px solid var(--kut-border); border-radius: 12px;
+      font-size: 15px; font-family: inherit; color: var(--kut-text);
+      outline: none; background: #fff;
     }
     .scan-manual input:focus {
-      border-color: var(--kut-green);
-      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
     }
     .scan-manual__btn {
-      padding: 0 16px;
-      border: 1px solid var(--kut-border);
-      background: #fff;
-      border-radius: 12px;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--kut-text);
-      cursor: pointer;
-      white-space: nowrap;
+      padding: 0 16px; border: 1px solid var(--kut-border); background: #fff;
+      border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 600;
+      color: var(--kut-text); cursor: pointer; white-space: nowrap;
       transition: all .18s ease;
     }
     .scan-manual__btn:hover {
-      background: var(--kut-green-soft);
-      border-color: var(--kut-green);
+      background: var(--kut-green-soft); border-color: var(--kut-green);
       color: var(--kut-green);
     }
 
-    /* --- Поиск --- */
     .search { position: relative; }
     .search input {
-      width: 100%;
-      padding: 14px 16px 14px 44px;
-      border: 1px solid var(--kut-border);
-      background: var(--kut-surface);
-      border-radius: var(--radius);
-      font-size: 15px;
-      font-family: inherit;
-      color: var(--kut-text);
-      outline: none;
+      width: 100%; padding: 14px 16px 14px 44px;
+      border: 1px solid var(--kut-border); background: var(--kut-surface);
+      border-radius: var(--radius); font-size: 15px; font-family: inherit;
+      color: var(--kut-text); outline: none;
       transition: border-color .18s ease, box-shadow .18s ease;
     }
-    .search input::placeholder { color: var(--kut-muted); }
     .search input:focus {
-      border-color: var(--kut-green);
-      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
     }
     .search::before {
-      content: "🔍";
-      position: absolute;
-      left: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 15px;
-      opacity: .7;
+      content: "🔍"; position: absolute; left: 14px; top: 50%;
+      transform: translateY(-50%); font-size: 15px; opacity: .7;
       pointer-events: none;
     }
 
-    /* --- Категории --- */
     .categories {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 4px;
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
       scrollbar-width: none;
     }
     .categories::-webkit-scrollbar { display: none; }
     .cat-chip {
-      border: 1px solid var(--kut-border);
-      background: var(--kut-surface);
-      color: var(--kut-text);
-      padding: 9px 14px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all .18s ease;
-      font-family: inherit;
+      border: 1px solid var(--kut-border); background: var(--kut-surface);
+      color: var(--kut-text); padding: 9px 14px; border-radius: 999px;
+      font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap;
+      transition: all .18s ease; font-family: inherit;
     }
     .cat-chip:hover { border-color: var(--kut-green); color: var(--kut-green); }
     .cat-chip.is-active {
-      background: var(--kut-green);
-      color: #fff;
-      border-color: var(--kut-green);
+      background: var(--kut-green); color: #fff; border-color: var(--kut-green);
       box-shadow: 0 4px 10px rgba(0,95,64,.22);
     }
 
-    /* --- Товары --- */
     .products {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
     }
     @media (min-width: 560px) { .products { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } }
     @media (min-width: 1280px) { .products { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
     .product {
-      appearance: none;
-      border: 1px solid var(--kut-border);
-      background: var(--kut-surface);
-      border-radius: var(--radius);
-      padding: 14px 12px;
-      text-align: left;
-      cursor: pointer;
-      font-family: inherit;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-height: 118px;
+      appearance: none; border: 1px solid var(--kut-border); background: var(--kut-surface);
+      border-radius: var(--radius); padding: 14px 12px; text-align: left;
+      cursor: pointer; font-family: inherit; color: inherit;
+      display: flex; flex-direction: column; gap: 6px; min-height: 118px;
       transition: transform .12s ease, box-shadow .18s ease, border-color .18s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .product::after {
-      content: "";
-      position: absolute;
-      inset: auto -30% -60% auto;
-      width: 90px; height: 90px;
-      background: radial-gradient(circle at center, rgba(212,175,55,.20), transparent 70%);
-      pointer-events: none;
+      position: relative; overflow: hidden;
     }
     .product:hover { border-color: var(--kut-green); box-shadow: var(--shadow-md); }
     .product:active { transform: scale(.97); }
     .product__emoji {
-      font-size: 26px;
-      line-height: 1;
-      width: 44px; height: 44px;
+      font-size: 26px; line-height: 1; width: 44px; height: 44px;
       display: grid; place-items: center;
-      background: var(--kut-green-soft);
-      border-radius: 12px;
+      background: var(--kut-green-soft); border-radius: 12px;
     }
     .product__name {
-      font-size: 14px;
-      font-weight: 600;
-      line-height: 1.25;
-      color: var(--kut-text);
+      font-size: 14px; font-weight: 600; line-height: 1.25; color: var(--kut-text);
     }
     .product__price {
-      margin-top: auto;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--kut-green);
+      margin-top: auto; font-size: 15px; font-weight: 700; color: var(--kut-green);
     }
-    .product__price small { font-size: 11px; color: var(--kut-muted); font-weight: 500; margin-left: 3px; }
+    .product__price small {
+      font-size: 11px; color: var(--kut-muted); font-weight: 500; margin-left: 3px;
+    }
 
     .products__empty {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 40px 16px;
-      color: var(--kut-muted);
-      font-size: 14px;
+      grid-column: 1 / -1; text-align: center; padding: 40px 16px;
+      color: var(--kut-muted); font-size: 14px;
     }
 
-    /* ========== Корзина / Чек ========== */
+    .empty-stock {
+      grid-column: 1 / -1; padding: 60px 20px; text-align: center;
+    }
+    .empty-stock__icon { font-size: 48px; margin-bottom: 12px; opacity: .8; }
+    .empty-stock h3 {
+      margin: 0 0 8px; color: var(--kut-text); font-size: 17px; font-weight: 700;
+    }
+    .empty-stock p {
+      margin: 0 0 18px; color: var(--kut-muted); font-size: 14px;
+    }
+    .empty-stock a {
+      display: inline-block; padding: 12px 22px; border-radius: 12px;
+      background: var(--kut-gold); color: var(--kut-green-dark);
+      text-decoration: none; font-weight: 700; font-size: 14px;
+    }
+
+    /* Корзина */
     .cart {
-      background: var(--kut-surface);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--kut-border);
-      box-shadow: var(--shadow-md);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      min-height: 380px;
+      background: var(--kut-surface); border-radius: var(--radius-lg);
+      border: 1px solid var(--kut-border); box-shadow: var(--shadow-md);
+      display: flex; flex-direction: column; overflow: hidden; min-height: 380px;
     }
     @media (min-width: 980px) {
-      .cart {
-        position: sticky;
-        top: 84px;
-        max-height: calc(100dvh - 104px);
-      }
+      .cart { position: sticky; top: 84px; max-height: calc(100dvh - 104px); }
     }
 
     .cart__head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--kut-border);
-      background: linear-gradient(180deg, #fff, #FBFDFC);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--kut-border);
     }
     .cart__head h2 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin: 0; font-size: 16px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
     }
     .cart__count {
-      display: inline-grid;
-      place-items: center;
-      min-width: 24px;
-      height: 24px;
-      padding: 0 6px;
-      border-radius: 999px;
-      background: var(--kut-green);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
+      display: inline-grid; place-items: center; min-width: 24px; height: 24px;
+      padding: 0 6px; border-radius: 999px; background: var(--kut-green);
+      color: #fff; font-size: 12px; font-weight: 700;
     }
-
     .btn-ghost {
-      background: transparent;
-      border: 1px solid var(--kut-border);
-      color: var(--kut-muted);
-      padding: 8px 12px;
-      border-radius: 10px;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all .18s ease;
+      background: transparent; border: 1px solid var(--kut-border);
+      color: var(--kut-muted); padding: 8px 12px; border-radius: 10px;
+      font-family: inherit; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all .18s ease;
     }
     .btn-ghost:hover {
-      color: var(--kut-danger);
-      border-color: var(--kut-danger);
+      color: var(--kut-danger); border-color: var(--kut-danger);
       background: rgba(192,57,43,.06);
     }
     .btn-ghost:disabled { opacity: .4; cursor: not-allowed; }
 
-    .cart__body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px 8px 4px;
-      -webkit-overflow-scrolling: touch;
-    }
-    .cart__body::-webkit-scrollbar { width: 8px; }
-    .cart__body::-webkit-scrollbar-thumb { background: var(--kut-border); border-radius: 4px; }
-
+    .cart__body { flex: 1; overflow-y: auto; padding: 8px; }
     .cart__empty {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 30px 20px;
-      text-align: center;
-      color: var(--kut-muted);
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      padding: 30px 20px; text-align: center; color: var(--kut-muted);
     }
     .cart__empty-icon { font-size: 34px; opacity: .8; }
     .cart__empty p { margin: 4px 0 0; font-weight: 600; color: var(--kut-text); }
     .cart__empty span { font-size: 13px; }
 
     .cart-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 10px;
-      border-radius: 12px;
-      transition: background .15s ease;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px; border-radius: 12px;
     }
     .cart-item + .cart-item { border-top: 1px dashed var(--kut-border); }
-    .cart-item:hover { background: #FAFCFB; }
-
     .cart-item__info { flex: 1; min-width: 0; }
     .cart-item__name {
-      font-size: 14px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 14px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .cart-item__meta {
-      font-size: 12px;
-      color: var(--kut-muted);
-      margin-top: 2px;
-    }
+    .cart-item__meta { font-size: 12px; color: var(--kut-muted); margin-top: 2px; }
     .cart-item__total {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--kut-green);
-      margin-top: 2px;
+      font-size: 13px; font-weight: 700; color: var(--kut-green); margin-top: 2px;
     }
-
     .cart-item__controls {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      background: var(--kut-green-soft);
-      border-radius: 10px;
-      padding: 3px;
-      flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 2px;
+      background: var(--kut-green-soft); border-radius: 10px; padding: 3px;
     }
     .qty-btn {
-      width: 32px; height: 32px;
-      display: grid; place-items: center;
-      border: none;
-      background: transparent;
-      color: var(--kut-green);
-      font-size: 18px;
-      font-weight: 700;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background .15s ease, color .15s ease;
-      font-family: inherit;
-      line-height: 1;
+      width: 32px; height: 32px; display: grid; place-items: center;
+      border: none; background: transparent; color: var(--kut-green);
+      font-size: 18px; font-weight: 700; border-radius: 8px;
+      cursor: pointer; font-family: inherit;
     }
     .qty-btn:hover { background: #fff; }
-    .qty-btn:active { transform: scale(.94); }
-
     .qty-value {
-      min-width: 26px;
-      text-align: center;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--kut-text);
+      min-width: 26px; text-align: center; font-size: 14px; font-weight: 700;
     }
-
     .qty-remove {
-      width: 32px; height: 32px;
-      display: grid; place-items: center;
-      border: none;
-      background: transparent;
-      color: var(--kut-muted);
-      font-size: 18px;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-left: 4px;
-      transition: color .15s ease, background .15s ease;
-      font-family: inherit;
+      width: 32px; height: 32px; display: grid; place-items: center;
+      border: none; background: transparent; color: var(--kut-muted);
+      font-size: 18px; border-radius: 8px; cursor: pointer;
     }
     .qty-remove:hover { color: var(--kut-danger); background: rgba(192,57,43,.08); }
 
     .cart__foot {
       border-top: 1px solid var(--kut-border);
-      padding: 14px 16px 16px;
-      background: linear-gradient(180deg, #FBFDFC, #fff);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px;
     }
     .cart__sum {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 10px;
+      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
     }
     .cart__sum > span {
-      font-size: 13px;
-      color: var(--kut-muted);
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      font-weight: 600;
+      font-size: 13px; color: var(--kut-muted); text-transform: uppercase;
+      letter-spacing: .6px; font-weight: 600;
     }
     .cart__sum strong {
-      font-size: 30px;
-      font-weight: 800;
-      color: var(--kut-green);
-      line-height: 1;
-      letter-spacing: -.5px;
-      font-variant-numeric: tabular-nums;
+      font-size: 30px; font-weight: 800; color: var(--kut-green);
+      line-height: 1; font-variant-numeric: tabular-nums;
     }
     .cart__sum strong small {
-      font-size: 14px;
-      color: var(--kut-muted);
-      font-weight: 600;
-      margin-left: 4px;
+      font-size: 14px; color: var(--kut-muted); font-weight: 600; margin-left: 4px;
     }
 
-    /* ========== Основные кнопки ========== */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 14px 18px;
-      border-radius: 12px;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: transform .12s ease, box-shadow .18s ease, background .18s ease, opacity .18s ease;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 14px 18px; border-radius: 12px;
+      font-family: inherit; font-size: 15px; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent;
+      transition: all .12s ease;
     }
     .btn:active { transform: translateY(1px); }
     .btn--primary {
-      background: var(--kut-green);
-      color: #fff;
+      background: var(--kut-green); color: #fff;
       box-shadow: 0 8px 18px rgba(0,95,64,.28);
     }
     .btn--primary:hover { background: var(--kut-green-dark); }
     .btn--primary:disabled {
-      background: #C8D3CD;
-      color: #fff;
-      box-shadow: none;
-      cursor: not-allowed;
-      opacity: .9;
+      background: #C8D3CD; box-shadow: none; cursor: not-allowed;
     }
     .btn--gold {
-      background: var(--kut-gold);
-      color: var(--kut-green-dark);
+      background: var(--kut-gold); color: var(--kut-green-dark);
       box-shadow: 0 8px 18px rgba(212,175,55,.35);
     }
     .btn--gold:hover { background: var(--kut-gold-dark); }
     .btn--block { width: 100%; }
     .btn--ghost {
-      background: transparent;
-      border-color: var(--kut-border);
-      color: var(--kut-text);
+      background: transparent; border-color: var(--kut-border); color: var(--kut-text);
     }
-    .btn--ghost:hover { background: var(--kut-green-soft); border-color: var(--kut-green); color: var(--kut-green); }
+    .btn--ghost:hover {
+      background: var(--kut-green-soft); border-color: var(--kut-green);
+      color: var(--kut-green);
+    }
 
-    /* ========== Плавающая кнопка чека ========== */
+    /* Мобильная кнопка чека */
     .cart-toggle {
-      position: fixed;
-      left: 12px;
-      right: 12px;
+      position: fixed; left: 12px; right: 12px;
       bottom: calc(12px + env(safe-area-inset-bottom));
-      z-index: 60;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 18px;
-      background: var(--kut-green);
-      color: #fff;
-      border: none;
-      border-radius: 16px;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 600;
-      box-shadow: var(--shadow-lg);
+      z-index: 60; display: none; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 14px 18px; background: var(--kut-green); color: #fff;
+      border: none; border-radius: 16px; font-family: inherit;
+      font-size: 15px; font-weight: 600; box-shadow: var(--shadow-lg);
       cursor: pointer;
-      transition: transform .15s ease, opacity .2s ease;
     }
-    .cart-toggle:active { transform: scale(.985); }
     .cart-toggle b {
-      display: inline-grid;
-      place-items: center;
-      min-width: 22px;
-      height: 22px;
-      padding: 0 6px;
-      background: var(--kut-gold);
-      color: var(--kut-green-dark);
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 800;
+      display: inline-grid; place-items: center; min-width: 22px; height: 22px;
+      padding: 0 6px; background: var(--kut-gold); color: var(--kut-green-dark);
+      border-radius: 999px; font-size: 12px; font-weight: 800;
     }
     @media (max-width: 979px) {
       .cart-toggle { display: flex; }
       body.page-cash { padding-bottom: 84px; }
       .cart {
-        position: fixed;
-        left: 0; right: 0; bottom: 0;
-        top: auto;
-        max-height: 88dvh;
-        border-radius: 22px 22px 0 0;
+        position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+        max-height: 88dvh; border-radius: 22px 22px 0 0;
         transform: translateY(105%);
         transition: transform .28s cubic-bezier(.2,.8,.2,1);
         z-index: 70;
       }
       .cart.is-open { transform: translateY(0); }
       .cart__head::before {
-        content: "";
-        position: absolute;
-        top: 8px; left: 50%;
-        transform: translateX(-50%);
-        width: 44px; height: 4px;
-        background: var(--kut-border);
-        border-radius: 4px;
+        content: ""; position: absolute; top: 8px; left: 50%;
+        transform: translateX(-50%); width: 44px; height: 4px;
+        background: var(--kut-border); border-radius: 4px;
       }
       .cart__head { position: relative; padding-top: 20px; }
     }
 
-    /* ========== Модальные окна ========== */
+    /* Модалки */
     .modal[hidden] { display: none; }
     .modal {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      display: grid;
-      place-items: center;
-      padding: 16px;
+      position: fixed; inset: 0; z-index: 100;
+      display: grid; place-items: center; padding: 16px;
     }
     .modal__backdrop {
-      position: absolute;
-      inset: 0;
-      background: rgba(15, 30, 24, .5);
-      backdrop-filter: blur(4px);
+      position: absolute; inset: 0;
+      background: rgba(15, 30, 24, .5); backdrop-filter: blur(4px);
       animation: fadeIn .2s ease;
     }
     .modal__dialog {
-      position: relative;
-      width: 100%;
-      max-width: 460px;
-      background: var(--kut-surface);
-      border-radius: var(--radius-lg);
-      padding: 22px;
-      box-shadow: var(--shadow-lg);
+      position: relative; width: 100%; max-width: 460px;
+      background: var(--kut-surface); border-radius: var(--radius-lg);
+      padding: 22px; box-shadow: var(--shadow-lg);
       animation: popIn .22s cubic-bezier(.2,.9,.3,1.2);
-      max-height: 92dvh;
-      overflow-y: auto;
+      max-height: 92dvh; overflow-y: auto;
     }
-    .modal__dialog--center { text-align: center; }
-    .modal__dialog h3 {
-      margin: 0 0 4px;
-      font-size: 19px;
-      font-weight: 700;
-    }
-    .modal__subtitle {
-      margin: 0 0 18px;
-      color: var(--kut-muted);
-      font-size: 14px;
-    }
+    .modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 700; }
+    .modal__subtitle { margin: 0 0 18px; color: var(--kut-muted); font-size: 14px; }
     .modal__subtitle strong { color: var(--kut-green); }
-
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes popIn {
       from { opacity: 0; transform: translateY(12px) scale(.96); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* --- Способы оплаты --- */
-    .pay-methods {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
+    .pay-methods { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
     .pay-method {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 14px;
-      border: 1.5px solid var(--kut-border);
-      background: #fff;
-      border-radius: 14px;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--kut-text);
-      cursor: pointer;
-      text-align: left;
+      display: flex; align-items: center; gap: 12px; padding: 14px;
+      border: 1.5px solid var(--kut-border); background: #fff;
+      border-radius: 14px; font-family: inherit; font-size: 15px;
+      font-weight: 600; color: var(--kut-text); cursor: pointer; text-align: left;
       transition: all .18s ease;
     }
     .pay-method:hover { border-color: var(--kut-green); background: var(--kut-green-soft); }
     .pay-method.is-active {
-      border-color: var(--kut-green);
-      background: var(--kut-green-soft);
+      border-color: var(--kut-green); background: var(--kut-green-soft);
       box-shadow: 0 0 0 3px rgba(0,95,64,.14);
     }
     .pay-method__icon {
-      width: 42px; height: 42px;
-      display: grid; place-items: center;
-      background: #fff;
-      border-radius: 12px;
-      font-size: 20px;
+      width: 42px; height: 42px; display: grid; place-items: center;
+      background: #fff; border-radius: 12px; font-size: 20px;
       box-shadow: var(--shadow-sm);
-      flex-shrink: 0;
     }
     .pay-method.is-active .pay-method__icon {
       background: var(--kut-gold);
       box-shadow: 0 4px 10px rgba(212,175,55,.35);
     }
 
-    /* --- Блок «В долг» --- */
     .debt-block {
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: 14px;
-      background: #FFF9E6;
-      border: 1px dashed var(--kut-gold);
-      animation: fadeIn .2s ease;
+      margin-top: 14px; padding: 14px; border-radius: 14px;
+      background: #FFF9E6; border: 1px dashed var(--kut-gold);
     }
     .debt-block[hidden] { display: none; }
     .debt-block label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 6px;
-      color: var(--kut-text);
+      display: block; font-size: 13px; font-weight: 600;
+      margin-bottom: 6px; color: var(--kut-text);
     }
     .debt-block input {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 10px;
-      border: 1.5px solid var(--kut-border);
-      background: #fff;
-      font-family: inherit;
-      font-size: 15px;
-      outline: none;
-      transition: border-color .18s ease, box-shadow .18s ease;
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1.5px solid var(--kut-border); background: #fff;
+      font-family: inherit; font-size: 15px; outline: none;
     }
     .debt-block input:focus {
-      border-color: var(--kut-gold);
-      box-shadow: 0 0 0 4px rgba(212,175,55,.18);
+      border-color: var(--kut-gold); box-shadow: 0 0 0 4px rgba(212,175,55,.18);
     }
     .debt-block .hint {
-      margin: 8px 0 0;
-      font-size: 12px;
-      color: var(--kut-muted);
-      line-height: 1.4;
+      margin: 8px 0 0; font-size: 12px; color: var(--kut-muted); line-height: 1.4;
     }
 
-    .modal__actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 20px;
-    }
+    .modal__actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal__actions .btn { flex: 1; }
 
-    /* --- Успех --- */
+    .modal__dialog--center { text-align: center; }
     .success-icon {
-      width: 76px; height: 76px;
-      margin: 4px auto 14px;
-      border-radius: 50%;
+      width: 76px; height: 76px; margin: 4px auto 14px; border-radius: 50%;
       background: radial-gradient(circle at 30% 30%, #EAF6EF, #C6EAD4);
-      color: var(--kut-green);
-      display: grid; place-items: center;
-      font-size: 38px;
-      font-weight: 800;
-      box-shadow: inset 0 -4px 0 rgba(0,95,64,.12), 0 10px 26px rgba(0,95,64,.18);
-      animation: successPop .4s cubic-bezier(.2,.9,.3,1.4);
-    }
-    @keyframes successPop {
-      0% { transform: scale(.5); opacity: 0; }
-      60% { transform: scale(1.08); opacity: 1; }
-      100% { transform: scale(1); }
+      color: var(--kut-green); display: grid; place-items: center;
+      font-size: 38px; font-weight: 800;
+      box-shadow: inset 0 -4px 0 rgba(0,95,64,.12);
     }
     .modal__dialog--center p {
-      margin: 6px 0 20px;
-      color: var(--kut-muted);
-      font-size: 14px;
+      margin: 6px 0 20px; color: var(--kut-muted); font-size: 14px;
     }
     .modal__dialog--center p strong { color: var(--kut-green); font-weight: 700; }
 
-    ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
     button { -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body class="page-cash">
 
-  <!-- ============ Верхняя навигация ============ -->
+  <!-- Kill-switch кэша при обновлении версии -->
+  <script>
+    (function () {
+      var BUILD = 'v4.2-CASH-FIREBASE';
+      var saved = null;
+      try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
+      if (saved === BUILD) return;
+      try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
+      var todo = [];
+      if ('serviceWorker' in navigator) {
+        todo.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }).catch(function () {}));
+      }
+      if ('caches' in window) {
+        todo.push(caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }).catch(function () {}));
+      }
+      Promise.all(todo).then(function () {
+        setTimeout(function () {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.set('_cb', Date.now().toString(36));
+            window.location.replace(url.toString());
+          } catch (e) { window.location.reload(); }
+        }, 200);
+      });
+    })();
+  </script>
+
   <header class="topbar">
     <div class="topbar__inner">
       <a href="./index.html" class="topbar__brand" aria-label="КУТ: БИЗНЕС — на главную">
@@ -829,12 +498,9 @@
     </div>
   </header>
 
-  <!-- ============ Основной POS-экран ============ -->
   <main class="pos">
-    <!-- Каталог -->
     <section class="pos__catalog" aria-label="Каталог товаров">
 
-      <!-- 📷 Блок сканирования штрихкода -->
       <div class="scan-controls">
         <button id="cashScanBtn" type="button" class="scan-btn">
           📷 Сканировать штрихкод
@@ -853,7 +519,6 @@
         </div>
       </div>
 
-      <!-- Поиск по названию -->
       <div class="search">
         <input
           type="search"
@@ -863,14 +528,11 @@
           autocomplete="off">
       </div>
 
-      <!-- Категории -->
       <div class="categories" id="categories" role="tablist" aria-label="Категории товаров"></div>
 
-      <!-- Товары -->
       <div class="products" id="productsGrid" aria-live="polite"></div>
     </section>
 
-    <!-- Чек -->
     <aside class="cart" id="cart" aria-label="Текущий чек">
       <header class="cart__head">
         <h2>Чек <span class="cart__count" id="cartCount" aria-live="polite">0</span></h2>
@@ -901,20 +563,19 @@
     </aside>
   </main>
 
-  <!-- Плавающая кнопка вызова чека на мобильном -->
   <button class="cart-toggle" id="cartToggle" type="button" aria-controls="cart">
     <span>🛒 Чек <b id="cartToggleCount">0</b></span>
     <span id="cartToggleSum">0 KGS</span>
   </button>
 
-  <!-- ============ Модалка способа оплаты ============ -->
+  <!-- Модалка оплаты -->
   <div class="modal" id="paymentModal" hidden>
     <div class="modal__backdrop" data-close></div>
-    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="paymentTitle">
-      <h3 id="paymentTitle">Способ оплаты</h3>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Способ оплаты</h3>
       <p class="modal__subtitle">Сумма к оплате: <strong id="paymentTotal">0 KGS</strong></p>
 
-      <div class="pay-methods" id="payMethods" role="radiogroup" aria-label="Выберите способ оплаты">
+      <div class="pay-methods" id="payMethods" role="radiogroup">
         <button class="pay-method" data-method="cash" type="button" role="radio" aria-checked="false">
           <span class="pay-method__icon" aria-hidden="true">💵</span>
           <span>Наличные</span>
@@ -948,83 +609,19 @@
     </div>
   </div>
 
-  <!-- ============ Модалка успеха ============ -->
+  <!-- Модалка успеха -->
   <div class="modal" id="successModal" hidden>
     <div class="modal__backdrop" data-close></div>
-    <div class="modal__dialog modal__dialog--center" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+    <div class="modal__dialog modal__dialog--center" role="dialog" aria-modal="true">
       <div class="success-icon" aria-hidden="true">✓</div>
-      <h3 id="successTitle">Продажа успешно проведена!</h3>
+      <h3>Продажа успешно проведена!</h3>
       <p>Чек сохранён. Сумма: <strong id="successTotal">0 KGS</strong></p>
       <button class="btn btn--gold btn--block" type="button" data-close>Отлично</button>
     </div>
   </div>
 
-  <!-- ============ Скрипты ============ -->
-  <!-- Ядро системы — должно идти первым, чтобы window.KUT был доступен -->
-  <script src="./js/app.js"></script>
+  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/cash.js"></script>
   <script src="./js/lang.js"></script>
-  <script src="./js/cash.js"></script>
-
-  <!-- Провязка кнопок сканера с функциями из cash.js -->
-  <script>
-    (function () {
-      'use strict';
-
-      function wireScannerUI() {
-        var scanBtn = document.getElementById('cashScanBtn');
-        var manualInput = document.getElementById('cashBarcodeInput');
-        var manualBtn = document.getElementById('cashBarcodeSearchBtn');
-
-        // Кнопка «Сканировать штрихкод» — открывает камеру
-        if (scanBtn && !scanBtn.dataset.kutWired) {
-          scanBtn.dataset.kutWired = '1';
-          scanBtn.addEventListener('click', function () {
-            if (typeof window.openScanner === 'function') {
-              window.openScanner();
-            } else {
-              alert('Сканер не готов. Обновите страницу.');
-            }
-          });
-        }
-
-        // Ручной ввод: кнопка «Поиск» + Enter
-        if (manualInput && manualBtn && !manualBtn.dataset.kutWired) {
-          manualBtn.dataset.kutWired = '1';
-
-          var doSearch = function () {
-            var code = (manualInput.value || '').trim();
-            if (!code) return;
-            if (typeof window.handleDecodedBarcode === 'function') {
-              // Сбрасываем cooldown — ручной ввод осознанный
-              try { window.__kutResetScanCooldown && window.__kutResetScanCooldown(); } catch (_) {}
-              window.handleDecodedBarcode(code, false);
-            } else {
-              alert('Касса не готова. Обновите страницу.');
-            }
-            manualInput.value = '';
-          };
-
-          manualBtn.addEventListener('click', doSearch);
-          manualInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              doSearch();
-            }
-          });
-        }
-      }
-
-      // Если cash.js уже загрузился (скрипт выше), просто провяжем сразу.
-      // Если по какой-то причине функции ещё нет — подождём DOMContentLoaded.
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', wireScannerUI);
-      } else {
-        wireScannerUI();
-      }
-
-      // Страховка: если cash.js загрузился позже — перепроверим ещё раз.
-      window.addEventListener('load', wireScannerUI);
-    })();
-  </script>
 </body>
 </html>
