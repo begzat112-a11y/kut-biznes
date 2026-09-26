@@ -1,9 +1,6 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v2
-   Работает поверх window.KUT (из js/app.js):
-   • каталог — реалтайм-подписка на Firestore products
-   • оформление продажи — KUT.registerSale (atomic batch)
-   • сканер штрихкода с cooldown 2 сек
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v3
+   При продаже сохраняет ФИО кассира, его UID и роль.
    ========================================================= */
 
 (function () {
@@ -12,9 +9,6 @@
   const SCAN_COOLDOWN_MS = 2000;
   const CATEGORIES_FALLBACK = ['Все', 'Выпечка', 'Напитки', 'Продукты', 'Хозтовары', 'Одежда', 'Услуги', 'Другое'];
 
-  // =========================================================
-  // СОСТОЯНИЕ
-  // =========================================================
   const state = {
     products: [],
     cart: [],
@@ -28,15 +22,11 @@
   let lastScannedBarcode = null;
   let lastScannedAt = 0;
 
-  // =========================================================
-  // DOM
-  // =========================================================
   const $ = (s) => document.querySelector(s);
   const el = {
     categories:    $('#categories'),
     productsGrid:  $('#productsGrid'),
     searchInput:   $('#searchInput'),
-
     cart:          $('#cart'),
     cartItems:     $('#cartItems'),
     cartEmpty:     $('#cartEmpty'),
@@ -44,11 +34,9 @@
     cartTotal:     $('#cartTotal'),
     clearCartBtn:  $('#clearCartBtn'),
     checkoutBtn:   $('#checkoutBtn'),
-
     cartToggle:      $('#cartToggle'),
     cartToggleCount: $('#cartToggleCount'),
     cartToggleSum:   $('#cartToggleSum'),
-
     paymentModal:   $('#paymentModal'),
     paymentTotal:   $('#paymentTotal'),
     payMethods:     $('#payMethods'),
@@ -56,18 +44,12 @@
     debtCustomer:   $('#debtCustomer'),
     debtList:       $('#debtCustomersList'),
     confirmPayBtn:  $('#confirmPayBtn'),
-
     successModal:   $('#successModal'),
     successTotal:   $('#successTotal'),
-
     scanBtn:           $('#cashScanBtn'),
     barcodeInput:      $('#cashBarcodeInput'),
     barcodeSearchBtn:  $('#cashBarcodeSearchBtn'),
   };
-
-  // =========================================================
-  // УТИЛИТЫ
-  // =========================================================
 
   const fmt = (n) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -88,12 +70,10 @@
   async function waitForReady(timeoutMs) {
     timeoutMs = timeoutMs || 25000;
     const start = Date.now();
-
     while (!window.KUT) {
       if (Date.now() - start > timeoutMs) return null;
       await sleep(50);
     }
-
     while (true) {
       const st = window.KUT.getState ? window.KUT.getState() : null;
       if (st && st.businessId) return st;
@@ -128,10 +108,7 @@
     };
   }
 
-  // =========================================================
-  // ЗВУК — Web Audio API
-  // =========================================================
-
+  // ===== Звук =====
   let audioCtx = null;
   function getAudioCtx() {
     if (!audioCtx) {
@@ -142,31 +119,23 @@
     if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
     return audioCtx;
   }
-
   function playSuccessBeep() {
-    const ctx = getAudioCtx();
-    if (!ctx) return;
+    const ctx = getAudioCtx(); if (!ctx) return;
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(2000, now);
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(2000, now);
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(0.22, now + 0.008);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
     osc.connect(gain); gain.connect(ctx.destination);
     osc.start(now); osc.stop(now + 0.1);
   }
-
   function playErrorBeep() {
-    const ctx = getAudioCtx();
-    if (!ctx) return;
+    const ctx = getAudioCtx(); if (!ctx) return;
     const now = ctx.currentTime;
     [0, 0.13].forEach((delay) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(320, now + delay);
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(320, now + delay);
       gain.gain.setValueAtTime(0.0001, now + delay);
       gain.gain.exponentialRampToValueAtTime(0.16, now + delay + 0.008);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.1);
@@ -175,17 +144,13 @@
     });
   }
 
-  // =========================================================
-  // СКАНЕР ШТРИХКОДА
-  // =========================================================
-
+  // ===== Сканер =====
   let scannerModal = null;
   let scannerInstance = null;
   let scanFeedbackTimer = null;
 
   function ensureScannerModal() {
     if (scannerModal) return scannerModal;
-
     scannerModal = document.createElement('div');
     scannerModal.className = 'modal';
     scannerModal.id = 'cashScannerModal';
@@ -198,32 +163,21 @@
           Наводите камеру на штрихкоды — товары добавляются в чек.
         </p>
         <div style="position:relative;">
-          <div id="cashScannerReader"
-               style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
-          <div id="cashScannerFeedback"
-               style="position:absolute; left:12px; right:12px; bottom:12px;
-                      padding:10px 14px; border-radius:12px;
-                      font-family:inherit; font-size:14px; font-weight:600;
-                      text-align:center; color:#fff;
-                      background:rgba(0,95,64,.92);
-                      box-shadow:0 6px 18px rgba(0,0,0,.25);
-                      opacity:0; transform:translateY(8px);
-                      transition:opacity .2s ease, transform .2s ease;
-                      pointer-events:none;">
-          </div>
+          <div id="cashScannerReader" style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
+          <div id="cashScannerFeedback" style="position:absolute; left:12px; right:12px; bottom:12px;
+               padding:10px 14px; border-radius:12px; font-family:inherit; font-size:14px;
+               font-weight:600; text-align:center; color:#fff; background:rgba(0,95,64,.92);
+               box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(8px);
+               transition:opacity .2s ease, transform .2s ease; pointer-events:none;"></div>
         </div>
         <div style="display:flex; gap:10px; margin-top:16px;">
-          <button class="btn btn--primary btn--block" type="button" data-close-scanner>
-            Готово
-          </button>
+          <button class="btn btn--primary btn--block" type="button" data-close-scanner>Готово</button>
         </div>
       </div>`;
     document.body.appendChild(scannerModal);
-
     scannerModal.addEventListener('click', (e) => {
       if (e.target.matches('[data-close-scanner]')) stopScanner();
     });
-
     return scannerModal;
   }
 
@@ -231,9 +185,7 @@
     const box = scannerModal?.querySelector('#cashScannerFeedback');
     if (!box) return;
     box.textContent = text;
-    box.style.background = (kind === 'error')
-      ? 'rgba(192,57,43,.92)'
-      : 'rgba(0,95,64,.92)';
+    box.style.background = (kind === 'error') ? 'rgba(192,57,43,.92)' : 'rgba(0,95,64,.92)';
     box.style.opacity = '1';
     box.style.transform = 'translateY(0)';
     clearTimeout(scanFeedbackTimer);
@@ -277,9 +229,7 @@
       await scannerInstance.start(
         { facingMode: 'environment' },
         config,
-        (decodedText) => {
-          handleDecodedBarcode(String(decodedText).trim(), true);
-        },
+        (decodedText) => { handleDecodedBarcode(String(decodedText).trim(), true); },
         () => {}
       );
     } catch (err) {
@@ -301,31 +251,20 @@
     document.body.style.overflow = '';
   }
 
-  // =========================================================
-  // ЯДРО ЛОГИКИ СКАНИРОВАНИЯ
-  // =========================================================
-
   function handleDecodedBarcode(code, fromCamera) {
     if (!code) return;
     const now = Date.now();
-
-    // Cooldown: тот же штрихкод в течение 2 сек игнорируется
-    if (code === lastScannedBarcode && (now - lastScannedAt) < SCAN_COOLDOWN_MS) {
-      return;
-    }
+    if (code === lastScannedBarcode && (now - lastScannedAt) < SCAN_COOLDOWN_MS) return;
     lastScannedBarcode = code;
     lastScannedAt = now;
 
     const product = state.products.find((p) => String(p.barcode) === String(code));
-
     if (!product) {
       if (fromCamera) {
         if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
         playErrorBeep();
         showScanFeedback(`Товар «${code}» не найден на складе`, 'error');
-      } else {
-        notify(`Товар со штрихкодом ${code} не найден`, true);
-      }
+      } else notify(`Товар со штрихкодом ${code} не найден`, true);
       return;
     }
 
@@ -341,17 +280,12 @@
         if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
         playErrorBeep();
         showScanFeedback(msg, 'error');
-      } else {
-        notify(msg, true);
-      }
+      } else notify(msg, true);
       return;
     }
 
     if (existing) existing.qty += 1;
-    else state.cart.push({
-      id: product.id, name: product.name, price: product.price,
-      unit: product.unit, qty: 1,
-    });
+    else state.cart.push({ id: product.id, name: product.name, price: product.price, unit: product.unit, qty: 1 });
 
     if (fromCamera) {
       if (navigator.vibrate) navigator.vibrate(80);
@@ -366,40 +300,27 @@
     pulseCartBadge();
   }
 
-  // =========================================================
-  // КАТАЛОГ
-  // =========================================================
-
   function renderCategories() {
     if (!el.categories) return;
     const available = ['Все', ...new Set(state.products.map((p) => p.category).filter(Boolean))];
     const list = available.length > 1 ? available : CATEGORIES_FALLBACK;
-
-    el.categories.innerHTML = list
-      .map((cat) => {
-        const active = cat === state.category ? ' is-active' : '';
-        const label = window.KUT_LANG?.tCategory(cat) || cat;
-        return `<button class="cat-chip${active}" type="button" role="tab"
-                aria-selected="${cat === state.category}"
-                data-cat="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
-      })
-      .join('');
+    el.categories.innerHTML = list.map((cat) => {
+      const active = cat === state.category ? ' is-active' : '';
+      return `<button class="cat-chip${active}" type="button" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+    }).join('');
   }
 
   function getVisibleProducts() {
     const q = state.search.trim().toLowerCase();
     return state.products.filter((p) => {
       const matchCat = state.category === 'Все' || p.category === state.category;
-      const matchSearch = !q ||
-        p.name.toLowerCase().includes(q) ||
-        String(p.barcode || '').includes(q);
+      const matchSearch = !q || p.name.toLowerCase().includes(q) || String(p.barcode || '').includes(q);
       return matchCat && matchSearch;
     });
   }
 
   function renderProducts() {
     if (!el.productsGrid) return;
-
     if (state.products.length === 0) {
       el.productsGrid.innerHTML = `
         <div class="empty-stock">
@@ -410,66 +331,46 @@
         </div>`;
       return;
     }
-
     const items = getVisibleProducts();
-
     if (items.length === 0) {
-      el.productsGrid.innerHTML =
-        `<div class="products__empty">Ничего не найдено. Попробуйте изменить запрос или категорию.</div>`;
+      el.productsGrid.innerHTML = `<div class="products__empty">Ничего не найдено.</div>`;
       return;
     }
-
-    el.productsGrid.innerHTML = items
-      .map((p) => {
-        const qty = Number(p.qty);
-        const isFiniteQty = Number.isFinite(qty);
-        const isOut = isFiniteQty && qty <= 0;
-        const unit = p.unit || 'шт';
-
-        const stockLine = isFiniteQty
-          ? `<span style="font-size:11px;font-weight:600;margin-top:2px;color:${
-              isOut ? '#C0392B' : qty < 5 ? '#E08A1E' : '#64776E'
-            };">${isOut ? 'нет в наличии' : 'осталось ' + fmt(qty) + ' ' + escapeHtml(unit)}</span>`
-          : '';
-
-        return `
-          <button class="product" type="button" data-id="${escapeHtml(p.id)}"
-            aria-label="${escapeHtml(p.name)}, ${p.price} KGS"
-            ${isOut ? 'aria-disabled="true"' : ''}
-            style="${isOut ? 'opacity:.55;' : ''}">
-            <span class="product__emoji" aria-hidden="true">${p.emoji}</span>
-            <span class="product__name">${escapeHtml(window.KUT_LANG?.tProduct(p.name) || p.name)}</span>
-            <span class="product__price">${fmt(p.price)}<small>KGS</small></span>
-            ${stockLine}
-          </button>`;
-      })
-      .join('');
+    el.productsGrid.innerHTML = items.map((p) => {
+      const qty = Number(p.qty);
+      const isFiniteQty = Number.isFinite(qty);
+      const isOut = isFiniteQty && qty <= 0;
+      const unit = p.unit || 'шт';
+      const stockLine = isFiniteQty
+        ? `<span style="font-size:11px;font-weight:600;margin-top:2px;color:${
+            isOut ? '#C0392B' : qty < 5 ? '#E08A1E' : '#64776E'
+          };">${isOut ? 'нет в наличии' : 'осталось ' + fmt(qty) + ' ' + escapeHtml(unit)}</span>`
+        : '';
+      return `
+        <button class="product" type="button" data-id="${escapeHtml(p.id)}"
+          ${isOut ? 'aria-disabled="true"' : ''} style="${isOut ? 'opacity:.55;' : ''}">
+          <span class="product__emoji" aria-hidden="true">${p.emoji}</span>
+          <span class="product__name">${escapeHtml(p.name)}</span>
+          <span class="product__price">${fmt(p.price)}<small>KGS</small></span>
+          ${stockLine}
+        </button>`;
+    }).join('');
   }
-
-  // =========================================================
-  // КОРЗИНА
-  // =========================================================
 
   function addToCart(productId) {
     const product = state.products.find((p) => p.id === productId);
     if (!product) return;
-
     const existing = state.cart.find((i) => i.id === productId);
     const currentQty = existing ? existing.qty : 0;
     const stockQty = Number(product.qty);
     const unit = product.unit || 'шт';
-
     if (Number.isFinite(stockQty) && currentQty >= stockQty) {
       if (stockQty <= 0) notify(`Товар «${product.name}» закончился.`, true);
       else notify(`Недостаточно товара! Осталось всего ${fmt(stockQty)} ${unit}.`, true);
       return;
     }
-
     if (existing) existing.qty += 1;
-    else state.cart.push({
-      id: product.id, name: product.name, price: product.price, unit, qty: 1,
-    });
-
+    else state.cart.push({ id: product.id, name: product.name, price: product.price, unit, qty: 1 });
     renderCart();
     pulseCartBadge();
   }
@@ -477,17 +378,14 @@
   function changeQty(productId, delta) {
     const item = state.cart.find((i) => i.id === productId);
     if (!item) return;
-
     if (delta > 0) {
       const product = state.products.find((p) => p.id === productId);
       const stockQty = product ? Number(product.qty) : Infinity;
       if (Number.isFinite(stockQty) && item.qty >= stockQty) {
-        const unit = (product && product.unit) || 'шт';
-        notify(`Недостаточно товара! Осталось всего ${fmt(stockQty)} ${unit}.`, true);
+        notify(`Недостаточно товара! Осталось ${fmt(stockQty)} ${(product && product.unit) || 'шт'}.`, true);
         return;
       }
     }
-
     item.qty += delta;
     if (item.qty <= 0) state.cart = state.cart.filter((i) => i.id !== productId);
     renderCart();
@@ -504,8 +402,8 @@
     renderCart();
   }
 
-  function getCartTotal() { return state.cart.reduce((sum, i) => sum + i.price * i.qty, 0); }
-  function getCartCount() { return state.cart.reduce((sum, i) => sum + i.qty, 0); }
+  const getCartTotal = () => state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const getCartCount = () => state.cart.reduce((s, i) => s + i.qty, 0);
 
   function renderCart() {
     const { cart } = state;
@@ -523,16 +421,16 @@
         el.cartItems.innerHTML = cart.map((i) => `
           <div class="cart-item" data-id="${escapeHtml(i.id)}">
             <div class="cart-item__info">
-              <div class="cart-item__name">${escapeHtml(window.KUT_LANG?.tProduct(i.name) || i.name)}</div>
+              <div class="cart-item__name">${escapeHtml(i.name)}</div>
               <div class="cart-item__meta">${fmt(i.price)} × ${i.qty} ${escapeHtml(i.unit || 'шт')}</div>
               <div class="cart-item__total">${fmt(i.price * i.qty)} KGS</div>
             </div>
-            <div class="cart-item__controls" role="group" aria-label="Количество">
-              <button class="qty-btn" type="button" data-act="dec" aria-label="Уменьшить">−</button>
+            <div class="cart-item__controls">
+              <button class="qty-btn" type="button" data-act="dec">−</button>
               <span class="qty-value">${i.qty}</span>
-              <button class="qty-btn" type="button" data-act="inc" aria-label="Увеличить">+</button>
+              <button class="qty-btn" type="button" data-act="inc">+</button>
             </div>
-            <button class="qty-remove" type="button" data-act="remove" aria-label="Удалить">×</button>
+            <button class="qty-remove" type="button" data-act="remove">×</button>
           </div>`).join('');
       }
     }
@@ -556,10 +454,6 @@
     );
   }
 
-  // =========================================================
-  // МОДАЛЬНЫЕ ОКНА
-  // =========================================================
-
   let lastFocused = null;
   function openModal(modal) {
     lastFocused = document.activeElement;
@@ -572,10 +466,6 @@
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
-  // =========================================================
-  // ОПЛАТА
-  // =========================================================
-
   function openPaymentModal() {
     if (state.cart.length === 0) return;
     state.paymentMethod = null;
@@ -583,7 +473,6 @@
     if (el.debtCustomer) el.debtCustomer.value = '';
     if (el.debtBlock) el.debtBlock.hidden = true;
     if (el.confirmPayBtn) el.confirmPayBtn.disabled = true;
-
     if (el.payMethods) {
       el.payMethods.querySelectorAll('.pay-method').forEach((btn) => {
         btn.classList.remove('is-active');
@@ -604,7 +493,6 @@
         btn.setAttribute('aria-checked', String(isActive));
       });
     }
-
     if (method === 'debt') {
       if (el.debtBlock) el.debtBlock.hidden = false;
       requestAnimationFrame(() => el.debtCustomer && el.debtCustomer.focus());
@@ -623,7 +511,6 @@
     el.confirmPayBtn.disabled = state.customer.trim().length < 2;
   }
 
-  // ---------- Клиенты (для «Несие») ----------
   function readCustomersLS() {
     try {
       const raw = localStorage.getItem('kut_customers');
@@ -645,10 +532,6 @@
     el.debtList.innerHTML = list.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('');
   }
 
-  // =========================================================
-  // ПОДТВЕРЖДЕНИЕ ПРОДАЖИ
-  // =========================================================
-
   async function confirmPayment() {
     if (state.cart.length === 0) return;
     if (!state.paymentMethod) return;
@@ -658,6 +541,15 @@
       notify('Ошибка: ядро не загружено.', true);
       return;
     }
+
+    const currentState = window.KUT.getState ? window.KUT.getState() : null;
+    const profile = currentState?.profile || null;
+    const cashier = profile ? {
+      uid:        profile.uid || '',
+      name:       profile.displayName || profile.email || '',
+      email:      profile.email || '',
+      role:       profile.role || 'cashier',
+    } : null;
 
     const total = getCartTotal();
 
@@ -675,6 +567,7 @@
       paymentMethod: state.paymentMethod,
       customer: state.customer,
       customerPhone: '',
+      cashier: cashier,
     });
 
     if (el.confirmPayBtn) {
@@ -710,58 +603,40 @@
     if (el.cart) el.cart.classList.remove('is-open');
   }
 
-  // =========================================================
-  // РУЧНОЙ ВВОД ШТРИХКОДА
-  // =========================================================
-
   function setupManualBarcode() {
     const input = el.barcodeInput;
     const btn = el.barcodeSearchBtn;
     if (!input || !btn) return;
-
     const doSearch = () => {
       const code = input.value.trim();
       if (!code) return;
-      // Осознанный ручной ввод — сбрасываем cooldown
-      if (code === lastScannedBarcode &&
-          (Date.now() - lastScannedAt) < SCAN_COOLDOWN_MS) {
+      if (code === lastScannedBarcode && (Date.now() - lastScannedAt) < SCAN_COOLDOWN_MS) {
         lastScannedBarcode = null;
       }
       handleDecodedBarcode(code, false);
       input.value = '';
     };
-
     btn.addEventListener('click', doSearch);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
     });
   }
 
-  // =========================================================
-  // СОБЫТИЯ
-  // =========================================================
-
   function bindEvents() {
     if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
-      state.search = e.target.value;
-      renderProducts();
+      state.search = e.target.value; renderProducts();
     });
-
     if (el.categories) el.categories.addEventListener('click', (e) => {
       const chip = e.target.closest('.cat-chip');
       if (!chip) return;
       state.category = chip.dataset.cat;
-      renderCategories();
-      renderProducts();
+      renderCategories(); renderProducts();
     });
-
     if (el.productsGrid) el.productsGrid.addEventListener('click', (e) => {
       const card = e.target.closest('.product');
-      if (!card) return;
-      if (card.getAttribute('aria-disabled') === 'true') return;
+      if (!card || card.getAttribute('aria-disabled') === 'true') return;
       addToCart(card.dataset.id);
     });
-
     if (el.cartItems) el.cartItems.addEventListener('click', (e) => {
       const row = e.target.closest('.cart-item');
       if (!row) return;
@@ -773,27 +648,20 @@
       else if (act === 'dec') changeQty(id, -1);
       else if (act === 'remove') removeFromCart(id);
     });
-
     if (el.clearCartBtn) el.clearCartBtn.addEventListener('click', () => {
       if (state.cart.length === 0) return;
       if (confirm('Очистить чек полностью?')) clearCart();
     });
-
     if (el.checkoutBtn) el.checkoutBtn.addEventListener('click', openPaymentModal);
-
     if (el.payMethods) el.payMethods.addEventListener('click', (e) => {
       const btn = e.target.closest('.pay-method');
       if (!btn) return;
       selectPaymentMethod(btn.dataset.method);
     });
-
     if (el.debtCustomer) el.debtCustomer.addEventListener('input', (e) => {
-      state.customer = e.target.value;
-      updateConfirmState();
+      state.customer = e.target.value; updateConfirmState();
     });
-
     if (el.confirmPayBtn) el.confirmPayBtn.addEventListener('click', confirmPayment);
-
     if (el.scanBtn) el.scanBtn.addEventListener('click', openScanner);
 
     document.addEventListener('click', (e) => {
@@ -827,37 +695,21 @@
       }
     });
 
-    window.addEventListener('kut:lang', () => {
-      renderCategories();
-      renderProducts();
-      renderCart();
-    });
-
     window.addEventListener('beforeunload', () => {
       if (state.unsubProducts) state.unsubProducts();
     });
   }
 
-  // =========================================================
-  // ИНИЦИАЛИЗАЦИЯ
-  // =========================================================
-
   async function init() {
-    // 1. Ждём появления businessId от app.js
     const st = await waitForReady();
-    if (!st) {
-      console.warn('[cash] Не дождались businessId');
-      return;
-    }
+    if (!st) { console.warn('[cash] Не дождались businessId'); return; }
 
-    // 2. Подписка на products (реалтайм)
     state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
       state.products = items.map(stockToCashProduct);
       renderCategories();
       renderProducts();
     });
 
-    // 3. Первичный рендер
     renderCategories();
     renderProducts();
     renderCart();
