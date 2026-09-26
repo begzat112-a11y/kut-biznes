@@ -15,39 +15,128 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" defer></script>
 
   <style>
-    /* ===== Локальные размеры ===== */
+    :root { --sidebar-w: 260px; }
     *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; }
+    html, body { height: 100%; margin: 0; overflow-x: hidden; max-width: 100%; width: 100%; }
     body.page-cash {
-      margin: 0; font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       display: flex; flex-direction: column; min-height: 100dvh;
       -webkit-font-smoothing: antialiased;
     }
 
+    /* Глобальный layout (sidebar + content) */
+    .layout { display: grid; grid-template-columns: 1fr; min-height: 100dvh; width: 100%; max-width: 100%; }
+    .layout > div { min-width: 0; max-width: 100%; overflow-x: hidden; }
+    @media (min-width: 1000px) {
+      .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
+    }
+
+    /* Sidebar (каркас, детали — в theme-v9.css) */
+    .sidebar {
+      padding: 16px 14px;
+      display: flex; flex-direction: column; gap: 14px;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 82%; max-width: 320px; z-index: 90;
+      transform: translateX(-105%);
+      transition: transform .28s cubic-bezier(.2,.8,.2,1);
+      overflow-y: auto;
+    }
+    .sidebar.is-open { transform: translateX(0); }
+    @media (min-width: 1000px) {
+      .sidebar { transform: none; width: var(--sidebar-w); max-width: none;
+        position: sticky; top: 0; height: 100dvh; }
+    }
+    .sidebar__brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 6px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      text-decoration: none;
+    }
+    .brand__mark {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #E7C14A, #B88F1D);
+      color: #06150F;
+      display: grid; place-items: center; font-weight: 800; font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px rgba(212,175,55,.35);
+    }
+    .brand__text strong { display: block; font-size: 15px; }
+    .brand__text small { display: block; font-size: 11px; color: rgba(237,245,241,.5); margin-top: 2px; }
+    .sidebar__nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .nav-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 12px;
+      text-decoration: none; font-size: 15px; font-weight: 500;
+    }
+    .nav-link__icon { width: 26px; display: grid; place-items: center; font-size: 18px; }
+    .nav-link__badge { margin-left: auto; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+    .sidebar__cta {
+      margin-top: auto; padding: 14px 16px; border-radius: 16px;
+      text-decoration: none; font-weight: 700;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .sidebar__cta__icon {
+      width: 40px; height: 40px; display: grid; place-items: center;
+      background: rgba(0,0,0,.12); border-radius: 12px; font-size: 20px; flex-shrink: 0;
+    }
+    .sidebar__cta__text strong { display: block; font-size: 14px; }
+    .sidebar__cta__text small { display: block; font-size: 11px; opacity: .75; margin-top: 2px; }
+    .sidebar__footer {
+      color: rgba(237,245,241,.35); font-size: 11px; text-align: center;
+      padding-top: 10px; border-top: 1px solid rgba(255,255,255,.06);
+    }
+    #sidebar-profile-slot, #sidebar-logout-slot, #sidebar-theme-slot { display: block; }
+
+    /* Overlay */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(4, 12, 9, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 80; opacity: 0; pointer-events: none;
+      transition: opacity .22s ease;
+    }
+    .overlay.is-open { opacity: 1; pointer-events: auto; }
+    @media (min-width: 1000px) { .overlay { display: none; } }
+
     /* Шапка */
-    .mobile-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; position: sticky; top: 0; z-index: 40; width: 100%; }
-    .mobile-bar__brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; flex: 1; min-width: 0; }
-    .brand__mark { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; display: grid; place-items: center; font-weight: 800; font-size: 16px; flex-shrink: 0; box-shadow: 0 6px 16px rgba(212,175,55,.35); }
-    .brand__name { font-size: 15px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mobile-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px;
+      position: sticky; top: 0; z-index: 40;
+      width: 100%; max-width: 100%;
+    }
+    .burger {
+      display: grid; place-items: center;
+      font-size: 20px; cursor: pointer; flex-shrink: 0;
+    }
+    .mobile-bar__title {
+      font-weight: 700; font-size: 15px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      min-width: 0; flex: 1; margin-left: 2px;
+    }
 
-    .pos { flex: 1; width: 100%; max-width: 1400px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: 1fr; gap: 16px; }
-    @media (min-width: 980px) { .pos { grid-template-columns: minmax(0,1fr) 400px; padding: 20px; gap: 20px; } }
-    @media (max-width: 999px) { body.page-cash .pos { padding-bottom: calc(110px + env(safe-area-inset-bottom)); } }
-
+    /* POS */
+    .pos {
+      flex: 1; width: 100%; max-width: 1400px; margin: 0 auto;
+      padding: 16px; display: grid; grid-template-columns: 1fr; gap: 16px;
+    }
+    @media (min-width: 980px) {
+      .pos { grid-template-columns: minmax(0, 1fr) 400px; padding: 20px; gap: 20px; }
+    }
+    @media (max-width: 999px) {
+      body.page-cash .pos { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+    }
     .pos__catalog { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
-    /* Поиск */
     .search { position: relative; }
     .search input { width: 100%; padding: 14px 16px 14px 44px; border-radius: 14px; font-size: 15px; font-family: inherit; outline: none; border: 1px solid var(--glass-border); background: rgba(255,255,255,.04); color: var(--text-1); }
     .search::before { content: "🔍"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 15px; opacity: .7; pointer-events: none; }
 
-    /* Категории */
     .categories { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
     .categories::-webkit-scrollbar { display: none; }
     .cat-chip { border: 1px solid var(--glass-border); padding: 10px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; font-family: inherit; min-height: 44px; }
     .cat-chip.is-active { background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; border-color: transparent; }
 
-    /* Товары */
     .products { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
     @media (min-width: 560px) { .products { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; } }
     @media (min-width: 1280px) { .products { grid-template-columns: repeat(4, minmax(0,1fr)); } }
@@ -76,20 +165,9 @@
     .empty-stock__icon { font-size: 48px; margin-bottom: 12px; opacity: .8; }
     .empty-stock h3 { margin: 0 0 8px; font-size: 17px; font-weight: 700; color: var(--text-1); }
     .empty-stock p { margin: 0 0 18px; color: var(--text-3); font-size: 14px; }
-    .empty-stock a { display: inline-block; padding: 12px 22px; border-radius: 12px;
-      background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F;
-      text-decoration: none; font-weight: 700; font-size: 14px; }
+    .empty-stock a { display: inline-block; padding: 12px 22px; border-radius: 12px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; text-decoration: none; font-weight: 700; font-size: 14px; }
 
-    /* Корзина */
-    .cart {
-      background: linear-gradient(150deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-      border: 1px solid var(--glass-border);
-      backdrop-filter: blur(18px) saturate(140%);
-      -webkit-backdrop-filter: blur(18px) saturate(140%);
-      border-radius: 22px;
-      box-shadow: var(--glass-shadow);
-      display: flex; flex-direction: column; overflow: hidden; min-height: 380px;
-    }
+    .cart { background: linear-gradient(150deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); border: 1px solid var(--glass-border); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); border-radius: 22px; box-shadow: var(--glass-shadow); display: flex; flex-direction: column; overflow: hidden; min-height: 380px; }
     [data-theme="light"] .cart { background: #FFFFFF; box-shadow: 0 8px 24px rgba(16,32,25,.08); }
     @media (min-width: 980px) { .cart { position: sticky; top: 84px; max-height: calc(100dvh - 104px); } }
     .cart__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--glass-border); }
@@ -143,7 +221,6 @@
       .cart.is-open { transform: translateY(0); }
     }
 
-    /* Модалки */
     .modal[hidden] { display: none; }
     .modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; }
     .modal__backdrop { position: absolute; inset: 0; background: rgba(4,12,9,.7); backdrop-filter: blur(6px); }
@@ -170,13 +247,11 @@
 
     .modal__actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal__actions .btn { flex: 1; }
-
     .modal__dialog--center { text-align: center; }
     .success-icon { width: 76px; height: 76px; margin: 4px auto 14px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(52,211,153,.35), rgba(52,211,153,.15)); color: var(--emerald); display: grid; place-items: center; font-size: 38px; font-weight: 800; box-shadow: 0 0 30px rgba(52,211,153,.3); }
     .modal__dialog--center p { margin: 6px 0 20px; font-size: 14px; }
     .modal__dialog--center p strong { color: var(--gold-soft); font-weight: 700; }
 
-    /* QR */
     .qr-summary { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 12px 0 16px; padding: 14px; background: rgba(212,175,55,.10); border: 1px solid rgba(212,175,55,.22); border-radius: 14px; }
     .qr-summary__label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700; color: var(--text-3); }
     .qr-summary__total { font-size: 28px; font-weight: 800; color: var(--gold-soft); line-height: 1; font-variant-numeric: tabular-nums; }
@@ -194,12 +269,7 @@
 
     button { -webkit-tap-highlight-color: transparent; }
 
-    /* Нижняя навигация */
-    .bottom-nav {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-      display: grid; grid-template-columns: 1fr 1fr 92px 1fr 1fr; align-items: center;
-      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-    }
+    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: 1fr 1fr 92px 1fr 1fr; align-items: center; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); }
     .bottom-nav__item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-family: inherit; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .3px; }
     .bottom-nav__icon { line-height: 1; }
     .bottom-nav__scan { display: grid; place-items: center; margin: -22px auto 0; border-radius: 50%; font-size: 34px; cursor: pointer; padding: 0; -webkit-tap-highlight-color: transparent; position: relative; }
@@ -209,7 +279,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v9.1-DUAL-THEME-CASH';
+      var BUILD = 'v9.2-GLOBAL-HEADER-CASH';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -237,62 +307,84 @@
     })();
   </script>
 
-  <header class="mobile-bar">
-    <a href="./index.html" class="mobile-bar__brand" aria-label="КУТ: БИЗНЕС — на главную">
-      <span class="brand__mark" aria-hidden="true">К</span>
-      <span class="brand__name">КУТ: БИЗНЕС · Касса</span>
-    </a>
+  <div class="overlay" id="overlay" aria-hidden="true"></div>
 
-    <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
-      <span class="net-pill__dot" aria-hidden="true"></span>
-      <span class="net-pill__label">онлайн</span>
-      <span class="net-pill__qty" id="net-queue-qty">0</span>
-    </span>
-
-    <button class="theme-toggle" type="button" aria-label="Переключить тему">🌙</button>
-    <div data-kut-lang></div>
-  </header>
-
-  <main class="pos">
-    <section class="pos__catalog" aria-label="Каталог товаров">
-      <button id="cashScanBtn" type="button" style="display:none;" aria-hidden="true">Сканер</button>
-
-      <div class="search">
-        <input type="search" id="searchInput" placeholder="Поиск товара по названию..." autocomplete="off">
-      </div>
-      <div class="categories" id="categories" role="tablist"></div>
-      <div class="products" id="productsGrid" aria-live="polite"></div>
-    </section>
-
-    <aside class="cart" id="cart" aria-label="Текущий чек">
-      <header class="cart__head">
-        <h2>Чек <span class="cart__count" id="cartCount" aria-live="polite">0</span></h2>
-        <button class="btn-ghost" id="clearCartBtn" type="button" disabled>Очистить</button>
-      </header>
-      <div class="cart__body" id="cartItems"></div>
-      <div class="cart__empty" id="cartEmpty">
-        <div class="cart__empty-icon" aria-hidden="true">🛒</div>
-        <p>Чек пуст</p>
-        <span>Нажмите на товар слева, чтобы добавить его</span>
-      </div>
-      <footer class="cart__foot">
-        <div class="cart__sum">
-          <span>Итого</span>
-          <strong id="cartTotal">0<small>KGS</small></strong>
-        </div>
-        <button class="btn btn--primary btn--block" id="checkoutBtn" type="button" disabled>
-          Оформить продажу
-        </button>
-      </footer>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Основное меню">
+      <div id="sidebar-profile-slot"></div>
+      <a href="./index.html" class="sidebar__brand">
+        <span class="brand__mark" aria-hidden="true">К</span>
+        <span class="brand__text">
+          <strong>КУТ: БИЗНЕС</strong>
+          <small>Учёт для малого бизнеса</small>
+        </span>
+      </a>
+      <nav class="sidebar__nav" aria-label="Навигация">
+        <a href="./index.html" class="nav-link"><span class="nav-link__icon">🏠</span><span>Главная</span></a>
+        <a href="./cash.html" class="nav-link active" aria-current="page"><span class="nav-link__icon">🧾</span><span>Касса</span></a>
+        <a href="./stock.html" class="nav-link"><span class="nav-link__icon">📦</span><span>Склад</span></a>
+        <a href="./debts.html" class="nav-link"><span class="nav-link__icon">📒</span><span>Несие (долги)</span><span class="nav-link__badge" id="nav-debts-count" hidden>0</span></a>
+        <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden><span class="nav-link__icon">👥</span><span>Сотрудники</span><span class="nav-link__badge" id="nav-staff-count" hidden>0</span></a>
+      </nav>
+      <a href="./cash.html" class="sidebar__cta" aria-label="Открыть кассу">
+        <span class="sidebar__cta__icon" aria-hidden="true">＋</span>
+        <span class="sidebar__cta__text"><strong>Открыть кассу</strong><small>Новая продажа</small></span>
+      </a>
+      <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
+      <div id="sidebar-theme-slot"></div>
+      <div id="sidebar-logout-slot"></div>
     </aside>
-  </main>
+
+    <div>
+      <header class="mobile-bar">
+        <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
+        <span class="mobile-bar__title">КУТ: БИЗНЕС · <span id="page-title">Касса</span></span>
+        <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
+          <span class="net-pill__dot" aria-hidden="true"></span>
+          <span class="net-pill__label">онлайн</span>
+          <span class="net-pill__qty" id="net-queue-qty">0</span>
+        </span>
+        <div data-kut-lang></div>
+      </header>
+
+      <main class="pos">
+        <section class="pos__catalog" aria-label="Каталог товаров">
+          <button id="cashScanBtn" type="button" style="display:none;" aria-hidden="true">Сканер</button>
+          <div class="search">
+            <input type="search" id="searchInput" placeholder="Поиск товара по названию..." autocomplete="off">
+          </div>
+          <div class="categories" id="categories" role="tablist"></div>
+          <div class="products" id="productsGrid" aria-live="polite"></div>
+        </section>
+
+        <aside class="cart" id="cart" aria-label="Текущий чек">
+          <header class="cart__head">
+            <h2>Чек <span class="cart__count" id="cartCount" aria-live="polite">0</span></h2>
+            <button class="btn-ghost" id="clearCartBtn" type="button" disabled>Очистить</button>
+          </header>
+          <div class="cart__body" id="cartItems"></div>
+          <div class="cart__empty" id="cartEmpty">
+            <div class="cart__empty-icon" aria-hidden="true">🛒</div>
+            <p>Чек пуст</p>
+            <span>Нажмите на товар слева, чтобы добавить его</span>
+          </div>
+          <footer class="cart__foot">
+            <div class="cart__sum">
+              <span>Итого</span>
+              <strong id="cartTotal">0<small>KGS</small></strong>
+            </div>
+            <button class="btn btn--primary btn--block" id="checkoutBtn" type="button" disabled>Оформить продажу</button>
+          </footer>
+        </aside>
+      </main>
+    </div>
+  </div>
 
   <button class="cart-toggle" id="cartToggle" type="button" aria-controls="cart">
     <span>🛒 Чек <b id="cartToggleCount">0</b></span>
     <span id="cartToggleSum">0 KGS</span>
   </button>
 
-  <!-- Модалка выбора способа оплаты -->
   <div class="modal" id="paymentModal" hidden>
     <div class="modal__backdrop" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true">
@@ -300,16 +392,13 @@
       <p class="modal__subtitle">Сумма к оплате: <strong id="paymentTotal">0 KGS</strong></p>
       <div class="pay-methods" id="payMethods" role="radiogroup">
         <button class="pay-method" data-method="cash" type="button" role="radio" aria-checked="false">
-          <span class="pay-method__icon" aria-hidden="true">💵</span>
-          <span>Наличные</span>
+          <span class="pay-method__icon" aria-hidden="true">💵</span><span>Наличные</span>
         </button>
         <button class="pay-method" data-method="wallet" type="button" role="radio" aria-checked="false">
-          <span class="pay-method__icon" aria-hidden="true">📱</span>
-          <span>MBANK / Элсом / О!Деньги</span>
+          <span class="pay-method__icon" aria-hidden="true">📱</span><span>MBANK / Элсом / О!Деньги</span>
         </button>
         <button class="pay-method" data-method="debt" type="button" role="radio" aria-checked="false">
-          <span class="pay-method__icon" aria-hidden="true">📝</span>
-          <span>В долг (Несие)</span>
+          <span class="pay-method__icon" aria-hidden="true">📝</span><span>В долг (Несие)</span>
         </button>
       </div>
       <div class="debt-block" id="debtBlock" hidden>
@@ -325,36 +414,22 @@
     </div>
   </div>
 
-  <!-- Модалка QR -->
   <div class="modal" id="qrPaymentModal" hidden>
     <div class="modal__backdrop" data-close-qr></div>
     <div class="modal__dialog modal__dialog--center" role="dialog" aria-modal="true" style="max-width: 420px;">
       <h3>Оплата по QR-коду</h3>
       <p class="modal__subtitle" style="margin-bottom: 0;">Покажите QR-код клиенту для перевода</p>
-
       <div class="qr-summary">
         <span class="qr-summary__label">Сумма к оплате</span>
         <strong class="qr-summary__total" id="qrPaymentTotal">0<small>KGS</small></strong>
       </div>
-
       <div class="qr-frame" id="qrCodeContainer">
-        <div class="qr-frame__loading">
-          <div class="spinner-qr"></div>
-          Генерируем QR...
-        </div>
+        <div class="qr-frame__loading"><div class="spinner-qr"></div>Генерируем QR...</div>
       </div>
-
-      <p class="qr-hint">
-        Клиент переводит через<br>
-        <strong>MBANK / Элсом / О!Деньги</strong><br>
-        После зачисления денег нажмите кнопку ниже.
-      </p>
-
+      <p class="qr-hint">Клиент переводит через<br><strong>MBANK / Элсом / О!Деньги</strong><br>После зачисления денег нажмите кнопку ниже.</p>
       <div class="modal__actions">
         <button class="btn btn--ghost" type="button" id="qrCancelBtn">Отмена</button>
-        <button class="btn btn--qr-confirm" type="button" id="qrConfirmBtn">
-          ✅ Я получил перевод
-        </button>
+        <button class="btn btn--qr-confirm" type="button" id="qrConfirmBtn">✅ Я получил перевод</button>
       </div>
     </div>
   </div>
@@ -370,26 +445,11 @@
   </div>
 
   <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
-    <a href="./index.html" class="bottom-nav__item" data-page="index">
-      <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
-      <span>Главная</span>
-    </a>
-    <a href="./stock.html" class="bottom-nav__item" data-page="stock">
-      <span class="bottom-nav__icon" aria-hidden="true">📦</span>
-      <span>Склад</span>
-    </a>
-    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать штрихкод">
-      <span aria-hidden="true">📷</span>
-    </button>
-    <a href="./cash.html" class="bottom-nav__item" data-page="cash">
-      <span class="bottom-nav__icon" aria-hidden="true">⚡</span>
-      <span>Касса</span>
-    </a>
-    <a href="./debts.html" class="bottom-nav__item" data-page="debts">
-      <span class="bottom-nav__icon" aria-hidden="true">📒</span>
-      <span>Несие</span>
-      <span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span>
-    </a>
+    <a href="./index.html" class="bottom-nav__item" data-page="index"><span class="bottom-nav__icon" aria-hidden="true">🏠</span><span>Главная</span></a>
+    <a href="./stock.html" class="bottom-nav__item" data-page="stock"><span class="bottom-nav__icon" aria-hidden="true">📦</span><span>Склад</span></a>
+    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать штрихкод"><span aria-hidden="true">📷</span></button>
+    <a href="./cash.html" class="bottom-nav__item" data-page="cash"><span class="bottom-nav__icon" aria-hidden="true">⚡</span><span>Касса</span></a>
+    <a href="./debts.html" class="bottom-nav__item" data-page="debts"><span class="bottom-nav__icon" aria-hidden="true">📒</span><span>Несие</span><span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span></a>
   </nav>
 
   <script>
@@ -411,6 +471,7 @@
   </script>
 
   <script src="./js/theme.js"></script>
+  <script src="./js/ui-chrome.js"></script>
   <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/cash.js"></script>
   <script src="./js/lang.js"></script>
