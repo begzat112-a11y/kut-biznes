@@ -3,7 +3,7 @@
    HTML — всегда из сети. Кэш только для CSS/иконок.
    ========================================================= */
 
-const CACHE_NAME = 'kut-biznes-v5.5.0';
+const CACHE_NAME = 'kut-biznes-v5.6.0';
 
 const ASSETS = [
   './css/style.css',
