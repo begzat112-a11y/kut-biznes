@@ -33,14 +33,11 @@
       -webkit-font-smoothing: antialiased;
       overflow-wrap: break-word; word-wrap: break-word;
     }
-
     .layout {
       display: grid; grid-template-columns: 1fr;
       min-height: 100dvh; width: 100%; max-width: 100%;
     }
-    .layout > div {
-      min-width: 0; max-width: 100%; overflow-x: hidden;
-    }
+    .layout > div { min-width: 0; max-width: 100%; overflow-x: hidden; }
     @media (min-width: 1000px) {
       .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
     }
@@ -69,7 +66,6 @@
     .brand__text { line-height: 1.15; min-width: 0; }
     .brand__text strong { display: block; font-size: 15px; }
     .brand__text small { display: block; font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; }
-
     .sidebar__nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
     .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px;
       border-radius: 12px; color: rgba(255,255,255,.85); text-decoration: none;
@@ -119,15 +115,10 @@
       white-space: nowrap; min-width: 0; flex: 1; text-align: center;
     }
     .mobile-bar__badge {
-      font-size: 10px;
-      padding: 4px 8px;
-      background: rgba(212,175,55,.22);
-      color: var(--kut-gold);
-      border-radius: 999px;
-      font-weight: 800;
-      letter-spacing: .5px;
-      flex-shrink: 0;
-      text-transform: uppercase;
+      font-size: 10px; padding: 4px 8px;
+      background: rgba(212,175,55,.22); color: var(--kut-gold);
+      border-radius: 999px; font-weight: 800;
+      letter-spacing: .5px; flex-shrink: 0; text-transform: uppercase;
     }
 
     /* ===== Основной контент ===== */
@@ -138,18 +129,16 @@
     @media (min-width: 1000px) {
       .main-content { padding: 28px 32px 32px; gap: 22px; }
     }
-    /* ⬇️ Отступ снизу, чтобы контент не уезжал под bottom-nav + FAB */
     @media (max-width: 999px) {
       body.page-home .main-content {
-        padding-bottom: calc(110px + env(safe-area-inset-bottom));
+        padding-bottom: calc(100px + env(safe-area-inset-bottom));
       }
     }
 
-    /* ===== Заголовок страницы ===== */
+    /* ===== Заголовок ===== */
     .page-head {
       display: flex; flex-direction: column; gap: 10px;
-      min-width: 0; max-width: 100%;
-      align-items: flex-start;
+      min-width: 0; max-width: 100%; align-items: flex-start;
     }
     @media (min-width: 720px) {
       .page-head { flex-direction: row; align-items: center;
@@ -161,14 +150,12 @@
     }
     .page-head p { margin: 4px 0 0; color: var(--kut-muted); font-size: 14px; }
 
-    /* Бейдж роли */
     .role-badge {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 6px 12px; border-radius: 999px;
       font-size: 11px; font-weight: 800;
       text-transform: uppercase; letter-spacing: .6px;
       width: fit-content;
-      transition: background .18s ease, color .18s ease;
     }
     .role-badge--owner   { background: #FFF8E1; color: #B8952A; }
     .role-badge--manager { background: #FFF2DE; color: #9A5B10; }
@@ -215,7 +202,6 @@
       transition: background .18s ease; min-width: 0;
     }
     @media (min-width: 700px) { .analytics__card { padding: 16px; gap: 14px; } }
-    .analytics__card:hover { background: rgba(255,255,255,.14); }
     .analytics__icon {
       width: 42px; height: 42px; border-radius: 12px;
       display: grid; place-items: center; font-size: 20px;
@@ -242,7 +228,6 @@
     .analytics__card--profit .analytics__value  { color: #7FE4A5; }
     .analytics__card--stock .analytics__value   { color: #fff; }
 
-    /* ===== График ===== */
     .chart-wrap {
       margin-top: 16px; padding: 14px 12px 10px;
       background: rgba(255,255,255,.06);
@@ -289,34 +274,26 @@
     }
     @media (min-width: 700px) { .chart__label { font-size: 11px; } }
 
-    /* ===== Последние продажи ===== */
     .recent {
       background: var(--kut-surface); border: 1px solid var(--kut-border);
       border-radius: 22px; box-shadow: var(--shadow-sm);
       overflow: hidden; min-width: 0; max-width: 100%;
-      display: flex; flex-direction: column;
-      max-height: 50vh;
+      display: flex; flex-direction: column; max-height: 50vh;
     }
     .recent__head {
       display: flex; align-items: center; justify-content: space-between;
       gap: 10px; padding: 16px 18px;
-      border-bottom: 1px solid var(--kut-border); flex-wrap: wrap;
-      flex-shrink: 0;
+      border-bottom: 1px solid var(--kut-border); flex-wrap: wrap; flex-shrink: 0;
     }
     .recent__head h2 { margin: 0; font-size: 16px; font-weight: 700; }
     .recent__head a { font-size: 13px; color: var(--kut-green);
       text-decoration: none; font-weight: 600; }
     .recent__list {
-      padding: 6px 8px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      flex: 1;
-      min-height: 0;
+      padding: 6px 8px; overflow-y: auto;
+      -webkit-overflow-scrolling: touch; flex: 1; min-height: 0;
     }
     .recent__list::-webkit-scrollbar { width: 6px; }
-    .recent__list::-webkit-scrollbar-thumb {
-      background: var(--kut-border); border-radius: 3px;
-    }
+    .recent__list::-webkit-scrollbar-thumb { background: var(--kut-border); border-radius: 3px; }
     .sale-row { display: flex; align-items: center; gap: 10px; padding: 10px;
       border-radius: 12px; min-width: 0; }
     .sale-row + .sale-row { border-top: 1px dashed var(--kut-border); }
@@ -338,144 +315,85 @@
       padding: 8px 0 4px; word-break: break-word; }
     .footer a { color: var(--kut-green); text-decoration: none; }
 
-    /* =========================================================
-       НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ (Bottom Navigation Bar)
-       ========================================================= */
+    /* ============ НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ ============ */
     .bottom-nav {
       position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      left: 0; right: 0; bottom: 0;
       z-index: 60;
+      height: 68px;
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      background: rgba(255,255,255,.94);
+      grid-template-columns: 1fr 1fr 88px 1fr 1fr;
+      align-items: center;
+      background: rgba(255,255,255,.96);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid rgba(0,95,64,.10);
-      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-      box-shadow: 0 -6px 24px rgba(16,32,25,.06);
+      padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+      box-shadow: 0 -8px 28px rgba(16,32,25,.08);
     }
-    @media (min-width: 1000px) {
-      .bottom-nav { display: none; }
-    }
-
     .bottom-nav__item {
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 3px;
-      padding: 8px 4px;
-      border-radius: 12px;
-      text-decoration: none;
-      color: var(--kut-muted);
-      font-family: inherit;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .3px;
+      gap: 2px; padding: 6px 2px;
+      border-radius: 12px; text-decoration: none;
+      color: var(--kut-muted); font-family: inherit;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .3px;
       transition: background .18s ease, color .18s ease, transform .12s ease;
-      -webkit-tap-highlight-color: transparent;
+      -webkit-tap-highlight-color: transparent; min-width: 0;
     }
-    .bottom-nav__item:active { transform: scale(.96); }
+    .bottom-nav__item:active { transform: scale(.94); }
     .bottom-nav__icon {
-      font-size: 22px;
-      line-height: 1;
+      font-size: 22px; line-height: 1;
       filter: grayscale(.4) opacity(.85);
       transition: filter .18s ease, transform .18s ease;
     }
-    .bottom-nav__item.is-active {
+    .bottom-nav__item.active {
       color: var(--kut-green);
       background: var(--kut-green-soft);
     }
-    .bottom-nav__item.is-active .bottom-nav__icon {
-      filter: none;
-      transform: translateY(-1px);
+    .bottom-nav__item.active .bottom-nav__icon {
+      filter: none; transform: translateY(-1px);
     }
-
-    /* =========================================================
-       ПЛАВАЮЩАЯ КНОПКА «+» (над панелью, справа)
-       ========================================================= */
-    .fab-plus {
-      position: fixed;
-      right: 16px;
-      bottom: calc(84px + env(safe-area-inset-bottom));
-      z-index: 65;
-      width: 62px;
-      height: 62px;
+    .bottom-nav__scan {
+      position: relative;
+      display: grid; place-items: center;
+      width: 76px; height: 76px;
+      margin: -24px auto 0;
       border-radius: 50%;
-      border: none;
+      border: 5px solid #fff;
       background: linear-gradient(135deg, #FFD86B, #D4AF37);
       color: #003F2A;
       font-size: 34px;
-      font-weight: 400;
-      line-height: 1;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
-      text-decoration: none;
-      padding-bottom: 4px;
+      cursor: pointer; padding: 0;
       box-shadow:
-        0 10px 26px rgba(212,175,55,.50),
-        0 4px 12px rgba(16,32,25,.18);
+        0 10px 24px rgba(212,175,55,.55),
+        0 4px 10px rgba(16,32,25,.18);
       transition: transform .15s ease, box-shadow .18s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    .fab-plus::after {
+    .bottom-nav__scan:active { transform: scale(.94); }
+    .bottom-nav__scan::after {
       content: "";
       position: absolute;
-      inset: -6px;
+      inset: -8px;
       border-radius: 50%;
       border: 2px solid rgba(212,175,55,.35);
-      animation: fabPulse 2.2s ease-in-out infinite;
+      animation: navScanPulse 2.2s ease-in-out infinite;
       pointer-events: none;
     }
-    @keyframes fabPulse {
+    @keyframes navScanPulse {
       0%, 100% { transform: scale(1); opacity: .55; }
-      50%      { transform: scale(1.10); opacity: .15; }
+      50%      { transform: scale(1.12); opacity: .15; }
     }
-    .fab-plus:hover { transform: scale(1.04); }
-    .fab-plus:active { transform: scale(.94); }
-    .fab-plus__tip {
-      position: absolute;
-      right: calc(100% + 10px);
-      top: 50%;
-      transform: translateY(-50%);
-      background: var(--kut-green-dark);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 10px;
-      border-radius: 8px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .2s ease;
-    }
-    .fab-plus:hover .fab-plus__tip { opacity: 1; }
-
-    @media (min-width: 1000px) {
-      .fab-plus { display: none; }
-    }
-
-    /* ===== Мелкие экраны (≤ 380px) ===== */
-    @media (max-width: 380px) {
-      .main-content { padding: 12px; }
-      .analytics { padding: 16px; border-radius: 18px; }
-      .analytics__card { padding: 12px; gap: 10px; }
-      .analytics__icon { width: 38px; height: 38px; font-size: 18px; }
-      .analytics__value { font-size: 18px; }
-      .chart-wrap { padding: 12px 10px 8px; }
-      .bottom-nav__icon { font-size: 20px; }
-      .bottom-nav__item { padding: 6px 3px; }
-      .fab-plus { width: 56px; height: 56px; font-size: 30px; }
-    }
+    @media (min-width: 1000px) { .bottom-nav { display: none !important; } }
   </style>
 </head>
 <body class="page-home">
 
   <script>
     (function () {
-      var BUILD = 'v6.6-BOTTOM-NAV';
+      var BUILD = 'v7.1-BOTTOM-NAV';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -507,7 +425,6 @@
 
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
-      <!-- Плейсхолдер: app.js вставит профиль -->
       <div id="sidebar-profile-slot"></div>
 
       <a href="./index.html" class="sidebar__brand">
@@ -553,7 +470,6 @@
 
       <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
 
-      <!-- Плейсхолдер: app.js вставит кнопку «Выйти» -->
       <div id="sidebar-logout-slot"></div>
     </aside>
 
@@ -565,7 +481,6 @@
       </header>
 
       <main class="main-content">
-        <!-- Приветствие + бейдж роли -->
         <div class="page-head">
           <div>
             <h1>Здравствуйте! 👋</h1>
@@ -574,7 +489,6 @@
           <span class="role-badge role-badge--user" id="role-badge">Пользователь</span>
         </div>
 
-        <!-- Финансовая аналитика (статичная) -->
         <section class="analytics" aria-label="Финансовая аналитика">
           <div class="analytics__head">
             <h2 class="analytics__title">📊 Финансовая аналитика</h2>
@@ -614,7 +528,7 @@
           </div>
         </section>
 
-        <!-- Скрытые виджеты (для совместимости с app.js) — визуально не отображаются -->
+        <!-- Скрытые виджеты для совместимости с app.js -->
         <div hidden>
           <span id="dashboard-total-sales" data-kut="revenue-total">0</span>
           <span id="dashboard-stock-value" data-kut="stock-value">0</span>
@@ -622,15 +536,12 @@
           <span id="sales-sub"></span>
           <span id="stock-sub"></span>
           <span id="debts-sub"></span>
-          <span id="nav-debts-count-2"></span>
           <span id="staff-section"></span>
           <span id="staff-total"></span>
           <span id="staff-active"></span>
           <span id="staff-pending"></span>
-          <span id="nav-staff-count-2"></span>
         </div>
 
-        <!-- Последние продажи -->
         <section class="recent" aria-label="Последние продажи">
           <div class="recent__head">
             <h2>Последние продажи</h2>
@@ -644,42 +555,32 @@
           </div>
         </section>
 
-        <div class="footer">
-          КУТ: БИЗНЕС · версия: v6.6
-        </div>
+        <div class="footer">КУТ: БИЗНЕС · версия: v7.1</div>
       </main>
     </div>
   </div>
 
-  <!-- =========================================================
-       НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ
-       ========================================================= -->
   <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
     <a href="./index.html" class="bottom-nav__item" data-page="index">
       <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
       <span>Главная</span>
     </a>
-    <a href="./cash.html" class="bottom-nav__item" data-page="cash">
-      <span class="bottom-nav__icon" aria-hidden="true">⚡</span>
-      <span>Касса</span>
-    </a>
     <a href="./stock.html" class="bottom-nav__item" data-page="stock">
       <span class="bottom-nav__icon" aria-hidden="true">📦</span>
       <span>Склад</span>
+    </a>
+    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать штрихкод">
+      <span aria-hidden="true">📷</span>
+    </button>
+    <a href="./cash.html" class="bottom-nav__item" data-page="cash">
+      <span class="bottom-nav__icon" aria-hidden="true">⚡</span>
+      <span>Касса</span>
     </a>
     <a href="./debts.html" class="bottom-nav__item" data-page="debts">
       <span class="bottom-nav__icon" aria-hidden="true">📒</span>
       <span>Несие</span>
     </a>
   </nav>
-
-  <!-- =========================================================
-       ПЛАВАЮЩАЯ КНОПКА «+» — открывает кассу со сканером
-       ========================================================= -->
-  <a href="./cash.html?scan=1" class="fab-plus" aria-label="Быстрая продажа со сканером">
-    <span aria-hidden="true">+</span>
-    <span class="fab-plus__tip">Продажа по штрихкоду</span>
-  </a>
 
   <script type="module" src="./js/app.js"></script>
 </body>
