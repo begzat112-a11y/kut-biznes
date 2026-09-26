@@ -1,7 +1,8 @@
 /* =========================================================
    КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v5
-   + своя категория через «Другое»
-   + категории подтягиваются из существующих товаров
+   + Складской журнал (warehouse_logs)
+   + Категории подтягиваются из существующих товаров
+   + Своя категория через «Другое»
    ========================================================= */
 
 (function () {
@@ -105,7 +106,6 @@
   // КАТЕГОРИИ
   // =========================================================
 
-  /** Собираем полный список категорий = базовые + уникальные из товаров */
   function getAllCategories() {
     const set = new Set(BASE_CATEGORIES);
     (state.products || []).forEach((p) => {
@@ -124,7 +124,6 @@
     return BASE_CATEGORIES.indexOf(cat) !== -1;
   }
 
-  /** Отрисовываем select с категориями + «Другое» в конце */
   function renderCategoryOptions(selected) {
     if (!el.fCategory) return;
     const cats = getAllCategories();
@@ -159,7 +158,6 @@
     setFieldError('fCategory', '');
   }
 
-  /** Возвращает финальную категорию для сохранения */
   function resolveCategory() {
     const sel = el.fCategory.value;
     if (sel === OTHER_LABEL) {
@@ -170,7 +168,7 @@
   }
 
   // =========================================================
-  // Сканер штрихкода
+  // СКАНЕР ШТРИХКОДА
   // =========================================================
   let scannerModal = null;
   let scannerInstance = null;
@@ -265,7 +263,7 @@
   }
 
   // =========================================================
-  // Рендер
+  // РЕНДЕР
   // =========================================================
   function renderStats() {
     const list = state.products;
@@ -385,8 +383,9 @@
   }
 
   // =========================================================
-  // Операции
+  // ОПЕРАЦИИ
   // =========================================================
+
   async function changeQty(productId, delta) {
     if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
@@ -394,6 +393,19 @@
     const next = Math.max(0, (Number(p.qty) || 0) + delta);
     try {
       await window.FB.updateItem('products', productId, { qty: Number(next.toFixed(2)) });
+
+      // Запись в складской журнал
+      if (delta !== 0 && window.WAREHOUSE_LOG) {
+        const actionType = delta > 0 ? 'in' : 'out';
+        window.WAREHOUSE_LOG.saveLog({
+          actionType,
+          itemName: p.name,
+          quantity: Math.abs(delta),
+          unit: p.unit || 'шт',
+          totalPrice: Math.abs(delta) * (Number(p.costPrice) || 0),
+          workerName: null,
+        }).catch(() => {});
+      }
     } catch (err) {
       console.error('[stock] changeQty:', err);
       showToast('Не удалось обновить количество', true);
@@ -418,7 +430,6 @@
     el.fBarcode.value = '';
     if (el.fCustomCategory) el.fCustomCategory.value = '';
 
-    // спрятать поле «своя категория»
     el.customCategoryWrap.classList.remove('is-visible');
 
     clearFieldErrors();
@@ -439,7 +450,6 @@
     el.productId.value = p.id;
     el.fName.value = p.name || '';
 
-    // Определяем, базовая ли категория
     const cat = String(p.category || '').trim();
     const isCustom = cat && !isBaseCategory(cat);
 
@@ -514,7 +524,7 @@
 
     const data = {
       name: el.fName.value.trim(),
-      category: resolveCategory(),  // либо базовая, либо пользовательская
+      category: resolveCategory(),
       unit: el.fUnit.value,
       qty: Number(el.fQty.value) || 0,
       costPrice: Number(el.fCost.value) || 0,
@@ -533,6 +543,18 @@
       } else {
         await window.FB.addItem('products', data);
         showToast(`Товар «${data.name}» добавлен`);
+
+        // Первый приход нового товара — тоже фиксируем
+        if (window.WAREHOUSE_LOG && Number(data.qty) > 0) {
+          window.WAREHOUSE_LOG.saveLog({
+            actionType: 'in',
+            itemName: data.name,
+            quantity: Number(data.qty),
+            unit: data.unit || 'шт',
+            totalPrice: Number(data.qty) * (Number(data.costPrice) || 0),
+            workerName: null,
+          }).catch(() => {});
+        }
       }
       closeModal(el.productModal);
     } catch (err) {
@@ -547,7 +569,7 @@
   }
 
   // =========================================================
-  // Валидация
+  // ВАЛИДАЦИЯ
   // =========================================================
   function setFieldError(fieldId, message) {
     const input = document.getElementById(fieldId);
@@ -575,7 +597,6 @@
       ok = false;
     }
 
-    // Категория
     const finalCat = resolveCategory();
     if (el.fCategory.value === OTHER_LABEL) {
       if (!finalCat || finalCat.length < 2) {
@@ -629,7 +650,7 @@
   }
 
   // =========================================================
-  // Модалки
+  // МОДАЛКИ
   // =========================================================
   let lastFocused = null;
   function openModal(modal) {
@@ -644,7 +665,7 @@
   }
 
   // =========================================================
-  // События
+  // СОБЫТИЯ
   // =========================================================
   function bindEvents() {
     if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
@@ -673,11 +694,9 @@
       else if (act === 'delete') openDeleteModal(id);
     });
 
-    // Select категории — показываем/прячем поле «своя категория»
     if (el.fCategory) {
       el.fCategory.addEventListener('change', syncCustomCategoryVisibility);
     }
-    // Автоочистка ошибки при вводе своей категории
     if (el.fCustomCategory) {
       el.fCustomCategory.addEventListener('input', () => {
         if (el.fCustomCategory.classList.contains('is-invalid')) {
@@ -718,7 +737,7 @@
   }
 
   // =========================================================
-  // Инициализация
+  // ИНИЦИАЛИЗАЦИЯ
   // =========================================================
   async function init() {
     const st = await waitForReady();
@@ -741,8 +760,6 @@
       renderTable();
       renderChips();
 
-      // Обновляем select, если модалка закрыта — чтобы новые категории появлялись
-      // при следующем открытии. Если открыта — оставляем как есть, чтобы не сбить ввод.
       if (!el.productModal || el.productModal.hidden) {
         renderCategoryOptions(el.fCategory.value || BASE_CATEGORIES[0]);
       }
