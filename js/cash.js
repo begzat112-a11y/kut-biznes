@@ -1,8 +1,11 @@
 /* =========================================================
    КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v5
-   + QR-оплата для «MBANK / Элсом / О!Деньги»
-   + Сканер штрихкода через центральную кнопку app.js
-   + Убрано поле ручного ввода штрихкода (по требованию)
+   v8.1:
+   + QR-оплата для «MBANK / Элсом / О!Деньги» через отдельную модалку
+   + Транзакция paymentMethod: "qr" летит в Firebase только после кнопки
+     «✅ Я получил перевод»
+   + Голосовое озвучивание суммы чека (Web Speech API)
+   + Убрано поле ручного ввода штрихкода (только центральная кнопка-камера)
    + Фиксирует себестоимость costPrice в каждом item продажи.
    ========================================================= */
 
@@ -116,7 +119,9 @@
     };
   }
 
-  // ===== Звук =====
+  // =========================================================
+  // ЗВУК
+  // =========================================================
   let audioCtx = null;
   function getAudioCtx() {
     if (!audioCtx) {
@@ -152,7 +157,47 @@
     });
   }
 
-  // ===== Сканер =====
+  // =========================================================
+  // ГОЛОСОВОЕ ОЗВУЧИВАНИЕ СУММЫ ЧЕКА
+  // =========================================================
+  function speakAmount(total) {
+    try {
+      if (!('speechSynthesis' in window)) return;
+      const amount = Math.round(Number(total) || 0);
+      if (amount <= 0) return;
+
+      let lang = 'ru';
+      try {
+        const saved = localStorage.getItem('kut_lang');
+        if (saved === 'kg' || saved === 'en') lang = saved;
+      } catch (_) {}
+
+      let text;
+      if (lang === 'kg') {
+        text = 'Төлөндү ' + amount + ' сом';
+      } else if (lang === 'en') {
+        text = 'Paid ' + amount + ' som';
+      } else {
+        text = 'Товар продан. Сумма ' + amount + ' сомов';
+      }
+
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = lang === 'kg' ? 'ru-RU' : (lang === 'en' ? 'en-US' : 'ru-RU');
+      u.rate = 1.0;
+      u.pitch = 1.0;
+      u.volume = 0.9;
+
+      // Отменяем предыдущее, чтобы не наслаивалось при быстрых продажах
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      window.speechSynthesis.speak(u);
+    } catch (err) {
+      console.warn('[cash] speakAmount error:', err);
+    }
+  }
+
+  // =========================================================
+  // СКАНЕР ШТРИХКОДА (открывается центральной кнопкой app.js)
+  // =========================================================
   let scannerModal = null;
   let scannerInstance = null;
   let scanFeedbackTimer = null;
@@ -309,6 +354,9 @@
     pulseCartBadge();
   }
 
+  // =========================================================
+  // РЕНДЕР: категории и товары
+  // =========================================================
   function renderCategories() {
     if (!el.categories) return;
     const available = ['Все', ...new Set(state.products.map((p) => p.category).filter(Boolean))];
@@ -366,6 +414,9 @@
     }).join('');
   }
 
+  // =========================================================
+  // КОРЗИНА
+  // =========================================================
   function addToCart(productId) {
     const product = state.products.find((p) => p.id === productId);
     if (!product) return;
@@ -470,6 +521,9 @@
     );
   }
 
+  // =========================================================
+  // МОДАЛКИ
+  // =========================================================
   let lastFocused = null;
   function openModal(modal) {
     if (!modal) return;
@@ -484,9 +538,6 @@
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
-  // =========================================================
-  // МОДАЛКА ОПЛАТЫ
-  // =========================================================
   function openPaymentModal() {
     if (state.cart.length === 0) return;
     state.paymentMethod = null;
@@ -528,13 +579,7 @@
     if (el.debtCustomer) el.debtCustomer.value = '';
     state.customer = '';
 
-    if (method === 'wallet') {
-      // QR-оплата: запускается только после нажатия «Подтвердить»
-      if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
-      return;
-    }
-
-    // Наличные — обычный путь
+    // Для wallet кнопка «Подтвердить» активна — по ней откроется QR-модалка
     if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
   }
 
@@ -544,6 +589,9 @@
     el.confirmPayBtn.disabled = state.customer.trim().length < 2;
   }
 
+  // =========================================================
+  // СПИСОК КЛИЕНТОВ (для «в долг»)
+  // =========================================================
   function readCustomersLS() {
     try {
       const raw = localStorage.getItem('kut_customers');
@@ -566,7 +614,7 @@
   }
 
   // =========================================================
-  // QR-ОПЛАТА
+  // QR-ОПЛАТА (m BANK / Элсом / О!Деньги)
   // =========================================================
   function openQrPaymentModal() {
     if (state.cart.length === 0) {
@@ -655,15 +703,21 @@
   }
 
   // =========================================================
-  // ЗАВЕРШЕНИЕ ПРОДАЖИ
+  // ПОДТВЕРЖДЕНИЕ И ЗАВЕРШЕНИЕ ПРОДАЖИ
   // =========================================================
+
+  /**
+   * Нажатие «Подтвердить» в модалке выбора способа оплаты.
+   * • cash / debt → сразу executeSale
+   * • wallet     → открыть QR-модалку, транзакция НЕ летит
+   */
   async function confirmPayment() {
     if (state.cart.length === 0) return;
     if (!state.paymentMethod) return;
     if (state.paymentMethod === 'debt' && state.customer.trim().length < 2) return;
 
-    // QR-оплата: перехватываем и открываем модалку с QR-кодом.
-    // Транзакция полетит в Firebase только после нажатия «Я получил перевод».
+    // QR-путь: перехватываем и открываем модалку с QR-кодом.
+    // Транзакция полетит только после кнопки «✅ Я получил перевод».
     if (state.paymentMethod === 'wallet') {
       openQrPaymentModal();
       return;
@@ -672,15 +726,22 @@
     await executeSale(state.paymentMethod, el.confirmPayBtn);
   }
 
+  /**
+   * Нажатие «✅ Я получил перевод» в QR-модалке.
+   * Только тут чек улетает в Firebase с paymentMethod: 'qr'.
+   */
   async function confirmQrPayment() {
     if (state.cart.length === 0) {
       closeQrPaymentModal();
       return;
     }
-    // Продажа улетает в Firebase ТОЛЬКО сейчас — с paymentMethod: 'qr'
     await executeSale('qr', el.qrConfirmBtn);
   }
 
+  /**
+   * Единая точка фактической продажи.
+   * Здесь и только здесь создаётся запись в Firestore.
+   */
   async function executeSale(paymentMethod, btnEl) {
     if (state.cart.length === 0) return;
 
@@ -759,6 +820,9 @@
 
     if (el.qrCodeContainer) el.qrCodeContainer.innerHTML = '';
 
+    // Голосовое озвучивание суммы
+    speakAmount(total);
+
     if (el.successTotal) el.successTotal.textContent = `${fmt(total)} KGS`;
     openModal(el.successModal);
 
@@ -817,6 +881,7 @@
     if (el.qrConfirmBtn) el.qrConfirmBtn.addEventListener('click', confirmQrPayment);
     if (el.qrCancelBtn) el.qrCancelBtn.addEventListener('click', closeQrPaymentModal);
 
+    // Скрытая кнопка — открывает сканер по клику из центральной кнопки app.js
     if (el.scanBtn) el.scanBtn.addEventListener('click', openScanner);
 
     document.addEventListener('click', (e) => {
@@ -876,7 +941,7 @@
     renderProducts();
     renderCart();
     bindEvents();
-    console.info('[cash] Касса подключена · бизнес:', st.businessId, '· QR-оплата активна');
+    console.info('[cash] Касса подключена · бизнес:', st.businessId, '· QR + озвучка активны');
   }
 
   if (document.readyState === 'loading') {
