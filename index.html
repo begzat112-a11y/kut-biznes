@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -124,6 +124,24 @@
       min-width: 0; flex: 1; margin-left: 2px;
     }
 
+    /* Кнопка-переключатель темы */
+    .theme-toggle {
+      width: 44px; height: 44px;
+      display: grid; place-items: center;
+      background: var(--theme-toggle-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      color: var(--theme-toggle-color);
+      font-size: 20px;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+      transition: transform .15s ease, background .18s ease, color .22s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .theme-toggle:hover { background: rgba(212,175,55,.14); }
+    .theme-toggle:active { transform: scale(.92); }
+
     /* Основной контент */
     .main-content {
       min-width: 0; max-width: 100%; overflow-x: hidden;
@@ -216,7 +234,7 @@
       align-items: center;
       padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     }
-    .bottom-nav__item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-family: inherit; font-weight: 700; text-transform: uppercase; }
+    .bottom-nav__item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-family: inherit; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .3px; }
     .bottom-nav__icon { line-height: 1; }
     .bottom-nav__scan { display: grid; place-items: center; margin: -22px auto 0; border-radius: 50%; font-size: 34px; cursor: pointer; padding: 0; -webkit-tap-highlight-color: transparent; position: relative; }
   </style>
@@ -226,7 +244,7 @@
   <!-- Kill-switch: сброс кэша после обновления -->
   <script>
     (function () {
-      var BUILD = 'v9.0-DARK-PINE';
+      var BUILD = 'v9.1-DUAL-THEME';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -319,6 +337,7 @@
           <span class="net-pill__qty" id="net-queue-qty">0</span>
         </span>
 
+        <button class="theme-toggle" type="button" aria-label="Переключить тему">🌙</button>
         <div data-kut-lang></div>
       </header>
 
@@ -399,7 +418,7 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · v9 · Refined Dark Pine</div>
+        <div class="footer">КУТ: БИЗНЕС · v9.1 · Dual Theme</div>
       </main>
     </div>
   </div>
@@ -430,9 +449,7 @@
   </nav>
 
   <!-- =========================================================
-       Синхронизатор бейджа долгов (сайдбар → нижний бар).
-       app.js обновляет #nav-debts-count; мы зеркалим его
-       на #nav-debts-count-bottom без изменений в app.js.
+       Синхронизатор бейджа долгов (сайдбар → нижний бар)
        ========================================================= -->
   <script>
     (function () {
@@ -444,12 +461,10 @@
         if (has) {
           dst.textContent = src.textContent;
           dst.hidden = false;
-          dst.classList.add('badge-notify');
         } else {
           dst.hidden = true;
         }
       }
-      // Первичная проверка + реакция на изменения app.js
       setTimeout(sync, 500);
       setTimeout(sync, 1500);
       setTimeout(sync, 3000);
@@ -463,6 +478,7 @@
     })();
   </script>
 
+  <script src="./js/theme.js"></script>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
