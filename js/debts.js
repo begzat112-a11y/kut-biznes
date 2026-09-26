@@ -1,90 +1,81 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Несие / Учёт долгов» (debts.js) · Firebase v2
-   Работает поверх window.KUT и window.FB.
-   Коллекция: businesses/{businessId}/debts
+   КУТ: БИЗНЕС — Модуль «Несие / Долги» · v2.0
+   Схема Firestore: businesses/{bizId}/debts/{debtId}
+   
+   Новая схема:
+     customerName, customerPhone, totalDebt, updatedAt, history[]
+   
+   Совместимость (mirror) — читаем и пишем также старые поля:
+     name, phone, amount, status, payments[]
    ========================================================= */
 
 (function () {
   'use strict';
 
-  const OVERDUE_DAYS = 30;
-  const KG_PHONE_CODE = '+996';
-
-  // =========================================================
-  // СОСТОЯНИЕ
-  // =========================================================
+  // ===== STATE =====
   const state = {
     debts: [],
     search: '',
     tab: 'active',
     editingId: null,
     deletingId: null,
+    detailId: null,
     payingId: null,
-    waDebtId: null,
+    unsub: null,
     isOwner: true,
-    unsubDebts: null,
   };
 
-  // =========================================================
-  // DOM
-  // =========================================================
+  // ===== DOM =====
   const $ = (s) => document.querySelector(s);
   const el = {
     openAddBtn:    $('#openAddBtn'),
     emptyAddBtn:   $('#emptyAddBtn'),
     searchInput:   $('#searchInput'),
-
     statTotal:     $('#statTotal'),
     statCount:     $('#statCount'),
     statOverdue:   $('#statOverdue'),
-
-    tabs:          document.querySelectorAll('.tab[data-tab]'),
+    tabActive:     $('#tabActive'),
+    tabArchive:    $('#tabArchive'),
     tabActiveCount:$('#tabActiveCount'),
-    tabPaidCount:  $('#tabPaidCount'),
-
-    debtsTable:    $('#debtsTable'),
-    debtsBody:     $('#debtsBody'),
-    debtsEmpty:    $('#debtsEmpty'),
+    tabArchiveCount:$('#tabArchiveCount'),
+    list:          $('#debtsList'),
+    empty:         $('#debtsEmpty'),
     emptyTitle:    $('#emptyTitle'),
     emptyText:     $('#emptyText'),
 
-    debtModal:     $('#debtModal'),
-    debtModalTitle:$('#debtModalTitle'),
-    debtModalSub:  $('#debtModalSub'),
-    debtForm:      $('#debtForm'),
-    debtId:        $('#debtId'),
+    addModal:      $('#addModal'),
+    addForm:       $('#addForm'),
     fName:         $('#fName'),
     fPhone:        $('#fPhone'),
     fAmount:       $('#fAmount'),
-    fDate:         $('#fDate'),
-    fDueDate:      $('#fDueDate'),
     fNote:         $('#fNote'),
-    saveBtn:       $('#saveBtn'),
+    addSaveBtn:    $('#addSaveBtn'),
+
+    detailModal:   $('#detailModal'),
+    detailName:    $('#detailName'),
+    detailPhone:   $('#detailPhone'),
+    detailTotal:   $('#detailTotal'),
+    detailHistory: $('#detailHistory'),
+    detailTakeBtn: $('#detailTakeBtn'),
+    detailPayBtn:  $('#detailPayBtn'),
+    detailWaBtn:   $('#detailWaBtn'),
+    detailEditBtn: $('#detailEditBtn'),
+    detailDelBtn:  $('#detailDelBtn'),
 
     payModal:      $('#payModal'),
-    payClientName: $('#payClientName'),
-    payCurrentDebt:$('#payCurrentDebt'),
-    payOriginalDate: $('#payOriginalDate'),
+    payTitle:      $('#payTitle'),
     payForm:       $('#payForm'),
     payAmount:     $('#payAmount'),
+    payHint:       $('#payHint'),
+    paySaveBtn:    $('#paySaveBtn'),
     quickAmounts:  $('#quickAmounts'),
-    paymentsHistory: $('#paymentsHistory'),
-    confirmPayBtn: $('#confirmPayBtn'),
-
-    waModal:       $('#waModal'),
-    waClientInfo:  $('#waClientInfo'),
-    previewRu:     $('#previewRu'),
-    previewKg:     $('#previewKg'),
 
     deleteModal:   $('#deleteModal'),
     deleteName:    $('#deleteName'),
-    confirmDeleteBtn: $('#confirmDeleteBtn'),
+    confirmDeleteBtn:$('#confirmDeleteBtn'),
   };
 
-  // =========================================================
-  // УТИЛИТЫ
-  // =========================================================
-
+  // ===== UTILS =====
   const fmt = (n) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
   const fmtMoney = (n) => fmt(n) + ' KGS';
@@ -94,12 +85,10 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[ch]));
   }
-
-  function showToast(message, isError) {
-    if (window.KUT?.toast) window.KUT.toast(message, isError);
-    else console.log('[debts]', message);
+  function showToast(msg, isErr) {
+    if (window.KUT?.toast) window.KUT.toast(msg, isErr);
+    else console.log('[debts]', msg);
   }
-
   function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
   async function waitForReady(timeoutMs) {
@@ -124,690 +113,644 @@
     const d = new Date(ts);
     return isNaN(d.getTime()) ? null : d;
   }
-
-  function todayISO() {
-    const d = new Date();
+  function fmtDate(ts) {
+    const d = toDate(ts); if (!d) return '—';
     const z = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+    return `${z(d.getDate())}.${z(d.getMonth()+1)}.${d.getFullYear()}`;
+  }
+  function fmtDateTime(ts) {
+    const d = toDate(ts); if (!d) return '—';
+    const z = (n) => String(n).padStart(2, '0');
+    return `${z(d.getDate())}.${z(d.getMonth()+1)} ${z(d.getHours())}:${z(d.getMinutes())}`;
+  }
+  function daysAgo(ts) {
+    const d = toDate(ts); if (!d) return 0;
+    return Math.floor((Date.now() - d.getTime()) / 86400000);
   }
 
-  function formatDate(iso) {
-    if (!iso) return '—';
-    if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-      const [y, m, d] = iso.split('-');
-      return `${d}.${m}.${y}`;
-    }
-    const d = toDate(iso);
-    if (!d) return '—';
-    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
-
-  function daysBetween(fromISO, toISO) {
-    if (!fromISO) return 0;
-    const a = new Date(fromISO + 'T00:00:00');
-    const b = toISO ? new Date(toISO + 'T00:00:00') : new Date();
-    return Math.floor((b - a) / (1000 * 60 * 60 * 24));
-  }
-
-  // ---------- Телефон ----------
   function normalizePhone(raw) {
     let d = String(raw || '').replace(/\D/g, '');
     if (!d) return '';
     if (d.startsWith('996')) d = d.slice(3);
     else if (d.startsWith('0')) d = d.slice(1);
     d = d.slice(0, 9);
-    return KG_PHONE_CODE + d;
+    return '+996' + d;
   }
   function maskPhone(raw) {
     let d = String(raw || '').replace(/\D/g, '');
     if (d.startsWith('996')) d = d.slice(3);
     else if (d.startsWith('0')) d = d.slice(1);
     d = d.slice(0, 9);
-    if (d.length === 0) return '';
-    let out = KG_PHONE_CODE + ' ';
+    if (!d) return '';
+    let out = '+996 ';
     if (d.length <= 3) return out + d;
-    out += d.slice(0, 3) + ' ';
+    out += d.slice(0,3) + ' ';
     if (d.length <= 6) return out + d.slice(3);
-    out += d.slice(3, 6) + ' ';
-    out += d.slice(6);
-    return out;
+    out += d.slice(3,6) + ' ';
+    return out + d.slice(6);
   }
-  function isValidPhone(normalized) {
-    return /^\+996\d{9}$/.test(normalized);
+  function isValidPhone(n) { return /^\+996\d{9}$/.test(n); }
+
+  // ===== НОРМАЛИЗАЦИЯ ДОЛГА (поддержка 2 схем) =====
+  function normalizeDebt(raw) {
+    const id = raw.id;
+    const customerName  = String(raw.customerName || raw.name || 'Без имени').trim();
+    const customerPhone = String(raw.customerPhone || raw.phone || '');
+    const totalDebt = Number(
+      raw.totalDebt != null ? raw.totalDebt :
+      (raw.amount != null ? raw.amount : 0)
+    ) || 0;
+    const status = raw.status || (totalDebt <= 0 ? 'paid' : 'active');
+    const updatedAt = raw.updatedAt || raw.paidAt || raw.createdAt || raw.date || null;
+
+    // Собираем историю
+    let history = [];
+    if (Array.isArray(raw.history)) {
+      history = raw.history.map((h) => ({
+        date: h.date || h.ts || null,
+        amount: Number(h.amount) || 0,
+        type: h.type === 'pay' ? 'pay' : 'take',
+        note: h.note || '',
+      }));
+    }
+    // Дополняем из старых полей, если history пусто
+    if (history.length === 0) {
+      const initialAmount = Number(raw.initialAmount) || totalDebt;
+      if (initialAmount > 0) {
+        history.push({
+          date: raw.createdAt || raw.date || null,
+          amount: initialAmount,
+          type: 'take',
+          note: raw.note || (raw.source === 'cash' ? 'Из кассы' : ''),
+        });
+      }
+      if (Array.isArray(raw.payments)) {
+        raw.payments.forEach((p) => {
+          history.push({
+            date: p.date || null,
+            amount: Number(p.amount) || 0,
+            type: 'pay',
+            note: '',
+          });
+        });
+      }
+    }
+    // Сортируем по дате (старые сверху)
+    history.sort((a, b) => {
+      const ta = toDate(a.date)?.getTime() || 0;
+      const tb = toDate(b.date)?.getTime() || 0;
+      return ta - tb;
+    });
+
+    return {
+      id,
+      customerName,
+      customerPhone,
+      totalDebt,
+      status,
+      updatedAt,
+      history,
+      _raw: raw,
+    };
   }
 
-  // =========================================================
-  // ВЫЧИСЛЕНИЯ
-  // =========================================================
-
-  const isActive = (d) => d.status !== 'paid' && Number(d.amount) > 0;
-  const getActiveDebts = () => state.debts.filter(isActive);
-  const getPaidDebts = () => state.debts.filter((d) => d.status === 'paid' || Number(d.amount) <= 0);
-
-  function isOverdue(debt) {
-    if (!isActive(debt)) return false;
-    return daysBetween(debt.date, null) > OVERDUE_DAYS;
+  function isActive(d) {
+    return d.status !== 'paid' && Number(d.totalDebt) > 0;
   }
+  function getActiveDebts()  { return state.debts.filter(isActive); }
+  function getArchiveDebts() { return state.debts.filter((d) => !isActive(d)); }
 
-  // =========================================================
-  // РЕНДЕР
-  // =========================================================
+  // ===== API: СУММА ВСЕХ ДОЛГОВ =====
+  function getTotalDebtsSum() {
+    return state.debts.reduce((sum, d) => {
+      return isActive(d) ? sum + Number(d.totalDebt || 0) : sum;
+    }, 0);
+  }
+  window.getTotalDebtsSum = getTotalDebtsSum;
 
+  // ===== API: ДОБАВИТЬ ДОЛЖНИКА =====
+  async function addNewDebtor(name, phone, amount, note) {
+    if (!window.FB || !window.FB.db) return { ok: false, error: 'no_fb' };
+    const st = window.KUT?.getState?.() || {};
+    const bizId = st.businessId;
+    if (!bizId) return { ok: false, error: 'no_business' };
+
+    const cleanName = String(name || '').trim();
+    const cleanPhone = normalizePhone(phone);
+    const cleanAmount = Number(amount) || 0;
+    if (cleanName.length < 2) return { ok: false, error: 'bad_name' };
+    if (!isValidPhone(cleanPhone)) return { ok: false, error: 'bad_phone' };
+    if (cleanAmount <= 0) return { ok: false, error: 'bad_amount' };
+
+    try {
+      const { db, collection, addDoc, serverTimestamp } = window.FB;
+      const ref = collection(db, 'businesses', bizId, 'debts');
+      const now = new Date();
+      const docRef = await addDoc(ref, {
+        // Новая схема
+        customerName: cleanName,
+        customerPhone: cleanPhone,
+        totalDebt: cleanAmount,
+        history: [
+          { date: now, amount: cleanAmount, type: 'take', note: note || '' },
+        ],
+        // Старая схема (mirror для cash.js / app.js)
+        name: cleanName,
+        phone: cleanPhone,
+        amount: cleanAmount,
+        initialAmount: cleanAmount,
+        date: now.toISOString().slice(0, 10),
+        dueDate: '',
+        note: note || '',
+        status: 'active',
+        payments: [],
+        source: 'manual',
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      });
+      return { ok: true, id: docRef.id };
+    } catch (err) {
+      console.error('[debts] addNewDebtor:', err);
+      return { ok: false, error: err.code || err.message };
+    }
+  }
+  window.addNewDebtor = addNewDebtor;
+
+  // ===== API: ИЗМЕНИТЬ СУММУ =====
+  // type: 'pay' — клиент возвращает (сумма уменьшается)
+  //       'take' — берёт ещё товар (сумма увеличивается)
+  async function updateDebtAmount(debtorId, changeAmount, type) {
+    if (!window.FB || !window.FB.db) return { ok: false, error: 'no_fb' };
+    const st = window.KUT?.getState?.() || {};
+    const bizId = st.businessId;
+    if (!bizId) return { ok: false, error: 'no_business' };
+
+    const debt = state.debts.find((d) => d.id === debtorId);
+    if (!debt) return { ok: false, error: 'not_found' };
+
+    const change = Math.abs(Number(changeAmount) || 0);
+    if (change <= 0) return { ok: false, error: 'bad_amount' };
+
+    const current = Number(debt.totalDebt) || 0;
+    let next;
+    if (type === 'pay') {
+      next = Math.max(0, current - change);
+    } else {
+      next = current + change;
+    }
+
+    const newHistory = (debt.history || []).concat([{
+      date: new Date(),
+      amount: change,
+      type: type === 'pay' ? 'pay' : 'take',
+      note: '',
+    }]);
+
+    const newStatus = next <= 0 ? 'paid' : 'active';
+
+    try {
+      const { db, doc, updateDoc, serverTimestamp } = window.FB;
+      const ref = doc(db, 'businesses', bizId, 'debts', debtorId);
+      await updateDoc(ref, {
+        // Новая схема
+        totalDebt: next,
+        history: newHistory,
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+        // Старая схема (mirror)
+        amount: next,
+        paidAt: newStatus === 'paid' ? serverTimestamp() : null,
+      });
+      return { ok: true, next };
+    } catch (err) {
+      console.error('[debts] updateDebtAmount:', err);
+      return { ok: false, error: err.code || err.message };
+    }
+  }
+  window.updateDebtAmount = updateDebtAmount;
+
+  // ===== РЕНДЕР =====
   function renderStats() {
     const active = getActiveDebts();
-    const total = active.reduce((s, d) => s + (Number(d.amount) || 0), 0);
-    const overdue = active.filter(isOverdue).length;
+    const total = active.reduce((s, d) => s + d.totalDebt, 0);
+    const overdue = active.filter((d) => daysAgo(d.updatedAt) > 30).length;
 
     if (el.statTotal) el.statTotal.innerHTML = `${fmt(Math.round(total))}<small>KGS</small>`;
     if (el.statCount) el.statCount.innerHTML = `${fmt(active.length)}<small>чел.</small>`;
     if (el.statOverdue) el.statOverdue.innerHTML = `${fmt(overdue)}<small>чел.</small>`;
     if (el.tabActiveCount) el.tabActiveCount.textContent = String(active.length);
-    if (el.tabPaidCount) el.tabPaidCount.textContent = String(getPaidDebts().length);
+    if (el.tabArchiveCount) el.tabArchiveCount.textContent = String(getArchiveDebts().length);
   }
 
-  function getVisibleDebts() {
+  function renderList() {
+    if (!el.list) return;
     const q = state.search.trim().toLowerCase();
-    const list = state.tab === 'active' ? getActiveDebts() : getPaidDebts();
+    const source = state.tab === 'archive' ? getArchiveDebts() : getActiveDebts();
 
-    const filtered = list.filter((d) => {
-      if (!q) return true;
-      return String(d.name || '').toLowerCase().includes(q) ||
-             String(d.phone || '').toLowerCase().includes(q);
-    });
+    const items = source
+      .filter((d) => {
+        if (!q) return true;
+        return d.customerName.toLowerCase().includes(q) ||
+               d.customerPhone.toLowerCase().includes(q);
+      })
+      .sort((a, b) => {
+        const ta = toDate(a.updatedAt)?.getTime() || 0;
+        const tb = toDate(b.updatedAt)?.getTime() || 0;
+        return tb - ta;
+      });
 
-    return filtered.sort((a, b) => {
-      const aOver = isOverdue(a) ? 0 : 1;
-      const bOver = isOverdue(b) ? 0 : 1;
-      if (aOver !== bOver) return aOver - bOver;
-      return String(b.date || '').localeCompare(String(a.date || ''));
-    });
-  }
-
-  function initials(name) {
-    const parts = String(name || '').trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].slice(0, 2);
-    return (parts[0][0] || '') + (parts[1][0] || '');
-  }
-
-  function renderTable() {
-    if (!el.debtsBody) return;
-    const list = getVisibleDebts();
-    const hasAny = state.tab === 'active'
-      ? getActiveDebts().length > 0
-      : getPaidDebts().length > 0;
-
-    if (!hasAny && !state.search) {
-      if (el.debtsTable) el.debtsTable.hidden = true;
-      if (el.debtsEmpty) el.debtsEmpty.hidden = false;
-      el.debtsBody.innerHTML = '';
-
-      if (state.tab === 'active') {
-        if (el.emptyTitle) el.emptyTitle.textContent = 'Пока долгов нет';
-        if (el.emptyText) el.emptyText.textContent = 'Отличная работа — все клиенты расплатились!';
-        if (el.emptyAddBtn) el.emptyAddBtn.style.display = '';
-      } else {
-        if (el.emptyTitle) el.emptyTitle.textContent = 'Архив пуст';
-        if (el.emptyText) el.emptyText.textContent = 'Здесь появятся погашенные долги.';
-        if (el.emptyAddBtn) el.emptyAddBtn.style.display = 'none';
+    if (items.length === 0) {
+      el.list.innerHTML = '';
+      if (el.empty) {
+        el.empty.hidden = false;
+        if (el.emptyTitle) el.emptyTitle.textContent =
+          state.tab === 'archive' ? 'Архив пуст' : 'Пока долгов нет';
+        if (el.emptyText) el.emptyText.textContent =
+          state.tab === 'archive'
+            ? 'Погашенные долги появятся здесь.'
+            : 'Отличная работа — все клиенты расплатились!';
       }
       return;
     }
+    if (el.empty) el.empty.hidden = true;
 
-    if (el.debtsTable) el.debtsTable.hidden = false;
-    if (el.debtsEmpty) el.debtsEmpty.hidden = true;
+    el.list.innerHTML = items.map((d) => {
+      const active = isActive(d);
+      const overdue = active && daysAgo(d.updatedAt) > 30;
+      const initial = d.history.find((h) => h.type === 'take');
+      const total = d.history.filter((h) => h.type === 'take').reduce((s, h) => s + h.amount, 0);
+      const isPartial = active && total > 0 && d.totalDebt < total;
 
-    if (list.length === 0) {
-      el.debtsBody.innerHTML = `
-        <tr><td colspan="5" style="text-align:center; padding:40px 16px; color:var(--kut-muted);">
-          По вашему запросу ничего не найдено.
-        </td></tr>`;
-      return;
-    }
-
-    el.debtsBody.innerHTML = list.map(renderRow).join('');
-  }
-
-  function renderRow(d) {
-    const paid = d.status === 'paid' || Number(d.amount) <= 0;
-    const overdue = isOverdue(d);
-    const days = daysBetween(d.date, null);
-    const amount = Number(d.amount) || 0;
-    const initial = Number(d.initialAmount) || amount;
-
-    let dateSub = `${days} дн. назад`;
-    let dateSubCls = '';
-    if (paid) {
-      const paidDate = d.paidAt ? toDate(d.paidAt) : null;
-      dateSub = paidDate ? `Погашено ${paidDate.toLocaleDateString('ru-RU')}` : 'Погашено';
-    } else if (overdue) {
-      dateSub = `⚠ Просрочено ${days} дн.`;
-      dateSubCls = days > 60 ? 'is-danger' : 'is-overdue';
-    } else if (d.dueDate) {
-      const daysLeft = daysBetween(todayISO(), d.dueDate);
-      if (daysLeft >= 0) dateSub = `Вернуть до ${formatDate(d.dueDate)} (${daysLeft} дн.)`;
-    }
-
-    let amountHTML;
-    if (paid) {
-      amountHTML = `<span class="amount amount--paid">${fmt(initial)}<small>KGS</small></span>`;
-    } else if (amount < initial) {
-      amountHTML = `
-        <span class="amount">${fmt(amount)}<small>KGS</small></span>
-        <div class="date-cell__sub">из ${fmt(initial)} KGS</div>`;
-    } else {
-      amountHTML = `<span class="amount">${fmt(amount)}<small>KGS</small></span>`;
-    }
-
-    let actions;
-    if (paid) {
-      actions = state.isOwner ? `
-        <div class="row-actions">
-          <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
-          <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">🗑️</button>
-        </div>` : '';
-    } else {
-      const ownerExtra = state.isOwner ? `
-        <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
-        <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">🗑️</button>
-      ` : '';
-      actions = `
-        <div class="row-actions">
-          <button class="icon-btn icon-btn--wa" type="button" data-act="wa" title="Напомнить в WhatsApp">💬</button>
-          <button class="icon-btn icon-btn--pay" type="button" data-act="pay" title="Погасить долг">💵</button>
-          ${ownerExtra}
-        </div>`;
-    }
-
-    return `
-      <tr data-id="${escapeHtml(d.id)}" class="${overdue ? 'is-overdue' : ''}">
-        <td data-label="Клиент">
-          <div class="client">
-            <div class="client__avatar">${escapeHtml(initials(d.name))}</div>
-            <div class="client__text">
-              <div class="client__name">${escapeHtml(d.name)}</div>
-              ${d.note ? `<div class="client__note" title="${escapeHtml(d.note)}">${escapeHtml(d.note)}</div>` : ''}
+      return `
+        <div class="debt-card ${active ? '' : 'is-archived'} ${overdue ? 'is-overdue' : ''}"
+             data-id="${escapeHtml(d.id)}" role="button" tabindex="0">
+          <div class="debt-card__avatar">${escapeHtml(initials(d.customerName))}</div>
+          <div class="debt-card__body">
+            <div class="debt-card__name">${escapeHtml(d.customerName)}</div>
+            <div class="debt-card__meta">
+              ${d.customerPhone ? `📞 ${escapeHtml(d.customerPhone)}` : 'Без телефона'}
+              ${d.history.length ? ` · ${d.history.length} операц.` : ''}
             </div>
+            ${overdue ? '<div class="debt-card__badge">⚠ Просрочен > 30 дней</div>' : ''}
+            ${isPartial ? `<div class="debt-card__partial">Погашено из ${fmt(total)} KGS</div>` : ''}
           </div>
-        </td>
-        <td data-label="Телефон">
-          ${d.phone ? `<a class="phone-link" href="tel:${escapeHtml(d.phone)}">📞 ${escapeHtml(d.phone)}</a>` : '—'}
-        </td>
-        <td data-label="Сумма долга">${amountHTML}</td>
-        <td data-label="Дата">
-          <div class="date-cell">${formatDate(d.date)}</div>
-          <div class="date-cell__sub ${dateSubCls}">${escapeHtml(dateSub)}</div>
-        </td>
-        <td data-label="Действия">${actions}</td>
-      </tr>`;
+          <div class="debt-card__right">
+            <div class="debt-card__amount ${active ? '' : 'is-paid'}">
+              ${fmt(Math.round(d.totalDebt))}<small>KGS</small>
+            </div>
+            ${active
+              ? '<div class="debt-card__hint">Погасить →</div>'
+              : '<div class="debt-card__hint">Погашен</div>'}
+          </div>
+        </div>`;
+    }).join('');
   }
 
-  // =========================================================
-  // МОДАЛЬНЫЕ ОКНА
-  // =========================================================
+  function initials(name) {
+    const p = String(name || '').trim().split(/\s+/);
+    if (p.length === 0) return '—';
+    if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
+    return ((p[0][0] || '') + (p[1][0] || '')).toUpperCase();
+  }
 
+  // ===== МОДАЛКИ =====
   let lastFocused = null;
-  function openModal(modal) {
+  function openModal(m) {
     lastFocused = document.activeElement;
-    modal.hidden = false;
+    m.hidden = false;
     document.body.style.overflow = 'hidden';
   }
-  function closeModal(modal) {
-    modal.hidden = true;
+  function closeModal(m) {
+    m.hidden = true;
     document.body.style.overflow = '';
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
-  // =========================================================
-  // ФОРМА ДОЛГА
-  // =========================================================
-
-  function clearFieldErrors() {
-    document.querySelectorAll('.field__hint').forEach((h) => {
-      h.textContent = '';
-      h.classList.remove('is-error');
-    });
-    document.querySelectorAll('input, select, textarea').forEach((i) => {
-      i.classList.remove('is-invalid');
-    });
-  }
-
-  function setFieldError(fieldId, message) {
-    const input = document.getElementById(fieldId);
-    const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
-    if (input) input.classList.add('is-invalid');
-    if (hint) {
-      hint.textContent = message || '';
-      hint.classList.toggle('is-error', Boolean(message));
-    }
-  }
-
+  // ===== ДОБАВЛЕНИЕ ДОЛЖНИКА =====
   function openAddModal() {
-    state.editingId = null;
-    if (el.debtModalTitle) el.debtModalTitle.textContent = 'Новый долг';
-    if (el.debtModalSub) el.debtModalSub.textContent = 'Запишите клиента и сумму — потом напомним в WhatsApp.';
-    if (el.saveBtn) el.saveBtn.textContent = 'Записать долг';
-
-    if (el.debtForm) el.debtForm.reset();
-    if (el.debtId) el.debtId.value = '';
-    if (el.fDate) el.fDate.value = todayISO();
-    if (el.fDueDate) el.fDueDate.value = '';
+    if (!el.addForm) return;
+    el.addForm.reset();
+    if (el.fName)    el.fName.value = '';
+    if (el.fPhone)   el.fPhone.value = '';
+    if (el.fAmount)  el.fAmount.value = '';
+    if (el.fNote)    el.fNote.value = '';
     clearFieldErrors();
-
-    openModal(el.debtModal);
-    if (el.fName) requestAnimationFrame(() => el.fName.focus());
+    openModal(el.addModal);
+    requestAnimationFrame(() => el.fName && el.fName.focus());
   }
 
-  function openEditModal(id) {
-    const d = state.debts.find((x) => x.id === id);
-    if (!d) return;
-
-    state.editingId = d.id;
-    if (el.debtModalTitle) el.debtModalTitle.textContent = 'Редактировать запись';
-    if (el.debtModalSub) el.debtModalSub.textContent = 'Обновите данные и сохраните.';
-    if (el.saveBtn) el.saveBtn.textContent = 'Сохранить';
-
-    if (el.debtId) el.debtId.value = d.id;
-    if (el.fName) el.fName.value = d.name || '';
-    if (el.fPhone) el.fPhone.value = maskPhone(d.phone || '');
-    if (el.fAmount) el.fAmount.value = d.amount ?? '';
-    if (el.fDate) el.fDate.value = d.date || todayISO();
-    if (el.fDueDate) el.fDueDate.value = d.dueDate || '';
-    if (el.fNote) el.fNote.value = d.note || '';
+  async function submitAdd(e) {
+    e.preventDefault();
     clearFieldErrors();
-
-    openModal(el.debtModal);
-    if (el.fName) requestAnimationFrame(() => el.fName.focus());
-  }
-
-  function validateDebtForm() {
-    clearFieldErrors();
-    let ok = true;
 
     const name = el.fName.value.trim();
-    if (name.length < 2) { setFieldError('fName', 'Имя минимум 2 символа'); ok = false; }
-
-    const phoneNorm = normalizePhone(el.fPhone.value);
-    if (!isValidPhone(phoneNorm)) {
-      setFieldError('fPhone', 'Введите корректный номер (например 0700 12 34 56)');
-      ok = false;
-    }
-
+    const phone = el.fPhone.value;
     const amount = Number(el.fAmount.value);
-    if (el.fAmount.value === '' || Number.isNaN(amount) || amount <= 0) {
-      setFieldError('fAmount', 'Сумма должна быть больше 0');
-      ok = false;
-    }
+    const note = el.fNote.value.trim();
 
-    if (!el.fDate.value) { setFieldError('fDate', 'Укажите дату взятия'); ok = false; }
+    let ok = true;
+    if (name.length < 2) { setErr('fName', 'Минимум 2 символа'); ok = false; }
+    if (!isValidPhone(normalizePhone(phone))) { setErr('fPhone', 'Введите 9 цифр номера'); ok = false; }
+    if (!amount || amount <= 0) { setErr('fAmount', 'Сумма > 0'); ok = false; }
+    if (!ok) return;
 
-    return ok;
-  }
+    if (el.addSaveBtn) { el.addSaveBtn.disabled = true; el.addSaveBtn.textContent = 'Сохраняем...'; }
+    const res = await addNewDebtor(name, phone, amount, note);
+    if (el.addSaveBtn) { el.addSaveBtn.disabled = false; el.addSaveBtn.textContent = 'Записать долг'; }
 
-  async function saveDebt(event) {
-    event.preventDefault();
-    if (!validateDebtForm()) return;
-
-    const phoneNorm = normalizePhone(el.fPhone.value);
-    const amount = Number(el.fAmount.value) || 0;
-    const name = el.fName.value.trim();
-
-    const data = {
-      name,
-      phone: phoneNorm,
-      amount,
-      date: el.fDate.value,
-      dueDate: el.fDueDate.value || '',
-      note: el.fNote.value.trim(),
-    };
-
-    if (el.saveBtn) {
-      el.saveBtn.disabled = true;
-      el.saveBtn.textContent = state.editingId ? 'Сохраняем...' : 'Записываем...';
-    }
-
-    try {
-      if (state.editingId) {
-        const existing = state.debts.find((x) => x.id === state.editingId);
-        const initial = existing
-          ? (Number(existing.initialAmount) || Number(existing.amount) || amount)
-          : amount;
-        const newInitial = amount >= (Number(existing?.amount) || 0) ? amount : initial;
-        const newStatus = amount <= 0 ? 'paid' : 'active';
-        await window.FB.updateItem('debts', state.editingId, {
-          ...data,
-          initialAmount: newInitial,
-          status: newStatus,
-          paidAt: newStatus === 'paid' ? (existing?.paidAt || new Date()) : null,
-        });
-        showToast(`Запись «${name}» обновлена`);
-      } else {
-        await window.FB.addItem('debts', {
-          ...data,
-          initialAmount: amount,
-          status: 'active',
-          payments: [],
-          source: 'manual',
-        });
-        showToast(`Долг «${name}» записан`);
-      }
-      closeModal(el.debtModal);
-    } catch (err) {
-      console.error('[debts] save:', err);
-      showToast('Не удалось сохранить', true);
-    } finally {
-      if (el.saveBtn) {
-        el.saveBtn.disabled = false;
-        el.saveBtn.textContent = state.editingId ? 'Сохранить' : 'Записать долг';
-      }
-    }
-  }
-
-  // =========================================================
-  // ПОГАШЕНИЕ
-  // =========================================================
-
-  function openPayModal(id) {
-    const d = state.debts.find((x) => x.id === id);
-    if (!d) return;
-    if (d.status === 'paid') return;
-
-    state.payingId = d.id;
-    const amount = Number(d.amount) || 0;
-
-    if (el.payClientName) el.payClientName.innerHTML = `Клиент: <strong>${escapeHtml(d.name)}</strong>`;
-    if (el.payCurrentDebt) el.payCurrentDebt.textContent = fmtMoney(amount);
-    if (el.payOriginalDate) el.payOriginalDate.textContent = formatDate(d.date);
-    if (el.payAmount) {
-      el.payAmount.value = amount;
-      el.payAmount.max = amount;
-    }
-
-    renderPaymentsHistory(d);
-    clearFieldErrors();
-    openModal(el.payModal);
-    if (el.payAmount) requestAnimationFrame(() => el.payAmount.focus());
-  }
-
-  function renderPaymentsHistory(d) {
-    if (!el.paymentsHistory) return;
-    const list = Array.isArray(d.payments) ? d.payments : [];
-    if (list.length === 0) {
-      el.paymentsHistory.innerHTML = '';
+    if (!res.ok) {
+      showToast('Не удалось: ' + res.error, true);
       return;
     }
-    el.paymentsHistory.innerHTML = `
-      <h4>История платежей</h4>
-      ${list.slice().reverse().map((p) => {
-        const pd = toDate(p.date);
-        const dateStr = pd ? pd.toLocaleDateString('ru-RU') : '—';
-        return `
-          <div class="payment-row">
-            <span class="payment-row__date">${dateStr}</span>
-            <span class="payment-row__amount">+ ${fmt(p.amount)} KGS</span>
-          </div>`;
-      }).join('')}`;
+    showToast(`Долг «${name}» записан`);
+    closeModal(el.addModal);
   }
 
-  async function confirmPayment(event) {
-    event.preventDefault();
+  // ===== ДЕТАЛИ ДОЛГА =====
+  function openDetail(id) {
+    const d = state.debts.find((x) => x.id === id);
+    if (!d) return;
+    state.detailId = id;
+
+    if (el.detailName)  el.detailName.textContent = d.customerName;
+    if (el.detailPhone) el.detailPhone.textContent = d.customerPhone || 'Без телефона';
+    if (el.detailTotal) el.detailTotal.innerHTML = `${fmt(Math.round(d.totalDebt))}<small>KGS</small>`;
+
+    // Кнопка WA доступна только если есть телефон
+    if (el.detailWaBtn) el.detailWaBtn.hidden = !d.customerPhone;
+
+    // Рендер истории
+    if (el.detailHistory) {
+      if (d.history.length === 0) {
+        el.detailHistory.innerHTML = `<div class="debt-history__empty">История пуста</div>`;
+      } else {
+        el.detailHistory.innerHTML = d.history.map((h) => {
+          const isPay = h.type === 'pay';
+          return `
+            <div class="debt-history__row debt-history__row--${isPay ? 'pay' : 'take'}">
+              <div class="debt-history__icon">${isPay ? '✓' : '＋'}</div>
+              <div class="debt-history__body">
+                <div class="debt-history__title">${isPay ? 'Погашение' : 'Взял в долг'}</div>
+                <div class="debt-history__date">${fmtDateTime(h.date)}</div>
+                ${h.note ? `<div class="debt-history__note">${escapeHtml(h.note)}</div>` : ''}
+              </div>
+              <div class="debt-history__amount debt-history__amount--${isPay ? 'pay' : 'take'}">
+                ${isPay ? '−' : '+'}${fmt(h.amount)} KGS
+              </div>
+            </div>`;
+        }).join('');
+      }
+    }
+    openModal(el.detailModal);
+  }
+
+  // ===== МОДАЛКА ОПЛАТЫ / ВЗЯТИЯ =====
+  function openPayModal(type) {
+    const d = state.debts.find((x) => x.id === state.detailId);
+    if (!d) return;
+    state.payingId = d.id;
+    state.payType = type;
+
+    if (el.payTitle) {
+      el.payTitle.textContent = type === 'pay'
+        ? `Погашение: ${d.customerName}`
+        : `Ещё в долг: ${d.customerName}`;
+    }
+    if (el.payHint) {
+      el.payHint.textContent = type === 'pay'
+        ? `Текущий долг: ${fmtMoney(d.totalDebt)}`
+        : `Текущий долг: ${fmtMoney(d.totalDebt)} → станет больше`;
+    }
+    if (el.payAmount) el.payAmount.value = '';
+    clearFieldErrors();
+
+    // Быстрые кнопки
+    if (el.quickAmounts) {
+      if (type === 'pay') {
+        el.quickAmounts.innerHTML = `
+          <button type="button" class="quick-amount" data-q="full">Весь долг</button>
+          <button type="button" class="quick-amount" data-q="1000">1 000</button>
+          <button type="button" class="quick-amount" data-q="500">500</button>
+          <button type="button" class="quick-amount" data-q="200">200</button>`;
+      } else {
+        el.quickAmounts.innerHTML = `
+          <button type="button" class="quick-amount" data-q="500">500</button>
+          <button type="button" class="quick-amount" data-q="1000">1 000</button>
+          <button type="button" class="quick-amount" data-q="2000">2 000</button>`;
+      }
+    }
+
+    openModal(el.payModal);
+    requestAnimationFrame(() => el.payAmount && el.payAmount.focus());
+  }
+
+  async function submitPay(e) {
+    e.preventDefault();
     const d = state.debts.find((x) => x.id === state.payingId);
     if (!d) return;
+    clearFieldErrors();
 
-    const pay = Number(el.payAmount.value);
-    const debt = Number(d.amount) || 0;
-
-    if (el.payAmount.value === '' || Number.isNaN(pay) || pay <= 0) {
-      setFieldError('payAmount', 'Сумма должна быть больше 0');
+    const amount = Number(el.payAmount.value);
+    if (!amount || amount <= 0) {
+      setErr('payAmount', 'Введите сумму > 0');
       return;
     }
-    if (pay > debt + 0.001) {
-      setFieldError('payAmount', `Не может быть больше долга (${fmt(debt)} KGS)`);
+    if (state.payType === 'pay' && amount > d.totalDebt + 0.01) {
+      setErr('payAmount', `Не больше ${fmtMoney(d.totalDebt)}`);
       return;
     }
 
-    const newAmount = Number((debt - pay).toFixed(2));
-    const fullyPaid = newAmount <= 0.001;
-
-    const payments = Array.isArray(d.payments) ? d.payments.slice() : [];
-    payments.push({ amount: pay, date: new Date() });
-
-    const updateData = {
-      amount: fullyPaid ? 0 : newAmount,
-      payments,
-    };
-    if (fullyPaid) {
-      updateData.status = 'paid';
-      updateData.paidAt = new Date();
+    if (el.paySaveBtn) {
+      el.paySaveBtn.disabled = true;
+      el.paySaveBtn.textContent = 'Сохраняем...';
+    }
+    const res = await updateDebtAmount(d.id, amount, state.payType);
+    if (el.paySaveBtn) {
+      el.paySaveBtn.disabled = false;
+      el.paySaveBtn.textContent = state.payType === 'pay' ? 'Погасить' : 'Добавить';
     }
 
-    if (el.confirmPayBtn) {
-      el.confirmPayBtn.disabled = true;
-      el.confirmPayBtn.textContent = 'Погашаем...';
+    if (!res.ok) {
+      showToast('Ошибка: ' + res.error, true);
+      return;
     }
 
-    try {
-      await window.FB.updateItem('debts', d.id, updateData);
-
-      if (fullyPaid) showToast(`Долг «${d.name}» полностью погашен ✓`);
-      else showToast(`Принято ${fmt(pay)} KGS. Остаток: ${fmt(newAmount)} KGS`);
-
-      state.payingId = null;
-      closeModal(el.payModal);
-    } catch (err) {
-      console.error('[debts] payment:', err);
-      showToast('Не удалось провести платёж', true);
-    } finally {
-      if (el.confirmPayBtn) {
-        el.confirmPayBtn.disabled = false;
-        el.confirmPayBtn.textContent = 'Погасить';
-      }
+    if (state.payType === 'pay') {
+      if (res.next === 0) showToast(`Долг «${d.customerName}» полностью погашен ✓`);
+      else showToast(`Принято ${fmtMoney(amount)}. Остаток: ${fmtMoney(res.next)}`);
+    } else {
+      showToast(`Долг «${d.customerName}» увеличен на ${fmtMoney(amount)}`);
     }
+    closeModal(el.payModal);
+    closeModal(el.detailModal);
   }
 
-  // =========================================================
-  // WHATSAPP
-  // =========================================================
-
-  function openWaModal(id) {
-    const d = state.debts.find((x) => x.id === id);
-    if (!d) return;
-
-    state.waDebtId = d.id;
-    const amount = Number(d.amount) || 0;
-
-    if (el.waClientInfo) {
-      el.waClientInfo.innerHTML =
-        `Клиент: <strong>${escapeHtml(d.name)}</strong> · Долг: <strong>${fmtMoney(amount)}</strong>`;
-    }
-    if (el.previewRu) el.previewRu.textContent = ruMessage(d, amount, true);
-    if (el.previewKg) el.previewKg.textContent = kgMessage(d, amount, true);
-
-    openModal(el.waModal);
-  }
-
-  function ruMessage(d, amount, preview) {
-    const base = `Салам, ${d.name}! Напоминаем о задолженности ${fmt(amount)} сомов в магазине. Спасибо!`;
-    if (preview) return base.length > 60 ? base.slice(0, 60) + '…' : base;
-    const from = d.date ? ' от ' + formatDate(d.date) : '';
-    return `Салам, ${d.name}!\nНапоминаем о задолженности ${fmt(amount)} сомов${from}.\nПожалуйста, погасите при удобной возможности. Спасибо! 🙏`;
-  }
-
-  function kgMessage(d, amount, preview) {
-    const base = `Салам, ${d.name}! Карызды унутпаңыз: ${fmt(amount)} сом. Рахмат!`;
-    if (preview) return base.length > 60 ? base.slice(0, 60) + '…' : base;
-    const from = d.date ? formatDate(d.date) + ' күнү алынган ' : '';
-    return `Салам, ${d.name}!\n${from}${fmt(amount)} сом карызыңызды унутпаңыз.\nЫңгайлуу убакытта төлөп берсеңиз. Рахмат! 🙏`;
-  }
-
-  function sendWhatsApp(lang) {
-    const d = state.debts.find((x) => x.id === state.waDebtId);
-    if (!d) return;
-
-    const amount = Number(d.amount) || 0;
-    const text = lang === 'kg' ? kgMessage(d, amount) : ruMessage(d, amount);
-    const phoneDigits = String(d.phone || '').replace(/\D/g, '');
-    const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`;
-
+  // ===== WA-НАПОМИНАНИЕ =====
+  function openWhatsApp() {
+    const d = state.debts.find((x) => x.id === state.detailId);
+    if (!d || !d.customerPhone) return;
+    const amount = fmt(d.totalDebt);
+    const text = `Салам, ${d.customerName}! Напоминаем о задолженности ${amount} сомов в магазине. Спасибо!`;
+    const digits = d.customerPhone.replace(/\D/g, '');
+    const url = `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener');
-    closeModal(el.waModal);
-    state.waDebtId = null;
   }
 
-  // =========================================================
-  // УДАЛЕНИЕ
-  // =========================================================
-
+  // ===== УДАЛЕНИЕ =====
   function openDeleteModal(id) {
     const d = state.debts.find((x) => x.id === id);
     if (!d) return;
-    state.deletingId = d.id;
-    if (el.deleteName) {
-      el.deleteName.textContent = `Запись о долге «${d.name}» (${fmtMoney(d.amount)}) будет удалена.`;
-    }
+    state.deletingId = id;
+    if (el.deleteName) el.deleteName.textContent = `Запись о долге «${d.customerName}» будет удалена.`;
     openModal(el.deleteModal);
   }
-
   async function confirmDelete() {
     const id = state.deletingId;
     if (!id) return;
     const d = state.debts.find((x) => x.id === id);
-
-    if (el.confirmDeleteBtn) {
-      el.confirmDeleteBtn.disabled = true;
-      el.confirmDeleteBtn.textContent = 'Удаляем...';
-    }
+    if (el.confirmDeleteBtn) { el.confirmDeleteBtn.disabled = true; el.confirmDeleteBtn.textContent = 'Удаляем...'; }
     try {
       await window.FB.deleteItem('debts', id);
+      showToast(d ? `Запись «${d.customerName}» удалена` : 'Удалено');
       state.deletingId = null;
       closeModal(el.deleteModal);
-      if (d) showToast(`Запись «${d.name}» удалена`);
+      closeModal(el.detailModal);
     } catch (err) {
       console.error('[debts] delete:', err);
       showToast('Не удалось удалить', true);
     } finally {
-      if (el.confirmDeleteBtn) {
-        el.confirmDeleteBtn.disabled = false;
-        el.confirmDeleteBtn.textContent = 'Удалить';
-      }
+      if (el.confirmDeleteBtn) { el.confirmDeleteBtn.disabled = false; el.confirmDeleteBtn.textContent = 'Удалить'; }
     }
   }
 
-  // =========================================================
-  // СОБЫТИЯ
-  // =========================================================
+  // ===== ФОРМА-ВАЛИДАЦИЯ =====
+  function setErr(fieldId, msg) {
+    const input = document.getElementById(fieldId);
+    const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
+    if (input) input.classList.add('is-invalid');
+    if (hint) { hint.textContent = msg; hint.classList.add('is-error'); }
+  }
+  function clearFieldErrors() {
+    document.querySelectorAll('.field__hint').forEach((h) => {
+      h.textContent = ''; h.classList.remove('is-error');
+    });
+    document.querySelectorAll('.modal input, .modal textarea').forEach((i) => {
+      i.classList.remove('is-invalid');
+    });
+  }
 
+  // ===== СОБЫТИЯ =====
   function bindEvents() {
-    if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
+    if (el.openAddBtn)  el.openAddBtn.addEventListener('click', openAddModal);
     if (el.emptyAddBtn) el.emptyAddBtn.addEventListener('click', openAddModal);
+    if (el.addForm)     el.addForm.addEventListener('submit', submitAdd);
+    if (el.payForm)     el.payForm.addEventListener('submit', submitPay);
 
-    if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
-      state.search = e.target.value;
-      renderTable();
-    });
-
-    el.tabs.forEach((tab) => {
-      tab.addEventListener('click', () => {
-        state.tab = tab.dataset.tab;
-        el.tabs.forEach((t) => {
-          const active = t.dataset.tab === state.tab;
-          t.classList.toggle('is-active', active);
-          t.setAttribute('aria-selected', String(active));
-        });
-        renderTable();
+    if (el.searchInput) {
+      el.searchInput.addEventListener('input', (e) => {
+        state.search = e.target.value;
+        renderList();
       });
-    });
+    }
 
-    if (el.debtsBody) el.debtsBody.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-act]');
-      if (!btn) return;
-      const row = btn.closest('tr[data-id]');
-      if (!row) return;
-      const id = row.dataset.id;
-      const act = btn.dataset.act;
+    // Табы
+    if (el.tabActive) {
+      el.tabActive.addEventListener('click', () => {
+        state.tab = 'active';
+        el.tabActive.classList.add('is-active');
+        el.tabArchive.classList.remove('is-active');
+        renderList();
+      });
+    }
+    if (el.tabArchive) {
+      el.tabArchive.addEventListener('click', () => {
+        state.tab = 'archive';
+        el.tabArchive.classList.add('is-active');
+        el.tabActive.classList.remove('is-active');
+        renderList();
+      });
+    }
 
-      if (act === 'wa') openWaModal(id);
-      else if (act === 'pay') openPayModal(id);
-      else if (act === 'edit' && state.isOwner) openEditModal(id);
-      else if (act === 'delete' && state.isOwner) openDeleteModal(id);
-    });
+    // Клик по карточке — открыть детали
+    if (el.list) {
+      el.list.addEventListener('click', (e) => {
+        const card = e.target.closest('.debt-card');
+        if (!card) return;
+        openDetail(card.dataset.id);
+      });
+    }
 
-    if (el.fPhone) el.fPhone.addEventListener('input', (e) => {
-      e.target.value = maskPhone(e.target.value);
-    });
-
-    if (el.debtForm) el.debtForm.addEventListener('submit', saveDebt);
-
-    if (el.quickAmounts) el.quickAmounts.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-q]');
-      if (!btn) return;
-      const d = state.debts.find((x) => x.id === state.payingId);
-      if (!d) return;
-      const debt = Number(d.amount) || 0;
-      if (btn.dataset.q === 'full') el.payAmount.value = debt;
-      else el.payAmount.value = Math.min(debt, Number(btn.dataset.q) || 0);
-      el.payAmount.focus();
-    });
-
-    if (el.payForm) el.payForm.addEventListener('submit', confirmPayment);
-
-    if (el.waModal) el.waModal.addEventListener('click', (e) => {
-      const opt = e.target.closest('.lang-option');
-      if (!opt) return;
-      sendWhatsApp(opt.dataset.lang);
-    });
-
+    // Кнопки в деталях
+    if (el.detailPayBtn)  el.detailPayBtn.addEventListener('click', () => openPayModal('pay'));
+    if (el.detailTakeBtn) el.detailTakeBtn.addEventListener('click', () => openPayModal('take'));
+    if (el.detailWaBtn)   el.detailWaBtn.addEventListener('click', openWhatsApp);
+    if (el.detailDelBtn)  el.detailDelBtn.addEventListener('click', () => openDeleteModal(state.detailId));
     if (el.confirmDeleteBtn) el.confirmDeleteBtn.addEventListener('click', confirmDelete);
 
+    // Быстрые суммы
+    if (el.quickAmounts) {
+      el.quickAmounts.addEventListener('click', (e) => {
+        const btn = e.target.closest('.quick-amount');
+        if (!btn) return;
+        const d = state.debts.find((x) => x.id === state.payingId);
+        if (!d) return;
+        if (btn.dataset.q === 'full') el.payAmount.value = Math.round(d.totalDebt);
+        else el.payAmount.value = btn.dataset.q;
+        el.payAmount.focus();
+      });
+    }
+
+    // Маска телефона в форме
+    if (el.fPhone) {
+      el.fPhone.addEventListener('input', (e) => {
+        e.target.value = maskPhone(e.target.value);
+      });
+    }
+
+    // Закрытие модалок
     document.addEventListener('click', (e) => {
       if (e.target.matches('[data-close]')) {
-        const modal = e.target.closest('.modal');
-        if (modal) closeModal(modal);
+        const m = e.target.closest('.modal');
+        if (m) closeModal(m);
       }
     });
-
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      const modals = [el.debtModal, el.payModal, el.waModal, el.deleteModal];
+      const modals = [el.addModal, el.detailModal, el.payModal, el.deleteModal];
       const open = modals.find((m) => m && !m.hidden);
       if (open) closeModal(open);
     });
+  }
 
-    window.addEventListener('kut:lang', () => {
+  // ===== ПОДПИСКА =====
+  function subscribe() {
+    state.unsub = window.FB.subscribeCollection('debts', (items) => {
+      state.debts = items.map(normalizeDebt);
       renderStats();
-      renderTable();
-    });
-
-    window.addEventListener('beforeunload', () => {
-      if (state.unsubDebts) state.unsubDebts();
+      renderList();
+      // Обновить открытую деталь
+      if (el.detailModal && !el.detailModal.hidden && state.detailId) {
+        const d = state.debts.find((x) => x.id === state.detailId);
+        if (d) openDetail(state.detailId);
+        else closeModal(el.detailModal);
+      }
     });
   }
 
-  // =========================================================
-  // ИНИЦИАЛИЗАЦИЯ
-  // =========================================================
-
+  // ===== INIT =====
   async function init() {
     const st = await waitForReady();
-    if (!st) {
-      console.warn('[debts] Не дождались businessId');
-      return;
-    }
+    if (!st) { console.warn('[debts] нет businessId'); return; }
 
     const role = st.profile?.role;
     state.isOwner = role === 'owner' || role === 'super_admin';
-    if (!state.isOwner && el.openAddBtn) el.openAddBtn.style.display = 'none';
 
-    if (el.fDate) el.fDate.value = todayISO();
     renderStats();
-
-    state.unsubDebts = window.FB.subscribeCollection('debts', (items) => {
-      state.debts = items;
-      renderStats();
-      renderTable();
-    });
-
+    renderList();
+    subscribe();
     bindEvents();
-    console.info('[debts] Подключено · бизнес:', st.businessId);
+
+    console.info('[debts] Подключено · роль:', role);
   }
 
   if (document.readyState === 'loading') {
