@@ -3,439 +3,230 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#005F40">
+  <meta name="theme-color" content="#0A1F18">
   <title>Главная — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/theme-v9.css">
 
   <style>
-    :root {
-      --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
-      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-bg: #F4F7F5;
-      --kut-surface: #FFFFFF; --kut-border: #E3EAE6; --kut-text: #14211C;
-      --kut-muted: #64776E; --kut-danger: #C0392B; --kut-warn: #E08A1E;
-      --kut-success: #1EBE5A;
-      --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
-      --shadow-md: 0 6px 18px rgba(16,32,25,.08);
-      --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
-      --sidebar-w: 260px;
-    }
+    /* ===== Локальные размеры (тема — в theme-v9.css) ===== */
+    :root { --sidebar-w: 260px; }
     *, *::before, *::after { box-sizing: border-box; }
-    html, body {
-      height: 100%; margin: 0;
-      overflow-x: hidden; max-width: 100%; width: 100%;
-    }
+    html, body { height: 100%; margin: 0; overflow-x: hidden; max-width: 100%; width: 100%; }
     body.page-home {
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: var(--kut-bg); color: var(--kut-text);
       -webkit-font-smoothing: antialiased;
       overflow-wrap: break-word; word-wrap: break-word;
     }
-    .layout {
-      display: grid; grid-template-columns: 1fr;
-      min-height: 100dvh; width: 100%; max-width: 100%;
-    }
+
+    .layout { display: grid; grid-template-columns: 1fr; min-height: 100dvh; width: 100%; max-width: 100%; }
     .layout > div { min-width: 0; max-width: 100%; overflow-x: hidden; }
     @media (min-width: 1000px) {
       .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
     }
 
-    /* ===== Сайдбар ===== */
+    /* Сайдбар */
     .sidebar {
-      background: var(--kut-green); color: #fff;
-      padding: 16px 14px; display: flex; flex-direction: column; gap: 14px;
+      padding: 16px 14px;
+      display: flex; flex-direction: column; gap: 14px;
       position: fixed; top: 0; left: 0; bottom: 0;
       width: 82%; max-width: 320px; z-index: 90;
       transform: translateX(-105%);
       transition: transform .28s cubic-bezier(.2,.8,.2,1);
-      box-shadow: var(--shadow-lg); overflow-y: auto;
+      overflow-y: auto;
     }
     .sidebar.is-open { transform: translateX(0); }
     @media (min-width: 1000px) {
       .sidebar { transform: none; width: var(--sidebar-w); max-width: none;
-        box-shadow: none; position: sticky; top: 0; height: 100dvh; }
+        position: sticky; top: 0; height: 100dvh; }
     }
-    .sidebar__brand { display: flex; align-items: center; gap: 10px;
-      padding: 6px 6px 14px; border-bottom: 1px solid rgba(255,255,255,.12);
-      text-decoration: none; color: #fff; }
-    .brand__mark { width: 38px; height: 38px; border-radius: 10px;
-      background: var(--kut-gold); color: var(--kut-green-dark);
-      display: grid; place-items: center; font-weight: 800; font-size: 18px; flex-shrink: 0; }
-    .brand__text { line-height: 1.15; min-width: 0; }
+    .sidebar__brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 6px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      text-decoration: none;
+    }
+    .brand__mark {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #E7C14A, #B88F1D);
+      color: #06150F;
+      display: grid; place-items: center; font-weight: 800; font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 6px 16px rgba(212,175,55,.35);
+    }
     .brand__text strong { display: block; font-size: 15px; }
-    .brand__text small { display: block; font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; }
+    .brand__text small { display: block; font-size: 11px; color: rgba(237,245,241,.5); margin-top: 2px; }
+
     .sidebar__nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-    .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-      border-radius: 12px; color: rgba(255,255,255,.85); text-decoration: none;
-      font-size: 15px; font-weight: 500; }
-    .nav-link:hover { background: rgba(255,255,255,.10); color: #fff; }
-    .nav-link.active { background: rgba(212,175,55,.18); color: #fff; font-weight: 600;
-      box-shadow: inset 3px 0 0 var(--kut-gold); }
+    .nav-link {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 15px; font-weight: 500;
+    }
     .nav-link__icon { width: 26px; display: grid; place-items: center; font-size: 18px; }
-    .nav-link__badge { margin-left: auto; font-size: 11px; font-weight: 700;
-      padding: 3px 8px; background: var(--kut-gold); color: var(--kut-green-dark); border-radius: 999px; }
-    .sidebar__cta { margin-top: auto; padding: 14px 16px; border-radius: 16px;
-      background: var(--kut-gold); color: var(--kut-green-dark);
-      text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 12px; }
-    .sidebar__cta__icon { width: 40px; height: 40px; display: grid; place-items: center;
-      background: rgba(0,0,0,.10); border-radius: 12px; font-size: 20px; flex-shrink: 0; }
+    .nav-link__badge {
+      margin-left: auto;
+      font-size: 11px; font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .sidebar__cta {
+      margin-top: auto; padding: 14px 16px; border-radius: 16px;
+      text-decoration: none; font-weight: 700;
+      display: flex; align-items: center; gap: 12px;
+      transition: transform .14s ease;
+    }
+    .sidebar__cta__icon {
+      width: 40px; height: 40px; display: grid; place-items: center;
+      background: rgba(0,0,0,.12); border-radius: 12px; font-size: 20px; flex-shrink: 0;
+    }
     .sidebar__cta__text strong { display: block; font-size: 14px; }
     .sidebar__cta__text small { display: block; font-size: 11px; opacity: .75; margin-top: 2px; }
-    .sidebar__footer { color: rgba(255,255,255,.55); font-size: 11px; text-align: center;
-      padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
+    .sidebar__footer {
+      color: rgba(237,245,241,.35); font-size: 11px; text-align: center;
+      padding-top: 10px; border-top: 1px solid rgba(255,255,255,.06);
+    }
+    #sidebar-profile-slot, #sidebar-logout-slot { display: block; }
 
-    #sidebar-profile-slot { display: block; }
-    #sidebar-logout-slot  { display: block; }
-
-    .overlay { position: fixed; inset: 0; background: rgba(15,30,24,.5);
-      backdrop-filter: blur(3px); z-index: 80; opacity: 0;
-      pointer-events: none; transition: opacity .22s ease; }
+    /* Overlay */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(4, 12, 9, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 80; opacity: 0; pointer-events: none;
+      transition: opacity .22s ease;
+    }
     .overlay.is-open { opacity: 1; pointer-events: auto; }
     @media (min-width: 1000px) { .overlay { display: none; } }
 
-    /* ===== Верхняя шапка: одна строка ===== */
+    /* Верхняя шапка */
     .mobile-bar {
       display: flex; align-items: center; gap: 8px;
       padding: 10px 12px;
-      background: var(--kut-green); color: #fff;
       position: sticky; top: 0; z-index: 40;
       width: 100%; max-width: 100%;
-      box-shadow: var(--shadow-sm);
     }
     .burger {
-      width: 40px; height: 40px; display: grid; place-items: center;
-      background: rgba(255,255,255,.10); border: none; border-radius: 12px;
-      color: #fff; cursor: pointer; font-size: 20px; flex-shrink: 0;
+      display: grid; place-items: center;
+      font-size: 20px; cursor: pointer; flex-shrink: 0;
     }
     @media (min-width: 1000px) { .burger { display: none; } }
     .mobile-bar__title {
       font-weight: 700; font-size: 15px;
-      overflow: hidden; text-overflow: ellipsis;
-      white-space: nowrap; min-width: 0; flex: 1;
-      margin-left: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      min-width: 0; flex: 1; margin-left: 2px;
     }
 
-    /* Индикатор сети */
-    .net-pill {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 5px 9px; border-radius: 999px;
-      font-size: 11px; font-weight: 700;
-      background: rgba(30,190,90,.20); color: #B9F5CE;
-      border: 1px solid rgba(30,190,90,.35);
-      white-space: nowrap; flex-shrink: 0;
-      transition: background .18s ease, color .18s ease, border-color .18s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .net-pill__dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: #1EBE5A; flex-shrink: 0;
-      box-shadow: 0 0 8px rgba(30,190,90,.8);
-      animation: netPulse 2s ease-in-out infinite;
-    }
-    .net-pill.is-offline {
-      background: rgba(192,57,43,.20);
-      color: #FFD0C8;
-      border-color: rgba(192,57,43,.45);
-    }
-    .net-pill.is-offline .net-pill__dot {
-      background: #C0392B;
-      box-shadow: 0 0 8px rgba(192,57,43,.8);
-      animation: netPulse 1s ease-in-out infinite;
-    }
-    .net-pill__qty {
-      display: none;
-      background: #C0392B; color: #fff;
-      padding: 1px 6px; border-radius: 999px;
-      font-size: 10px; margin-left: 2px;
-    }
-    .net-pill.is-offline[data-queue]:not([data-queue="0"]) .net-pill__qty {
-      display: inline-block;
-    }
-    @keyframes netPulse {
-      0%, 100% { opacity: 1; }
-      50%      { opacity: .35; }
-    }
-    @media (max-width: 380px) {
-      .net-pill__label { display: none; }
-      .net-pill { padding: 5px 7px; }
-    }
-
-    /* ===== Основной контент ===== */
+    /* Основной контент */
     .main-content {
       min-width: 0; max-width: 100%; overflow-x: hidden;
-      padding: 16px; display: flex; flex-direction: column; gap: 16px;
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 16px;
     }
     @media (min-width: 1000px) {
-      .main-content { padding: 24px 32px 32px; gap: 22px; }
+      .main-content { padding: 26px 32px 34px; gap: 22px; }
     }
     @media (max-width: 999px) {
       body.page-home .main-content {
-        padding-bottom: calc(100px + env(safe-area-inset-bottom));
+        padding-bottom: calc(110px + env(safe-area-inset-bottom));
       }
     }
 
-    /* ===== Заголовок ===== */
+    /* Заголовок страницы */
     .page-head {
       display: flex; flex-direction: column; gap: 10px;
-      min-width: 0; max-width: 100%; align-items: flex-start;
+      align-items: flex-start; min-width: 0;
     }
     @media (min-width: 720px) {
-      .page-head { flex-direction: row; align-items: center;
-        justify-content: space-between; gap: 16px; }
+      .page-head { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
     }
-    .page-head h1 {
-      margin: 0; font-size: clamp(20px, 5vw, 24px);
-      font-weight: 800; letter-spacing: -.4px; word-break: break-word;
-    }
-    .page-head p { margin: 4px 0 0; color: var(--kut-muted); font-size: 14px; }
+    .page-head h1 { margin: 0; font-size: clamp(20px, 5vw, 24px); font-weight: 800; }
+    .page-head p { margin: 4px 0 0; font-size: 14px; }
 
-    .role-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 6px 12px; border-radius: 999px;
-      font-size: 11px; font-weight: 800;
-      text-transform: uppercase; letter-spacing: .6px;
-      width: fit-content;
-    }
-    .role-badge--owner   { background: #FFF8E1; color: #B8952A; }
-    .role-badge--manager { background: #FFF2DE; color: #9A5B10; }
-    .role-badge--cashier { background: #EAF6EF; color: #0F7F3A; }
-    .role-badge--admin   { background: #E0F0FF; color: #005C8C; }
-    .role-badge--user    { background: #EEF2F0; color: #64776E; }
-
-    /* ===== Аналитика ===== */
-    .analytics {
-      background: linear-gradient(135deg, #005F40 0%, #003F2A 100%);
-      border-radius: 22px; padding: 22px; color: #fff;
-      box-shadow: var(--shadow-md); position: relative;
-      overflow: hidden; max-width: 100%; min-width: 0;
-    }
-    .analytics::before {
-      content: ""; position: absolute; right: -60px; top: -60px;
-      width: 220px; height: 220px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(212,175,55,.25), transparent 70%);
-      pointer-events: none;
-    }
+    /* Аналитика */
+    .analytics { padding: 22px; border-radius: 24px; }
     .analytics__head {
       display: flex; align-items: center; justify-content: space-between;
       gap: 10px; flex-wrap: wrap; margin-bottom: 18px;
-      position: relative; z-index: 1; min-width: 0;
+      position: relative; z-index: 1;
     }
-    .analytics__title {
-      margin: 0; font-size: 15px; font-weight: 800;
-      letter-spacing: .3px; text-transform: uppercase;
-      color: var(--kut-gold); min-width: 0;
-    }
-    .analytics__period { font-size: 12px; color: rgba(255,255,255,.7); font-weight: 500; }
+    .analytics__title { margin: 0; font-size: 14px; font-weight: 800; text-transform: uppercase; }
+    .analytics__period { font-size: 12px; font-weight: 500; }
     .analytics__grid {
-      display: grid; grid-template-columns: 1fr; gap: 10px;
-      position: relative; z-index: 1; min-width: 0;
+      display: grid; grid-template-columns: 1fr; gap: 12px;
+      position: relative; z-index: 1;
     }
     @media (min-width: 700px) {
-      .analytics__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .analytics__grid { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
     }
-    .analytics__card {
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.15);
-      border-radius: 16px; padding: 14px;
-      display: flex; align-items: center; gap: 12px;
-      transition: background .18s ease; min-width: 0;
-    }
-    @media (min-width: 700px) { .analytics__card { padding: 16px; gap: 14px; } }
-    .analytics__icon {
-      width: 42px; height: 42px; border-radius: 12px;
-      display: grid; place-items: center; font-size: 20px;
-      background: rgba(212,175,55,.20); color: var(--kut-gold); flex-shrink: 0;
-    }
-    @media (min-width: 700px) { .analytics__icon { width: 46px; height: 46px; font-size: 22px; } }
-    .analytics__card--profit .analytics__icon { background: rgba(30,190,90,.20); color: #7FE4A5; }
-    .analytics__card--stock .analytics__icon { background: rgba(255,255,255,.15); color: #fff; }
+    .analytics__card { display: flex; align-items: center; gap: 14px; }
     .analytics__card > div { min-width: 0; flex: 1; }
-    .analytics__label {
-      font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
-      font-weight: 700; color: rgba(255,255,255,.75); margin-bottom: 4px;
-    }
+    .analytics__label { font-size: 11px; text-transform: uppercase; margin-bottom: 6px; }
     .analytics__value {
-      font-size: clamp(18px, 5vw, 26px); font-weight: 800; line-height: 1;
-      color: #fff; font-variant-numeric: tabular-nums;
-      letter-spacing: -.4px; word-break: break-word;
+      font-size: clamp(20px, 5vw, 26px); line-height: 1;
+      font-variant-numeric: tabular-nums;
     }
-    .analytics__value small {
-      font-size: 12px; font-weight: 600; color: rgba(255,255,255,.65);
-      margin-left: 4px; letter-spacing: 0;
-    }
-    .analytics__card--revenue .analytics__value { color: #FFD86B; }
-    .analytics__card--profit .analytics__value  { color: #7FE4A5; }
-    .analytics__card--stock .analytics__value   { color: #fff; }
+    .analytics__value small { font-size: 12px; margin-left: 4px; letter-spacing: 0; }
 
-    .chart-wrap {
-      margin-top: 16px; padding: 14px 12px 10px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 16px; position: relative; z-index: 1;
-      min-width: 0; max-width: 100%;
-    }
-    @media (min-width: 700px) { .chart-wrap { padding: 16px 14px 12px; margin-top: 20px; } }
+    /* График */
+    .chart-wrap { margin-top: 18px; padding: 16px 14px 12px; }
     .chart-wrap__head {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; margin-bottom: 14px; flex-wrap: wrap; min-width: 0;
+      display: flex; justify-content: space-between; gap: 8px;
+      margin-bottom: 14px; flex-wrap: wrap;
     }
-    .chart-wrap__title {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .5px; color: rgba(255,255,255,.75); min-width: 0;
-    }
-    @media (min-width: 700px) { .chart-wrap__title { font-size: 12px; } }
-    .chart-wrap__total { font-size: 13px; font-weight: 700; color: var(--kut-gold); white-space: nowrap; }
-    .chart {
-      display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 4px; align-items: end; height: 100px; min-width: 0;
-    }
-    @media (min-width: 700px) { .chart { gap: 6px; height: 120px; } }
-    .chart__col {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 6px; height: 100%; justify-content: flex-end; min-width: 0;
-    }
-    .chart__bar {
-      width: 100%; max-width: 36px;
-      background: linear-gradient(180deg, #FFD86B, #D4AF37);
-      border-radius: 6px 6px 4px 4px; min-height: 3px;
-      transition: height .4s cubic-bezier(.2,.8,.2,1); position: relative;
-    }
-    .chart__bar.is-today { background: linear-gradient(180deg, #7FE4A5, #1EBE5A); }
-    .chart__bar-value {
-      font-size: 9px; font-weight: 700; color: #fff;
-      position: absolute; top: -14px; left: 50%;
-      transform: translateX(-50%); white-space: nowrap;
-    }
-    @media (min-width: 700px) { .chart__bar-value { font-size: 10px; top: -16px; } }
-    .chart__label {
-      font-size: 10px; color: rgba(255,255,255,.7);
-      font-weight: 600; text-align: center; text-transform: lowercase;
-    }
-    @media (min-width: 700px) { .chart__label { font-size: 11px; } }
+    .chart-wrap__title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .chart-wrap__total { font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .chart { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; align-items: end; height: 110px; }
+    .chart__col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; min-width: 0; }
+    .chart__bar { width: 100%; max-width: 34px; min-height: 4px; border-radius: 8px 8px 4px 4px; transition: height .45s cubic-bezier(.2,.8,.2,1); position: relative; }
+    .chart__bar-value { font-size: 10px; font-weight: 700; color: #fff; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+    .chart__label { font-size: 10px; font-weight: 700; text-transform: lowercase; }
 
-    .recent {
-      background: var(--kut-surface); border: 1px solid var(--kut-border);
-      border-radius: 22px; box-shadow: var(--shadow-sm);
-      overflow: hidden; min-width: 0; max-width: 100%;
-      display: flex; flex-direction: column; max-height: 50vh;
-    }
-    .recent__head {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 10px; padding: 16px 18px;
-      border-bottom: 1px solid var(--kut-border); flex-wrap: wrap; flex-shrink: 0;
-    }
+    /* Последние продажи */
+    .recent { border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; max-height: 55vh; }
+    .recent__head { display: flex; justify-content: space-between; gap: 10px; padding: 16px 18px; flex-shrink: 0; }
     .recent__head h2 { margin: 0; font-size: 16px; font-weight: 700; }
-    .recent__head a { font-size: 13px; color: var(--kut-green);
-      text-decoration: none; font-weight: 600; }
-    .recent__list {
-      padding: 6px 8px; overflow-y: auto;
-      -webkit-overflow-scrolling: touch; flex: 1; min-height: 0;
-    }
-    .recent__list::-webkit-scrollbar { width: 6px; }
-    .recent__list::-webkit-scrollbar-thumb { background: var(--kut-border); border-radius: 3px; }
-    .sale-row { display: flex; align-items: center; gap: 10px; padding: 10px;
-      border-radius: 12px; min-width: 0; }
-    .sale-row + .sale-row { border-top: 1px dashed var(--kut-border); }
-    .sale-row__avatar { width: 36px; height: 36px; display: grid; place-items: center;
-      background: var(--kut-green-soft); border-radius: 10px; font-size: 16px; flex-shrink: 0; }
+    .recent__head a { font-size: 13px; font-weight: 600; text-decoration: none; }
+    .recent__list { padding: 6px 8px; overflow-y: auto; flex: 1; min-height: 0; }
+    .sale-row { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-radius: 14px; }
+    .sale-row + .sale-row { border-top: 1px dashed rgba(255,255,255,.06); }
+    .sale-row__avatar { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; font-size: 17px; flex-shrink: 0; }
     .sale-row__info { flex: 1; min-width: 0; overflow: hidden; }
-    .sale-row__title { font-size: 14px; font-weight: 600;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sale-row__meta { font-size: 12px; color: var(--kut-muted); margin-top: 2px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sale-row__amount { font-size: 14px; font-weight: 800; color: var(--kut-green);
-      font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
-    .sale-row__amount--debt { color: var(--kut-warn); }
-    .recent__empty { padding: 34px 18px; text-align: center;
-      color: var(--kut-muted); font-size: 14px; }
-    .recent__empty span { display: block; font-size: 30px; margin-bottom: 6px; opacity: .8; }
+    .sale-row__title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sale-row__meta { font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sale-row__amount { font-size: 14px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .recent__empty { padding: 40px 18px; text-align: center; font-size: 14px; }
+    .recent__empty span { display: block; font-size: 34px; margin-bottom: 8px; opacity: .8; }
 
-    .footer { text-align: center; color: var(--kut-muted); font-size: 12px;
-      padding: 8px 0 4px; word-break: break-word; }
-    .footer a { color: var(--kut-green); text-decoration: none; }
+    .footer { text-align: center; font-size: 12px; padding: 8px 0 4px; }
 
-    /* ============ НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ ============ */
+    /* Нижняя навигация */
     .bottom-nav {
-      position: fixed;
-      left: 0; right: 0; bottom: 0;
+      position: fixed; left: 0; right: 0; bottom: 0;
       z-index: 60;
-      height: 68px;
       display: grid;
-      grid-template-columns: 1fr 1fr 88px 1fr 1fr;
+      grid-template-columns: 1fr 1fr 92px 1fr 1fr;
       align-items: center;
-      background: rgba(255,255,255,.96);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(0,95,64,.10);
-      padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
-      box-shadow: 0 -8px 28px rgba(16,32,25,.08);
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     }
-    .bottom-nav__item {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 2px; padding: 6px 2px;
-      border-radius: 12px; text-decoration: none;
-      color: var(--kut-muted); font-family: inherit;
-      font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .3px;
-      transition: background .18s ease, color .18s ease, transform .12s ease;
-      -webkit-tap-highlight-color: transparent; min-width: 0;
-    }
-    .bottom-nav__item:active { transform: scale(.94); }
-    .bottom-nav__icon {
-      font-size: 22px; line-height: 1;
-      filter: grayscale(.4) opacity(.85);
-      transition: filter .18s ease, transform .18s ease;
-    }
-    .bottom-nav__item.active {
-      color: var(--kut-green);
-      background: var(--kut-green-soft);
-    }
-    .bottom-nav__item.active .bottom-nav__icon {
-      filter: none; transform: translateY(-1px);
-    }
-    .bottom-nav__scan {
-      position: relative;
-      display: grid; place-items: center;
-      width: 76px; height: 76px;
-      margin: -24px auto 0;
-      border-radius: 50%;
-      border: 5px solid #fff;
-      background: linear-gradient(135deg, #FFD86B, #D4AF37);
-      color: #003F2A;
-      font-size: 34px;
-      cursor: pointer; padding: 0;
-      box-shadow:
-        0 10px 24px rgba(212,175,55,.55),
-        0 4px 10px rgba(16,32,25,.18);
-      transition: transform .15s ease, box-shadow .18s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .bottom-nav__scan:active { transform: scale(.94); }
-    .bottom-nav__scan::after {
-      content: "";
-      position: absolute;
-      inset: -8px;
-      border-radius: 50%;
-      border: 2px solid rgba(212,175,55,.35);
-      animation: navScanPulse 2.2s ease-in-out infinite;
-      pointer-events: none;
-    }
-    @keyframes navScanPulse {
-      0%, 100% { transform: scale(1); opacity: .55; }
-      50%      { transform: scale(1.12); opacity: .15; }
-    }
-    @media (min-width: 1000px) { .bottom-nav { display: none !important; } }
+    .bottom-nav__item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-family: inherit; font-weight: 700; text-transform: uppercase; }
+    .bottom-nav__icon { line-height: 1; }
+    .bottom-nav__scan { display: grid; place-items: center; margin: -22px auto 0; border-radius: 50%; font-size: 34px; cursor: pointer; padding: 0; -webkit-tap-highlight-color: transparent; position: relative; }
   </style>
 </head>
 <body class="page-home">
 
+  <!-- Kill-switch: сброс кэша после обновления -->
   <script>
     (function () {
-      var BUILD = 'v8.1-NET-PILL';
+      var BUILD = 'v9.0-DARK-PINE';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -466,6 +257,7 @@
   <div class="overlay" id="overlay" aria-hidden="true"></div>
 
   <div class="layout">
+    <!-- ============ САЙДБАР ============ -->
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
       <div id="sidebar-profile-slot"></div>
 
@@ -515,13 +307,12 @@
       <div id="sidebar-logout-slot"></div>
     </aside>
 
+    <!-- ============ ОСНОВНОЙ БЛОК ============ -->
     <div>
-      <!-- Единая верхняя шапка: бургер + бренд + сеть + язык -->
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
         <span class="mobile-bar__title">КУТ: БИЗНЕС</span>
 
-        <!-- Индикатор сети/офлайн-очереди -->
         <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
           <span class="net-pill__dot" aria-hidden="true"></span>
           <span class="net-pill__label">онлайн</span>
@@ -540,6 +331,7 @@
           <span class="role-badge role-badge--user" id="role-badge">Пользователь</span>
         </div>
 
+        <!-- ============ АНАЛИТИКА ============ -->
         <section class="analytics" aria-label="Финансовая аналитика">
           <div class="analytics__head">
             <h2 class="analytics__title">📊 Финансовая аналитика</h2>
@@ -547,21 +339,21 @@
           </div>
 
           <div class="analytics__grid">
-            <div class="analytics__card analytics__card--revenue">
+            <div class="analytics__card analytics__card--revenue glass-tap">
               <div class="analytics__icon">💵</div>
               <div>
                 <div class="analytics__label">Выручка</div>
                 <div class="analytics__value" id="analyticsRevenue">0<small>KGS</small></div>
               </div>
             </div>
-            <div class="analytics__card analytics__card--profit">
+            <div class="analytics__card analytics__card--profit glass-tap">
               <div class="analytics__icon">📈</div>
               <div>
                 <div class="analytics__label">Чистая прибыль</div>
                 <div class="analytics__value" id="analyticsProfit">0<small>KGS</small></div>
               </div>
             </div>
-            <div class="analytics__card analytics__card--stock">
+            <div class="analytics__card analytics__card--stock glass-tap">
               <div class="analytics__icon">📦</div>
               <div>
                 <div class="analytics__label">Стоимость склада</div>
@@ -593,6 +385,7 @@
           <span id="staff-pending"></span>
         </div>
 
+        <!-- ============ ПОСЛЕДНИЕ ПРОДАЖИ ============ -->
         <section class="recent" aria-label="Последние продажи">
           <div class="recent__head">
             <h2>Последние продажи</h2>
@@ -606,11 +399,12 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · версия: v8.1</div>
+        <div class="footer">КУТ: БИЗНЕС · v9 · Refined Dark Pine</div>
       </main>
     </div>
   </div>
 
+  <!-- ============ НИЖНЯЯ НАВИГАЦИЯ ============ -->
   <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
     <a href="./index.html" class="bottom-nav__item" data-page="index">
       <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
@@ -630,8 +424,44 @@
     <a href="./debts.html" class="bottom-nav__item" data-page="debts">
       <span class="bottom-nav__icon" aria-hidden="true">📒</span>
       <span>Несие</span>
+      <!-- 🔴 Пульсирующий бейдж уведомлений — синхронизируется с сайдбаром -->
+      <span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span>
     </a>
   </nav>
+
+  <!-- =========================================================
+       Синхронизатор бейджа долгов (сайдбар → нижний бар).
+       app.js обновляет #nav-debts-count; мы зеркалим его
+       на #nav-debts-count-bottom без изменений в app.js.
+       ========================================================= -->
+  <script>
+    (function () {
+      function sync() {
+        var src = document.getElementById('nav-debts-count');
+        var dst = document.getElementById('nav-debts-count-bottom');
+        if (!src || !dst) return;
+        var has = !src.hidden && src.textContent && src.textContent !== '0';
+        if (has) {
+          dst.textContent = src.textContent;
+          dst.hidden = false;
+          dst.classList.add('badge-notify');
+        } else {
+          dst.hidden = true;
+        }
+      }
+      // Первичная проверка + реакция на изменения app.js
+      setTimeout(sync, 500);
+      setTimeout(sync, 1500);
+      setTimeout(sync, 3000);
+
+      var src = document.getElementById('nav-debts-count');
+      if (src && 'MutationObserver' in window) {
+        new MutationObserver(sync).observe(src, {
+          attributes: true, childList: true, characterData: true, subtree: true
+        });
+      }
+    })();
+  </script>
 
   <script type="module" src="./js/app.js"></script>
 </body>
