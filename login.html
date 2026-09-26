@@ -424,7 +424,7 @@
       ожидание загрузки скриптов...
     </div>
 
-    <div class="version-badge">версия файла: v3.6-FIXED</div>
+    <div class="version-badge">версия файла: v3.7-FINAL</div>
   </div>
 
   <script>
@@ -523,9 +523,7 @@
       db   = getFirestore(app);
       window.__kutDiag('✓ Firebase инициализирован: ' + firebaseConfig.projectId);
       window.__kutDiag('  authDomain: ' + firebaseConfig.authDomain);
-      window.__kutDiag('  apiKey: ' + firebaseConfig.apiKey);
       window.__kutDiag('  apiKey длина: ' + firebaseConfig.apiKey.length);
-      window.__kutDiag('  appId: ' + firebaseConfig.appId);
     } catch (initErr) {
       window.__kutDiag('✗ Ошибка initializeApp: ' + initErr.message);
       throw initErr;
