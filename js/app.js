@@ -1,10 +1,10 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v9
-   + Единая нижняя навигация на 5 слотов с центральной кнопкой сканера
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v10
+   + Умная центральная кнопка сканера (сквозная по всем страницам)
    + Подсветка активной вкладки по URL
-   + Контекстный сканер: касса/склад/редирект
    + Профиль и кнопка «Выйти» в сайдбаре
    + Модалка «Мой профиль» с системой заявок
+   + QR-оплата: registerSale принимает paymentMethod: 'qr'
    ========================================================= */
 
 import './firebase-config.js';
@@ -27,7 +27,7 @@ function todayISO() {
 }
 function nowTimeHHMM() {
   const d = new Date();
-  const z = (n) => String(d.getHours()).padStart(2, '0');
+  const z = (n) => String(n).padStart(2, '0');
   return `${z(d.getHours())}:${z(d.getMinutes())}`;
 }
 function escapeHtml(str) {
@@ -79,11 +79,12 @@ function getCurrentPage() {
   let file = (window.location.pathname || '').split('/').pop().toLowerCase();
   if (!file || file === '') file = 'index.html';
   const map = {
-    'index.html': 'index',
-    '':           'index',
-    'cash.html':  'cash',
-    'stock.html': 'stock',
-    'debts.html': 'debts',
+    'index.html':  'index',
+    '':            'index',
+    'cash.html':   'cash',
+    'stock.html':  'stock',
+    'debts.html':  'debts',
+    'staff.html':  'staff',
   };
   return map[file] || null;
 }
@@ -155,11 +156,12 @@ function costOfSale(s) {
 }
 function aggregateRevenue() {
   const m = getMonthSales();
-  const total = m.reduce((s, x) => s + sumOfSale(x), 0);
-  const cash = m.filter((s) => s.paymentMethod === 'cash').reduce((s, x) => s + sumOfSale(x), 0);
+  const total  = m.reduce((s, x) => s + sumOfSale(x), 0);
+  const cash   = m.filter((s) => s.paymentMethod === 'cash').reduce((s, x) => s + sumOfSale(x), 0);
   const wallet = m.filter((s) => s.paymentMethod === 'wallet').reduce((s, x) => s + sumOfSale(x), 0);
-  const debt = m.filter((s) => s.paymentMethod === 'debt').reduce((s, x) => s + sumOfSale(x), 0);
-  return { total, cash, wallet, debt, count: m.length };
+  const qr     = m.filter((s) => s.paymentMethod === 'qr').reduce((s, x) => s + sumOfSale(x), 0);
+  const debt   = m.filter((s) => s.paymentMethod === 'debt').reduce((s, x) => s + sumOfSale(x), 0);
+  return { total, cash, wallet, qr, debt, count: m.length };
 }
 function aggregateProfit() {
   const m = getMonthSales();
@@ -285,7 +287,7 @@ function renderDashboard() {
 
   setText('revenue-sub',
     revenue.count > 0
-      ? `Продаж за месяц: ${revenue.count} · нал. ${fmt(revenue.cash)} · кошелёк ${fmt(revenue.wallet)} · несие ${fmt(revenue.debt)}`
+      ? `Продаж за месяц: ${revenue.count} · нал. ${fmt(revenue.cash)} · QR ${fmt(revenue.qr)} · несие ${fmt(revenue.debt)}`
       : 'Продаж пока не было',
     ['sales-sub']);
 
@@ -366,6 +368,7 @@ function methodEmoji(m) {
   switch (m) {
     case 'cash':   return '💵';
     case 'wallet': return '📱';
+    case 'qr':     return '🔳';
     case 'debt':   return '📝';
     default:       return '🧾';
   }
@@ -374,6 +377,7 @@ function methodTitle(m, customer) {
   switch (m) {
     case 'cash':   return 'Продажа · Наличные';
     case 'wallet': return 'Продажа · MBANK/Элсом/О!Деньги';
+    case 'qr':     return 'Продажа · QR-оплата';
     case 'debt':   return `Продажа · Несие${customer ? ' — ' + customer : ''}`;
     default:       return 'Продажа';
   }
@@ -425,7 +429,7 @@ function setupBottomNavHighlight() {
 }
 
 // =========================================================
-// ЦЕНТРАЛЬНАЯ КНОПКА СКАНЕРА — КОНТЕКСТНАЯ
+// УМНАЯ ЦЕНТРАЛЬНАЯ КНОПКА СКАНЕРА — СКВОЗНАЯ ПО СТРАНИЦАМ
 // =========================================================
 function setupBottomNavScan() {
   const btn = document.getElementById('bottomNavScan');
@@ -434,16 +438,21 @@ function setupBottomNavScan() {
   btn.addEventListener('click', () => {
     const page = getCurrentPage();
 
-    // На КАССЕ — просто клик по скрытой кнопке cash.js
+    // ---------- КАССА ----------
+    // Кликаем по скрытой кнопке cash.js — она поднимает камеру.
+    // После скана cash.js сам найдёт товар по barcode и положит в корзину.
     if (page === 'cash') {
       const cashScan = document.getElementById('cashScanBtn');
       if (cashScan) { cashScan.click(); return; }
-      // fallback — открыть кассу с флагом
+      // Fallback — редирект в кассу с флагом автоскана
       window.location.href = './cash.html?scan=1';
       return;
     }
 
-    // На СКЛАДЕ — сначала открыть модалку добавления, потом кликнуть сканер
+    // ---------- СКЛАД ----------
+    // 1) Открываем модалку добавления товара (если ещё закрыта)
+    // 2) Кликаем скрытую кнопку сканера внутри модалки — она подставит
+    //    barcode прямо в поле fBarcode.
     if (page === 'stock') {
       const modal = document.getElementById('productModal');
       const isOpen = modal && !modal.hidden;
@@ -459,7 +468,8 @@ function setupBottomNavScan() {
       return;
     }
 
-    // На ГЛАВНОЙ / ДОЛГАХ — редирект в кассу со стартом сканера
+    // ---------- ГЛАВНАЯ / ДОЛГИ / СОТРУДНИКИ ----------
+    // Плавный редирект в кассу + автостарт сканера через ?scan=1
     window.location.href = './cash.html?scan=1';
   });
 }
@@ -473,7 +483,7 @@ function handleAutoScanParam() {
 
   if (params.get('scan') !== '1') return;
 
-  // Чистим URL
+  // Чистим URL, чтобы при F5 скан не запускался снова
   try {
     const url = new URL(window.location.href);
     url.searchParams.delete('scan');
