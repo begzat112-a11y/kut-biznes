@@ -187,6 +187,51 @@
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     }
 
+    /* ====== Секция «Сотрудники» ====== */
+    .staff-section {
+      background: var(--kut-surface); border: 1px solid var(--kut-border);
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .staff-section__head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 16px 18px;
+      border-bottom: 1px solid var(--kut-border);
+    }
+    .staff-section__head h2 {
+      margin: 0; font-size: 16px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .staff-section__head a {
+      font-size: 13px; color: var(--kut-green);
+      text-decoration: none; font-weight: 600;
+    }
+    .staff-section__head a:hover { text-decoration: underline; }
+
+    .staff-section__body { padding: 16px 18px; }
+    .staff-mini {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    @media (max-width: 480px) {
+      .staff-mini { grid-template-columns: 1fr; gap: 8px; }
+    }
+    .staff-mini__item {
+      padding: 12px 14px; background: #FBFDFC;
+      border: 1px solid var(--kut-border); border-radius: 12px;
+    }
+    .staff-mini__label {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: .5px; font-weight: 700;
+      color: var(--kut-muted); margin-bottom: 4px;
+    }
+    .staff-mini__value {
+      font-size: 20px; font-weight: 800;
+      color: var(--kut-text); line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    .staff-mini__value--active { color: var(--kut-green); }
+    .staff-mini__value--pending { color: var(--kut-warn); }
+
     .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     @media (min-width: 700px) { .quick-actions { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
     .quick {
@@ -261,10 +306,10 @@
 </head>
 <body class="page-home">
 
-  <!-- Kill-switch кэша при обновлении версии -->
+  <!-- Kill-switch -->
   <script>
     (function () {
-      var BUILD = 'v4.1-FIREBASE';
+      var BUILD = 'v5.0-STAFF-DASH';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -321,6 +366,11 @@
           <span class="nav-link__icon" aria-hidden="true">📒</span>
           <span>Несие (долги)</span>
           <span class="nav-link__badge" id="nav-debts-count" hidden>0</span>
+        </a>
+        <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden>
+          <span class="nav-link__icon" aria-hidden="true">👥</span>
+          <span>Сотрудники</span>
+          <span class="nav-link__badge" id="nav-staff-count" hidden>0</span>
         </a>
       </nav>
 
@@ -389,6 +439,30 @@
           </article>
         </section>
 
+        <!-- ===== Секция «Сотрудники» — только для владельца ===== -->
+        <section class="staff-section" id="staff-section" hidden aria-label="Сотрудники">
+          <div class="staff-section__head">
+            <h2><span aria-hidden="true">👥</span> Сотрудники</h2>
+            <a href="./staff.html">Управлять сотрудниками →</a>
+          </div>
+          <div class="staff-section__body">
+            <div class="staff-mini">
+              <div class="staff-mini__item">
+                <div class="staff-mini__label">Всего</div>
+                <div class="staff-mini__value" id="staff-total">0</div>
+              </div>
+              <div class="staff-mini__item">
+                <div class="staff-mini__label">Активных</div>
+                <div class="staff-mini__value staff-mini__value--active" id="staff-active">0</div>
+              </div>
+              <div class="staff-mini__item">
+                <div class="staff-mini__label">Ожидают входа</div>
+                <div class="staff-mini__value staff-mini__value--pending" id="staff-pending">0</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="quick-actions" aria-label="Быстрые действия">
           <a href="./cash.html" class="quick">
             <span class="quick__icon" aria-hidden="true">🧾</span>
@@ -411,6 +485,13 @@
               <span class="quick__desc">Тетрадь долгов</span>
             </span>
           </a>
+          <a href="./staff.html" class="quick" id="quick-staff" hidden>
+            <span class="quick__icon" aria-hidden="true">👥</span>
+            <span>
+              <span class="quick__title">Сотрудники</span>
+              <span class="quick__desc">Кассиры и доступ</span>
+            </span>
+          </a>
         </section>
 
         <section class="recent" aria-label="Последние продажи">
@@ -430,7 +511,7 @@
           КУТ: БИЗНЕС · <a href="./cash.html">Касса</a> ·
           <a href="./stock.html">Склад</a> ·
           <a href="./debts.html">Несие</a>
-          · версия: v4.1-FIREBASE
+          · версия: v5.0
         </div>
       </main>
     </div>
