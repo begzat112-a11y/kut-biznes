@@ -1,27 +1,22 @@
 /* =========================================================
    КУТ: БИЗНЕС — Модуль «Несие / Учёт долгов» (debts.js) · Firebase v2
-   Работает с Firestore через window.KUT и window.FB.
-   Коллекция: businesses/{businessId}/debts/{docId}
-   Схема: { name, phone, initialAmount, amount, date, dueDate, note,
-            status, payments[], createdAt, updatedAt }
+   Работает поверх window.KUT и window.FB.
+   Коллекция: businesses/{businessId}/debts
    ========================================================= */
 
 (function () {
   'use strict';
 
-  // =========================================================
-  // 1. КОНСТАНТЫ
-  // =========================================================
   const OVERDUE_DAYS = 30;
   const KG_PHONE_CODE = '+996';
 
   // =========================================================
-  // 2. СОСТОЯНИЕ
+  // СОСТОЯНИЕ
   // =========================================================
   const state = {
     debts: [],
     search: '',
-    tab: 'active',          // 'active' | 'paid'
+    tab: 'active',
     editingId: null,
     deletingId: null,
     payingId: null,
@@ -31,9 +26,9 @@
   };
 
   // =========================================================
-  // 3. DOM
+  // DOM
   // =========================================================
-  const $ = (sel) => document.querySelector(sel);
+  const $ = (s) => document.querySelector(s);
   const el = {
     openAddBtn:    $('#openAddBtn'),
     emptyAddBtn:   $('#emptyAddBtn'),
@@ -84,17 +79,14 @@
     deleteModal:   $('#deleteModal'),
     deleteName:    $('#deleteName'),
     confirmDeleteBtn: $('#confirmDeleteBtn'),
-
-    toast:         $('#toast'),
   };
 
   // =========================================================
-  // 4. УТИЛИТЫ
+  // УТИЛИТЫ
   // =========================================================
 
   const fmt = (n) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
-
   const fmtMoney = (n) => fmt(n) + ' KGS';
 
   function escapeHtml(str) {
@@ -103,54 +95,15 @@
     }[ch]));
   }
 
-  let toastTimer = null;
-  function showToast(message, isError = false) {
-    if (window.KUT?.toast) { window.KUT.toast(message, isError); return; }
-    if (!el.toast) return;
-    el.toast.textContent = message;
-    el.toast.classList.toggle('toast--error', isError);
-    el.toast.classList.add('is-visible');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.toast.classList.remove('is-visible'), 2600);
-  }
-
-  function toDate(ts) {
-    if (!ts) return null;
-    if (typeof ts.toDate === 'function') return ts.toDate();
-    if (ts.seconds) return new Date(ts.seconds * 1000);
-    const d = new Date(ts);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  function formatDate(iso) {
-    if (!iso) return '—';
-    // Если это ISO-строка "YYYY-MM-DD"
-    if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-      const [y, m, d] = iso.split('-');
-      return `${d}.${m}.${y}`;
-    }
-    const d = toDate(iso);
-    if (!d) return '—';
-    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
-
-  function todayISO() {
-    const d = new Date();
-    const z = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
-  }
-
-  function daysBetween(fromISO, toISO) {
-    if (!fromISO) return 0;
-    const a = new Date(fromISO + 'T00:00:00');
-    const b = toISO ? new Date(toISO + 'T00:00:00') : new Date();
-    return Math.floor((b - a) / (1000 * 60 * 60 * 24));
+  function showToast(message, isError) {
+    if (window.KUT?.toast) window.KUT.toast(message, isError);
+    else console.log('[debts]', message);
   }
 
   function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
   async function waitForReady(timeoutMs) {
-    timeoutMs = timeoutMs || 20000;
+    timeoutMs = timeoutMs || 25000;
     const start = Date.now();
     while (!window.KUT) {
       if (Date.now() - start > timeoutMs) return null;
@@ -164,6 +117,38 @@
     }
   }
 
+  function toDate(ts) {
+    if (!ts) return null;
+    if (typeof ts.toDate === 'function') return ts.toDate();
+    if (ts.seconds) return new Date(ts.seconds * 1000);
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function todayISO() {
+    const d = new Date();
+    const z = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    if (typeof iso === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      const [y, m, d] = iso.split('-');
+      return `${d}.${m}.${y}`;
+    }
+    const d = toDate(iso);
+    if (!d) return '—';
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  function daysBetween(fromISO, toISO) {
+    if (!fromISO) return 0;
+    const a = new Date(fromISO + 'T00:00:00');
+    const b = toISO ? new Date(toISO + 'T00:00:00') : new Date();
+    return Math.floor((b - a) / (1000 * 60 * 60 * 24));
+  }
+
   // ---------- Телефон ----------
   function normalizePhone(raw) {
     let d = String(raw || '').replace(/\D/g, '');
@@ -173,13 +158,11 @@
     d = d.slice(0, 9);
     return KG_PHONE_CODE + d;
   }
-
   function maskPhone(raw) {
     let d = String(raw || '').replace(/\D/g, '');
     if (d.startsWith('996')) d = d.slice(3);
     else if (d.startsWith('0')) d = d.slice(1);
     d = d.slice(0, 9);
-
     if (d.length === 0) return '';
     let out = KG_PHONE_CODE + ' ';
     if (d.length <= 3) return out + d;
@@ -189,13 +172,12 @@
     out += d.slice(6);
     return out;
   }
-
   function isValidPhone(normalized) {
     return /^\+996\d{9}$/.test(normalized);
   }
 
   // =========================================================
-  // 5. ВЫЧИСЛЕНИЯ
+  // ВЫЧИСЛЕНИЯ
   // =========================================================
 
   const isActive = (d) => d.status !== 'paid' && Number(d.amount) > 0;
@@ -208,7 +190,7 @@
   }
 
   // =========================================================
-  // 6. РЕНДЕР
+  // РЕНДЕР
   // =========================================================
 
   function renderStats() {
@@ -250,7 +232,9 @@
   function renderTable() {
     if (!el.debtsBody) return;
     const list = getVisibleDebts();
-    const hasAny = state.tab === 'active' ? getActiveDebts().length > 0 : getPaidDebts().length > 0;
+    const hasAny = state.tab === 'active'
+      ? getActiveDebts().length > 0
+      : getPaidDebts().length > 0;
 
     if (!hasAny && !state.search) {
       if (el.debtsTable) el.debtsTable.hidden = true;
@@ -274,11 +258,9 @@
 
     if (list.length === 0) {
       el.debtsBody.innerHTML = `
-        <tr>
-          <td colspan="5" style="text-align:center; padding:40px 16px; color:var(--kut-muted);">
-            По вашему запросу ничего не найдено.
-          </td>
-        </tr>`;
+        <tr><td colspan="5" style="text-align:center; padding:40px 16px; color:var(--kut-muted);">
+          По вашему запросу ничего не найдено.
+        </td></tr>`;
       return;
     }
 
@@ -320,18 +302,18 @@
     if (paid) {
       actions = state.isOwner ? `
         <div class="row-actions">
-          <button class="icon-btn" type="button" data-act="edit" aria-label="Редактировать" title="Редактировать">✏️</button>
-          <button class="icon-btn icon-btn--danger" type="button" data-act="delete" aria-label="Удалить" title="Удалить">🗑️</button>
+          <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
+          <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">🗑️</button>
         </div>` : '';
     } else {
       const ownerExtra = state.isOwner ? `
-        <button class="icon-btn" type="button" data-act="edit" aria-label="Редактировать" title="Редактировать">✏️</button>
-        <button class="icon-btn icon-btn--danger" type="button" data-act="delete" aria-label="Удалить" title="Удалить">🗑️</button>
+        <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
+        <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">🗑️</button>
       ` : '';
       actions = `
         <div class="row-actions">
-          <button class="icon-btn icon-btn--wa" type="button" data-act="wa" aria-label="Напомнить в WhatsApp" title="Напомнить в WhatsApp">💬</button>
-          <button class="icon-btn icon-btn--pay" type="button" data-act="pay" aria-label="Погасить долг" title="Погасить долг">💵</button>
+          <button class="icon-btn icon-btn--wa" type="button" data-act="wa" title="Напомнить в WhatsApp">💬</button>
+          <button class="icon-btn icon-btn--pay" type="button" data-act="pay" title="Погасить долг">💵</button>
           ${ownerExtra}
         </div>`;
     }
@@ -340,7 +322,7 @@
       <tr data-id="${escapeHtml(d.id)}" class="${overdue ? 'is-overdue' : ''}">
         <td data-label="Клиент">
           <div class="client">
-            <div class="client__avatar" aria-hidden="true">${escapeHtml(initials(d.name))}</div>
+            <div class="client__avatar">${escapeHtml(initials(d.name))}</div>
             <div class="client__text">
               <div class="client__name">${escapeHtml(d.name)}</div>
               ${d.note ? `<div class="client__note" title="${escapeHtml(d.note)}">${escapeHtml(d.note)}</div>` : ''}
@@ -356,37 +338,11 @@
           <div class="date-cell__sub ${dateSubCls}">${escapeHtml(dateSub)}</div>
         </td>
         <td data-label="Действия">${actions}</td>
-      </tr>
-    `;
+      </tr>`;
   }
 
   // =========================================================
-  // 7. ДАННЫЕ — Firestore
-  // =========================================================
-
-  async function loadDebts() {
-    try {
-      const items = await window.FB.getCollection('debts');
-      state.debts = items;
-      renderStats();
-      renderTable();
-    } catch (err) {
-      console.error('[debts] loadDebts failed:', err);
-      showToast('Не удалось загрузить долги', true);
-    }
-  }
-
-  function subscribeDebts() {
-    if (state.unsubDebts) state.unsubDebts();
-    state.unsubDebts = window.FB.subscribeCollection('debts', (items) => {
-      state.debts = items;
-      renderStats();
-      renderTable();
-    });
-  }
-
-  // =========================================================
-  // 8. МОДАЛЬНЫЕ ОКНА
+  // МОДАЛЬНЫЕ ОКНА
   // =========================================================
 
   let lastFocused = null;
@@ -402,7 +358,7 @@
   }
 
   // =========================================================
-  // 9. ФОРМА ДОЛГА
+  // ФОРМА ДОЛГА
   // =========================================================
 
   function clearFieldErrors() {
@@ -428,7 +384,7 @@
   function openAddModal() {
     state.editingId = null;
     if (el.debtModalTitle) el.debtModalTitle.textContent = 'Новый долг';
-    if (el.debtModalSub) el.debtModalSub.textContent = 'Запишите клиента и сумму — потом напомним в WhatsApp в один клик.';
+    if (el.debtModalSub) el.debtModalSub.textContent = 'Запишите клиента и сумму — потом напомним в WhatsApp.';
     if (el.saveBtn) el.saveBtn.textContent = 'Записать долг';
 
     if (el.debtForm) el.debtForm.reset();
@@ -512,7 +468,9 @@
     try {
       if (state.editingId) {
         const existing = state.debts.find((x) => x.id === state.editingId);
-        const initial = existing ? (Number(existing.initialAmount) || Number(existing.amount) || amount) : amount;
+        const initial = existing
+          ? (Number(existing.initialAmount) || Number(existing.amount) || amount)
+          : amount;
         const newInitial = amount >= (Number(existing?.amount) || 0) ? amount : initial;
         const newStatus = amount <= 0 ? 'paid' : 'active';
         await window.FB.updateItem('debts', state.editingId, {
@@ -534,8 +492,8 @@
       }
       closeModal(el.debtModal);
     } catch (err) {
-      console.error('[debts] save failed:', err);
-      showToast('Не удалось сохранить долг', true);
+      console.error('[debts] save:', err);
+      showToast('Не удалось сохранить', true);
     } finally {
       if (el.saveBtn) {
         el.saveBtn.disabled = false;
@@ -545,7 +503,7 @@
   }
 
   // =========================================================
-  // 10. ПОГАШЕНИЕ
+  // ПОГАШЕНИЕ
   // =========================================================
 
   function openPayModal(id) {
@@ -587,8 +545,7 @@
             <span class="payment-row__date">${dateStr}</span>
             <span class="payment-row__amount">+ ${fmt(p.amount)} KGS</span>
           </div>`;
-      }).join('')}
-    `;
+      }).join('')}`;
   }
 
   async function confirmPayment(event) {
@@ -637,7 +594,7 @@
       state.payingId = null;
       closeModal(el.payModal);
     } catch (err) {
-      console.error('[debts] payment failed:', err);
+      console.error('[debts] payment:', err);
       showToast('Не удалось провести платёж', true);
     } finally {
       if (el.confirmPayBtn) {
@@ -648,7 +605,7 @@
   }
 
   // =========================================================
-  // 11. WHATSAPP
+  // WHATSAPP
   // =========================================================
 
   function openWaModal(id) {
@@ -659,7 +616,8 @@
     const amount = Number(d.amount) || 0;
 
     if (el.waClientInfo) {
-      el.waClientInfo.innerHTML = `Клиент: <strong>${escapeHtml(d.name)}</strong> · Долг: <strong>${fmtMoney(amount)}</strong>`;
+      el.waClientInfo.innerHTML =
+        `Клиент: <strong>${escapeHtml(d.name)}</strong> · Долг: <strong>${fmtMoney(amount)}</strong>`;
     }
     if (el.previewRu) el.previewRu.textContent = ruMessage(d, amount, true);
     if (el.previewKg) el.previewKg.textContent = kgMessage(d, amount, true);
@@ -696,14 +654,16 @@
   }
 
   // =========================================================
-  // 12. УДАЛЕНИЕ
+  // УДАЛЕНИЕ
   // =========================================================
 
   function openDeleteModal(id) {
     const d = state.debts.find((x) => x.id === id);
     if (!d) return;
     state.deletingId = d.id;
-    if (el.deleteName) el.deleteName.textContent = `Запись о долге «${d.name}» (${fmtMoney(d.amount)}) будет удалена.`;
+    if (el.deleteName) {
+      el.deleteName.textContent = `Запись о долге «${d.name}» (${fmtMoney(d.amount)}) будет удалена.`;
+    }
     openModal(el.deleteModal);
   }
 
@@ -716,15 +676,14 @@
       el.confirmDeleteBtn.disabled = true;
       el.confirmDeleteBtn.textContent = 'Удаляем...';
     }
-
     try {
       await window.FB.deleteItem('debts', id);
       state.deletingId = null;
       closeModal(el.deleteModal);
       if (d) showToast(`Запись «${d.name}» удалена`);
     } catch (err) {
-      console.error('[debts] delete failed:', err);
-      showToast('Не удалось удалить запись', true);
+      console.error('[debts] delete:', err);
+      showToast('Не удалось удалить', true);
     } finally {
       if (el.confirmDeleteBtn) {
         el.confirmDeleteBtn.disabled = false;
@@ -734,7 +693,7 @@
   }
 
   // =========================================================
-  // 13. СОБЫТИЯ
+  // СОБЫТИЯ
   // =========================================================
 
   function bindEvents() {
@@ -824,22 +783,31 @@
   }
 
   // =========================================================
-  // 14. ИНИЦИАЛИЗАЦИЯ
+  // ИНИЦИАЛИЗАЦИЯ
   // =========================================================
 
   async function init() {
     const st = await waitForReady();
-    if (!st) return;
+    if (!st) {
+      console.warn('[debts] Не дождались businessId');
+      return;
+    }
 
-    state.isOwner = st.profile?.role === 'owner' || st.profile?.role === 'super_admin';
+    const role = st.profile?.role;
+    state.isOwner = role === 'owner' || role === 'super_admin';
     if (!state.isOwner && el.openAddBtn) el.openAddBtn.style.display = 'none';
 
     if (el.fDate) el.fDate.value = todayISO();
-
     renderStats();
-    subscribeDebts();
-    await loadDebts();
+
+    state.unsubDebts = window.FB.subscribeCollection('debts', (items) => {
+      state.debts = items;
+      renderStats();
+      renderTable();
+    });
+
     bindEvents();
+    console.info('[debts] Подключено · бизнес:', st.businessId);
   }
 
   if (document.readyState === 'loading') {
