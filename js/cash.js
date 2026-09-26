@@ -1,6 +1,9 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v4
-   Фиксирует себестоимость costPrice в каждом item продажи.
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v5
+   + QR-оплата для «MBANK / Элсом / О!Деньги»
+   + Сканер штрихкода через центральную кнопку app.js
+   + Убрано поле ручного ввода штрихкода (по требованию)
+   + Фиксирует себестоимость costPrice в каждом item продажи.
    ========================================================= */
 
 (function () {
@@ -47,8 +50,13 @@
     successModal:   $('#successModal'),
     successTotal:   $('#successTotal'),
     scanBtn:           $('#cashScanBtn'),
-    barcodeInput:      $('#cashBarcodeInput'),
-    barcodeSearchBtn:  $('#cashBarcodeSearchBtn'),
+
+    // QR-оплата
+    qrPaymentModal:   $('#qrPaymentModal'),
+    qrCodeContainer:  $('#qrCodeContainer'),
+    qrPaymentTotal:   $('#qrPaymentTotal'),
+    qrConfirmBtn:     $('#qrConfirmBtn'),
+    qrCancelBtn:      $('#qrCancelBtn'),
   };
 
   const fmt = (n) =>
@@ -449,6 +457,9 @@
     if (el.paymentModal && !el.paymentModal.hidden && el.paymentTotal) {
       el.paymentTotal.textContent = `${fmt(total)} KGS`;
     }
+    if (el.qrPaymentModal && !el.qrPaymentModal.hidden && el.qrPaymentTotal) {
+      el.qrPaymentTotal.innerHTML = `${fmt(total)}<small>KGS</small>`;
+    }
   }
 
   function pulseCartBadge() {
@@ -461,16 +472,21 @@
 
   let lastFocused = null;
   function openModal(modal) {
+    if (!modal) return;
     lastFocused = document.activeElement;
     modal.hidden = false;
     document.body.style.overflow = 'hidden';
   }
   function closeModal(modal) {
+    if (!modal) return;
     modal.hidden = true;
     document.body.style.overflow = '';
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
+  // =========================================================
+  // МОДАЛКА ОПЛАТЫ
+  // =========================================================
   function openPaymentModal() {
     if (state.cart.length === 0) return;
     state.paymentMethod = null;
@@ -491,6 +507,7 @@
 
   function selectPaymentMethod(method) {
     state.paymentMethod = method;
+
     if (el.payMethods) {
       el.payMethods.querySelectorAll('.pay-method').forEach((btn) => {
         const isActive = btn.dataset.method === method;
@@ -498,16 +515,27 @@
         btn.setAttribute('aria-checked', String(isActive));
       });
     }
+
     if (method === 'debt') {
       if (el.debtBlock) el.debtBlock.hidden = false;
       requestAnimationFrame(() => el.debtCustomer && el.debtCustomer.focus());
       updateConfirmState();
-    } else {
-      if (el.debtBlock) el.debtBlock.hidden = true;
-      if (el.debtCustomer) el.debtCustomer.value = '';
-      state.customer = '';
-      if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
+      return;
     }
+
+    // Скрываем долговой блок
+    if (el.debtBlock) el.debtBlock.hidden = true;
+    if (el.debtCustomer) el.debtCustomer.value = '';
+    state.customer = '';
+
+    if (method === 'wallet') {
+      // QR-оплата: запускается только после нажатия «Подтвердить»
+      if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
+      return;
+    }
+
+    // Наличные — обычный путь
+    if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
   }
 
   function updateConfirmState() {
@@ -537,10 +565,124 @@
     el.debtList.innerHTML = list.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('');
   }
 
+  // =========================================================
+  // QR-ОПЛАТА
+  // =========================================================
+  function openQrPaymentModal() {
+    if (state.cart.length === 0) {
+      closeModal(el.paymentModal);
+      return;
+    }
+    if (!el.qrPaymentModal) return;
+
+    const total = getCartTotal();
+    if (el.qrPaymentTotal) {
+      el.qrPaymentTotal.innerHTML = `${fmt(total)}<small>KGS</small>`;
+    }
+
+    // Показываем загрузку, пока рисуем QR
+    if (el.qrCodeContainer) {
+      el.qrCodeContainer.innerHTML = `
+        <div class="qr-frame__loading">
+          <div class="spinner-qr"></div>
+          Генерируем QR...
+        </div>`;
+    }
+
+    // Прячем модалку выбора способа и открываем QR
+    if (el.paymentModal && !el.paymentModal.hidden) {
+      el.paymentModal.hidden = true;
+    }
+    openModal(el.qrPaymentModal);
+
+    // Генерируем QR-код (с небольшой задержкой, чтобы библиотека успела загрузиться)
+    generateQrCode(total, 0);
+  }
+
+  function generateQrCode(total, attempt) {
+    attempt = attempt || 0;
+    if (!el.qrCodeContainer) return;
+
+    if (typeof window.qrcode !== 'function') {
+      if (attempt < 25) {
+        setTimeout(() => generateQrCode(total, attempt + 1), 120);
+        return;
+      }
+      el.qrCodeContainer.innerHTML =
+        '<div class="qr-frame__error">QR-библиотека не загрузилась.<br>Проверьте интернет.</div>';
+      return;
+    }
+
+    try {
+      const profile = window.KUT?.getState?.()?.profile || null;
+      const bizId = window.KUT?.getState?.()?.businessId || '';
+      const bizName = profile?.displayName || profile?.email || 'КУТ: БИЗНЕС';
+
+      const payload = JSON.stringify({
+        t: 'kut_pay',
+        b: bizName,
+        bid: bizId,
+        a: Number(total) || 0,
+        c: 'KGS',
+        ts: Date.now(),
+      });
+
+      const qr = window.qrcode(0, 'M');
+      qr.addData(payload);
+      qr.make();
+
+      const svg = qr.createSvgTag({
+        cellSize: 6,
+        margin: 8,
+        scalable: true,
+      });
+
+      el.qrCodeContainer.innerHTML = svg;
+    } catch (err) {
+      console.error('[cash] QR generation error:', err);
+      el.qrCodeContainer.innerHTML =
+        '<div class="qr-frame__error">Не удалось сгенерировать QR.</div>';
+    }
+  }
+
+  function closeQrPaymentModal() {
+    if (el.qrPaymentModal && !el.qrPaymentModal.hidden) {
+      closeModal(el.qrPaymentModal);
+    }
+    // Сбрасываем выбранный способ оплаты (продажа ещё не проведена)
+    state.paymentMethod = null;
+    if (el.qrCodeContainer) el.qrCodeContainer.innerHTML = '';
+  }
+
+  // =========================================================
+  // ЗАВЕРШЕНИЕ ПРОДАЖИ
+  // =========================================================
   async function confirmPayment() {
     if (state.cart.length === 0) return;
     if (!state.paymentMethod) return;
     if (state.paymentMethod === 'debt' && state.customer.trim().length < 2) return;
+
+    // QR-оплата: перехватываем и открываем модалку с QR-кодом.
+    // Транзакция полетит в Firebase только после нажатия «Я получил перевод».
+    if (state.paymentMethod === 'wallet') {
+      openQrPaymentModal();
+      return;
+    }
+
+    await executeSale(state.paymentMethod, el.confirmPayBtn);
+  }
+
+  async function confirmQrPayment() {
+    if (state.cart.length === 0) {
+      closeQrPaymentModal();
+      return;
+    }
+    // Продажа улетает в Firebase ТОЛЬКО сейчас — с paymentMethod: 'qr'
+    await executeSale('qr', el.qrConfirmBtn);
+  }
+
+  async function executeSale(paymentMethod, btnEl) {
+    if (state.cart.length === 0) return;
 
     if (!window.KUT || typeof window.KUT.registerSale !== 'function') {
       notify('Ошибка: ядро не загружено.', true);
@@ -558,12 +700,13 @@
 
     const total = getCartTotal();
 
-    if (el.confirmPayBtn) {
-      el.confirmPayBtn.disabled = true;
-      el.confirmPayBtn.textContent = 'Сохраняем...';
+    if (btnEl) {
+      btnEl.disabled = true;
+      const originalText = btnEl.textContent;
+      btnEl.dataset.originalText = originalText;
+      btnEl.textContent = 'Сохраняем...';
     }
 
-    // ⬇️ В каждый item кладём costPrice
     const result = await window.KUT.registerSale({
       cart: state.cart.map((i) => ({
         productId: i.id,
@@ -576,15 +719,16 @@
         qty: i.qty,
       })),
       total,
-      paymentMethod: state.paymentMethod,
-      customer: state.customer,
+      paymentMethod,
+      customer: paymentMethod === 'debt' ? state.customer : '',
       customerPhone: '',
       cashier: cashier,
     });
 
-    if (el.confirmPayBtn) {
-      el.confirmPayBtn.disabled = false;
-      el.confirmPayBtn.textContent = 'Подтвердить';
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = btnEl.dataset.originalText || 'Подтвердить';
+      delete btnEl.dataset.originalText;
     }
 
     if (!result.ok) {
@@ -600,11 +744,21 @@
       return;
     }
 
-    if (state.paymentMethod === 'debt' && state.customer.trim()) {
+    if (paymentMethod === 'debt' && state.customer.trim()) {
       rememberCustomer(state.customer.trim());
     }
 
-    closeModal(el.paymentModal);
+    // Закрываем все модалки
+    if (el.qrPaymentModal && !el.qrPaymentModal.hidden) {
+      el.qrPaymentModal.hidden = true;
+      document.body.style.overflow = '';
+    }
+    if (el.paymentModal && !el.paymentModal.hidden) {
+      closeModal(el.paymentModal);
+    }
+
+    if (el.qrCodeContainer) el.qrCodeContainer.innerHTML = '';
+
     if (el.successTotal) el.successTotal.textContent = `${fmt(total)} KGS`;
     openModal(el.successModal);
 
@@ -615,25 +769,9 @@
     if (el.cart) el.cart.classList.remove('is-open');
   }
 
-  function setupManualBarcode() {
-    const input = el.barcodeInput;
-    const btn = el.barcodeSearchBtn;
-    if (!input || !btn) return;
-    const doSearch = () => {
-      const code = input.value.trim();
-      if (!code) return;
-      if (code === lastScannedBarcode && (Date.now() - lastScannedAt) < SCAN_COOLDOWN_MS) {
-        lastScannedBarcode = null;
-      }
-      handleDecodedBarcode(code, false);
-      input.value = '';
-    };
-    btn.addEventListener('click', doSearch);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
-    });
-  }
-
+  // =========================================================
+  // СОБЫТИЯ
+  // =========================================================
   function bindEvents() {
     if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
       state.search = e.target.value; renderProducts();
@@ -674,20 +812,34 @@
       state.customer = e.target.value; updateConfirmState();
     });
     if (el.confirmPayBtn) el.confirmPayBtn.addEventListener('click', confirmPayment);
+
+    // === QR-оплата ===
+    if (el.qrConfirmBtn) el.qrConfirmBtn.addEventListener('click', confirmQrPayment);
+    if (el.qrCancelBtn) el.qrCancelBtn.addEventListener('click', closeQrPaymentModal);
+
     if (el.scanBtn) el.scanBtn.addEventListener('click', openScanner);
+
     document.addEventListener('click', (e) => {
+      // Закрытие QR-модалки по клику на фон
+      if (e.target.matches('[data-close-qr]')) {
+        closeQrPaymentModal();
+        return;
+      }
       if (e.target.matches('[data-close]')) {
         const modal = e.target.closest('.modal');
         if (modal) closeModal(modal);
       }
     });
+
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      if (el.paymentModal && !el.paymentModal.hidden) closeModal(el.paymentModal);
+      if (el.qrPaymentModal && !el.qrPaymentModal.hidden) closeQrPaymentModal();
+      else if (el.paymentModal && !el.paymentModal.hidden) closeModal(el.paymentModal);
       else if (el.successModal && !el.successModal.hidden) closeModal(el.successModal);
       else if (scannerModal && !scannerModal.hidden) stopScanner();
       else if (el.cart) el.cart.classList.remove('is-open');
     });
+
     if (el.cartToggle) el.cartToggle.addEventListener('click', () => {
       el.cart.classList.toggle('is-open');
       if (el.cart.classList.contains('is-open')) {
@@ -703,11 +855,15 @@
         }
       }
     });
+
     window.addEventListener('beforeunload', () => {
       if (state.unsubProducts) state.unsubProducts();
     });
   }
 
+  // =========================================================
+  // ИНИЦИАЛИЗАЦИЯ
+  // =========================================================
   async function init() {
     const st = await waitForReady();
     if (!st) { console.warn('[cash] Не дождались businessId'); return; }
@@ -719,9 +875,8 @@
     renderCategories();
     renderProducts();
     renderCart();
-    setupManualBarcode();
     bindEvents();
-    console.info('[cash] Касса подключена · бизнес:', st.businessId);
+    console.info('[cash] Касса подключена · бизнес:', st.businessId, '· QR-оплата активна');
   }
 
   if (document.readyState === 'loading') {
