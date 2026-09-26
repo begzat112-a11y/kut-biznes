@@ -306,4 +306,74 @@
           <div class="field"><label for="fUnit">Единица измерения <span class="req">*</span></label><select id="fUnit" required><option value="шт">шт</option><option value="кг">кг</option><option value="л">л</option><option value="порц.">порц.</option><option value="усл.">усл.</option></select><div class="field__hint" data-for="fUnit"></div></div>
           <div class="field"><label for="fQty">Количество <span class="req">*</span></label><input type="number" id="fQty" inputmode="decimal" min="0" step="0.01" placeholder="0" required><div class="field__hint" data-for="fQty"></div></div>
           <div class="field"><label for="fCost">Себестоимость закупки <span class="req">*</span></label><div class="input-group"><input type="number" id="fCost" inputmode="decimal" min="0" step="0.01" placeholder="0" required><span class="input-group__suffix">KGS</span></div><div class="field__hint" data-for="fCost">Сколько вы заплатили поставщику за 1 единицу</div></div>
-          <div class="field"><label for="fSale">Цена продажи <span class="req">*</span
+          <div class="field"><label for="fSale">Цена продажи <span class="req">*</span></label><div class="input-group"><input type="number" id="fSale" inputmode="decimal" min="0" step="0.01" placeholder="0" required><span class="input-group__suffix">KGS</span></div><div class="field__hint" data-for="fSale"></div></div>
+          <div class="field field--full">
+            <label for="fBarcode">Штрихкод (Barcode)</label>
+            <div class="barcode-row">
+              <input type="text" id="fBarcode" inputmode="numeric" placeholder="Введите цифры или отсканируйте" autocomplete="off">
+              <button type="button" id="barcodeScanBtn" class="barcode-row__btn" style="display:none;" aria-hidden="true">Сканер</button>
+            </div>
+            <div class="field__hint" data-for="fBarcode">Нажмите 📷 внизу экрана, чтобы отсканировать.</div>
+          </div>
+          <div class="field field--full">
+            <div class="margin-preview">
+              <div class="margin-preview__item"><span class="margin-preview__label">Прибыль с единицы</span><span class="margin-preview__value" id="previewProfit">0 KGS</span></div>
+              <div class="margin-preview__item"><span class="margin-preview__label">Наценка</span><span class="margin-preview__value" id="previewMarkup">0 %</span></div>
+              <div class="margin-preview__item"><span class="margin-preview__label">Сумма по остатку</span><span class="margin-preview__value" id="previewStockValue">0 KGS</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal__actions">
+          <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+          <button class="btn btn--primary" type="submit" id="saveBtn">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="deleteModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Удалить товар?</h3>
+      <p class="modal__subtitle" id="deleteName"></p>
+      <p style="color:var(--text-3); font-size:13px; margin:0 0 4px;">Действие нельзя отменить.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+        <button class="btn btn--danger" type="button" id="confirmDeleteBtn">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
+    <a href="./index.html" class="bottom-nav__item" data-page="index"><span class="bottom-nav__icon">🏠</span><span>Главная</span></a>
+    <a href="./stock.html" class="bottom-nav__item" data-page="stock"><span class="bottom-nav__icon">📦</span><span>Склад</span></a>
+    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать"><span aria-hidden="true">📷</span></button>
+    <a href="./cash.html" class="bottom-nav__item" data-page="cash"><span class="bottom-nav__icon">⚡</span><span>Касса</span></a>
+    <a href="./debts.html" class="bottom-nav__item" data-page="debts"><span class="bottom-nav__icon">📒</span><span>Несие</span><span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span></a>
+  </nav>
+
+  <script>
+    (function () {
+      function sync() {
+        var src = document.getElementById('nav-debts-count');
+        var dst = document.getElementById('nav-debts-count-bottom');
+        if (!src || !dst) return;
+        var has = !src.hidden && src.textContent && src.textContent !== '0';
+        if (has) { dst.textContent = src.textContent; dst.hidden = false; }
+        else { dst.hidden = true; }
+      }
+      setTimeout(sync, 500); setTimeout(sync, 1500); setTimeout(sync, 3000);
+      var src = document.getElementById('nav-debts-count');
+      if (src && 'MutationObserver' in window) {
+        new MutationObserver(sync).observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
+      }
+    })();
+  </script>
+
+  <script src="./js/theme.js"></script>
+  <script src="./js/ui-chrome.js"></script>
+  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/stock.js"></script>
+  <script src="./js/lang.js"></script>
+</body>
+</html>
