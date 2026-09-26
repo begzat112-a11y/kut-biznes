@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диагностика — КУТ: БИЗНЕС</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 16px; background: #F4F7F5; color: #14211C; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 1px solid #E3EAE6; }
+  .row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #E3EAE6; font-size: 14px; }
+  .row:last-child { border-bottom: none; }
+  .label { color: #64776E; font-weight: 600; }
+  .ok { color: #0F7F3A; font-weight: 700; }
+  .err { color: #C0392B; font-weight: 700; }
+  .warn { color: #E08A1E; font-weight: 700; }
+  .val { text-align: right; word-break: break-word; max-width: 60%; }
+  .log { font-family: ui-monospace, Menlo, monospace; font-size: 11px; background: #14211C; color: #B9F5CE; border-radius: 10px; padding: 12px; max-height: 380px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+  button { padding: 12px 18px; border-radius: 10px; border: none; background: #005F40; color: #fff; font-weight: 700; font-size: 15px; width: 100%; margin-top: 8px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h1>🔍 Диагностика КУТ: БИЗНЕС</h1>
+
+<div class="card">
+  <div class="row"><span class="label">URL страницы</span><span class="val" id="url"></span></div>
+  <div class="row"><span class="label">Online</span><span class="val" id="online">...</span></div>
+  <div class="row"><span class="label">Service Worker</span><span class="val" id="sw">...</span></div>
+</div>
+
+<div class="card">
+  <div class="row"><span class="label">window.FB</span><span class="val" id="fb">...</span></div>
+  <div class="row"><span class="label">window.KUT</span><span class="val" id="kut">...</span></div>
+  <div class="row"><span class="label">FB.waitForAuth</span><span class="val" id="waitauth">...</span></div>
+</div>
+
+<div class="card">
+  <div class="row"><span class="label">Auth: user</span><span class="val" id="user">...</span></div>
+  <div class="row"><span class="label">Auth: profile</span><span class="val" id="profile">...</span></div>
+  <div class="row"><span class="label">Business ID</span><span class="val" id="bizid">...</span></div>
+  <div class="row"><span class="label">Role</span><span class="val" id="role">...</span></div>
+</div>
+
+<div class="card">
+  <div class="label" style="margin-bottom: 8px;">Лог событий:</div>
+  <div class="log" id="log"></div>
+  <button onclick="location.reload()">🔄 Перезапустить диагностику</button>
+</div>
+
+<script>
+(function () {
+  const logEl = document.getElementById('log');
+  const lines = [];
+  function log(msg) {
+    const time = new Date().toLocaleTimeString('ru-RU');
+    const line = '[' + time + '] ' + msg;
+    lines.push(line);
+    logEl.textContent = lines.join('\n');
+    logEl.scrollTop = logEl.scrollHeight;
+    console.log('[DIAG]', msg);
+  }
+
+  function set(id, value, cls) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value;
+    el.className = 'val ' + (cls || '');
+  }
+
+  window.addEventListener('error', (e) => {
+    log('❌ JS ERROR: ' + (e.message || '') + ' | ' + (e.filename || '') + ':' + (e.lineno || ''));
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e.reason;
+    log('❌ PROMISE: ' + ((r && r.message) ? r.message : String(r)));
+  });
+
+  document.getElementById('url').textContent = location.href;
+  document.getElementById('online').textContent = navigator.onLine ? '✅ да' : '❌ нет';
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      if (regs.length === 0) {
+        set('sw', '✅ нет регистраций', 'ok');
+        log('Service Worker: чисто');
+      } else {
+        set('sw', '⚠️ ' + regs.length + ' шт.', 'warn');
+        regs.forEach((r, i) => log('SW[' + i + ']: ' + (r.active ? r.active.scriptURL : 'не активен')));
+      }
+    }).catch((e) => set('sw', 'ошибка: ' + e.message, 'err'));
+  } else {
+    set('sw', '— API нет', '');
+  }
+
+  log('Диагностика запущена');
+  log('URL: ' + location.href);
+
+  (async function testImports() {
+    try {
+      log('Импорт ./js/firebase-config.js ...');
+      await import('./js/firebase-config.js');
+      await new Promise(r => setTimeout(r, 400));
+      if (window.FB) {
+        set('fb', '✅ загружен', 'ok');
+        log('✅ window.FB создан');
+        set('waitauth', typeof window.FB.waitForAuth === 'function' ? '✅ функция' : '❌ нет', typeof window.FB.waitForAuth === 'function' ? 'ok' : 'err');
+      } else {
+        set('fb', '❌ НЕ создан', 'err');
+        log('❌ window.FB не создан после импорта!');
+      }
+    } catch (err) {
+      set('fb', '❌ ошибка импорта', 'err');
+      log('❌ Импорт firebase-config.js упал: ' + (err.message || err));
+      if (err.stack) log(err.stack);
+      return;
+    }
+
+    try {
+      log('Импорт ./js/app.js ...');
+      await import('./js/app.js');
+      await new Promise(r => setTimeout(r, 900));
+      if (window.KUT) {
+        set('kut', '✅ загружен', 'ok');
+        log('✅ window.KUT создан');
+      } else {
+        set('kut', '❌ НЕ создан', 'err');
+        log('❌ window.KUT не создан — app.js упал!');
+      }
+    } catch (err) {
+      set('kut', '❌ ошибка импорта', 'err');
+      log('❌ Импорт app.js упал: ' + (err.message || err));
+      if (err.stack) log(err.stack);
+      return;
+    }
+
+    try {
+      if (window.FB && window.FB.auth) {
+        const u = window.FB.auth.currentUser;
+        if (u) {
+          set('user', '✅ ' + u.uid.substring(0, 12) + '...', 'ok');
+          log('✅ Пользователь залогинен: ' + u.uid);
+
+          try {
+            const snap = await window.FB.getDoc(window.FB.doc(window.FB.db, 'users', u.uid));
+            if (snap.exists()) {
+              const p = snap.data();
+              set('profile', '✅ ' + (p.displayName || p.email || '—'), 'ok');
+              set('bizid', p.businessId || '❌ пусто', p.businessId ? 'ok' : 'err');
+              set('role', p.role || '❌ пусто', p.role ? 'ok' : 'err');
+              log('✅ Профиль: role=' + p.role + ', businessId=' + p.businessId);
+            } else {
+              set('profile', '❌ нет документа users/' + u.uid.substring(0, 12), 'err');
+              log('❌ Профиль не найден в Firestore');
+            }
+          } catch (e) {
+            set('profile', '❌ ошибка: ' + e.code, 'err');
+            log('❌ Firestore getDoc: ' + e.code + ' | ' + e.message);
+          }
+        } else {
+          set('user', '❌ НЕ залогинен', 'err');
+          log('❌ Не залогинен — app.js редиректит в login.html');
+          log('👉 Открой login.html и войди.');
+        }
+      }
+    } catch (err) {
+      log('❌ Проверка auth упала: ' + err.message);
+    }
+
+    log('🏁 Диагностика завершена');
+  })();
+})();
+</script>
+</body>
+</html>
