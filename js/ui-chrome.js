@@ -1,16 +1,16 @@
 /* =========================================================
-   КУТ: БИЗНЕС — UI Chrome v9.3
-   Глобальная логика шапки и шторки:
+   КУТ: БИЗНЕС — UI Chrome v9.4.1
    • Динамический заголовок страницы
    • Компактная иконка темы справа от бренда (без текста)
-   • Страховка для бургера, если app.js не успел
+   • Жёсткая зачистка всех старых .theme-toggle
+   • Страховка для бургера
    ========================================================= */
 
 (function () {
   'use strict';
 
   // =========================================================
-  // 1. КАРТА ЗАГОЛОВКОВ ПО ИМЕНИ ФАЙЛА
+  // 1. ЗАГОЛОВКИ СТРАНИЦ
   // =========================================================
   const PAGE_TITLES = {
     'index.html':     'Главная',
@@ -40,17 +40,27 @@
   }
 
   // =========================================================
-  // 2. УБИРАЕМ СТАРЫЙ TOGGLE ИЗ ШАПКИ, ЕСЛИ ОСТАЛСЯ В HTML
+  // 2. УБИРАЕМ ВСЕ СТАРЫЕ .theme-toggle ГДЕ БЫ ОНИ НИ БЫЛИ
+  //    (в шапке, в сайдбаре, в футере — везде)
   // =========================================================
-  function removeOldHeaderToggle() {
-    document
-      .querySelectorAll('.mobile-bar .theme-toggle, .topbar .theme-toggle, .header-panel .theme-toggle')
-      .forEach((el) => el.remove());
+  function removeOldThemeToggles() {
+    // Удаляем все .theme-toggle, которые НЕ создал наш mountSidebarThemeToggle
+    // (наш имеет родителя .sidebar__brand-row и не имеет старой структуры)
+    document.querySelectorAll('.theme-toggle').forEach((el) => {
+      const parent = el.parentElement;
+      const inBrandRow = parent && parent.classList.contains('sidebar__brand-row');
+      if (!inBrandRow) el.remove();
+    });
+
+    // Дополнительная чистка — осиротевшие слоты со старой плашкой
+    document.querySelectorAll('.sidebar-theme__text, .sidebar-theme__chevron, .sidebar-theme__icon').forEach((el) => {
+      // Удаляем только если это «голый» слот вне .sidebar-theme
+      if (!el.closest('.sidebar-theme')) el.remove();
+    });
   }
 
   // =========================================================
-  // 3. КОМПАКТНАЯ ИКОНКА ТЕМЫ В ШАПКЕ ШТОРКИ
-  //    (справа от «КУТ: БИЗНЕС», без текста)
+  // 3. МОНТИРУЕМ ИКОНКУ ТЕМЫ СПРАВА ОТ БРЕНДА
   // =========================================================
   function mountSidebarThemeToggle() {
     const themeApi = window.KUT_THEME;
@@ -58,26 +68,35 @@
 
     const slot = document.getElementById('sidebar-theme-slot');
     if (!slot) return;
-    if (slot.querySelector('.sidebar-theme')) return; // уже смонтирована
 
-    const isLight = themeApi.get() === 'light';
+    // Уже смонтировано?
+    if (slot.querySelector('.sidebar-theme')) {
+      updateThemeButton(slot.querySelector('.sidebar-theme'), themeApi.get());
+      return;
+    }
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'sidebar-theme';
-    btn.setAttribute('aria-label', isLight ? 'Включить тёмную тему' : 'Включить светлую тему');
-    btn.setAttribute('title',       isLight ? 'Тёмная тема'         : 'Светлая тема');
-    btn.textContent = isLight ? '☀️' : '🌙';
+    btn.textContent = '🌙';
+    btn.setAttribute('aria-label', 'Переключить тему');
+    btn.setAttribute('title', 'Переключить тему');
+
+    updateThemeButton(btn, themeApi.get());
 
     btn.addEventListener('click', () => {
       themeApi.toggle();
-      const nowLight = themeApi.get() === 'light';
-      btn.textContent = nowLight ? '☀️' : '🌙';
-      btn.setAttribute('aria-label', nowLight ? 'Включить тёмную тему' : 'Включить светлую тему');
-      btn.setAttribute('title',       nowLight ? 'Тёмная тема'         : 'Светлая тема');
+      updateThemeButton(btn, themeApi.get());
     });
 
     slot.appendChild(btn);
+  }
+
+  function updateThemeButton(btn, theme) {
+    const isLight = theme === 'light';
+    btn.textContent = isLight ? '☀️' : '🌙';
+    btn.setAttribute('aria-label', isLight ? 'Включить тёмную тему' : 'Включить светлую тему');
+    btn.setAttribute('title',       isLight ? 'Тёмная тема'         : 'Светлая тема');
   }
 
   // =========================================================
@@ -88,6 +107,7 @@
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('overlay');
     if (!burger || !sidebar) return;
+    if (burger.dataset.wired === '1') return;
 
     setTimeout(() => {
       if (burger.dataset.wired === '1') return;
@@ -113,7 +133,7 @@
   // =========================================================
   function boot() {
     setPageTitle();
-    removeOldHeaderToggle();
+    removeOldThemeToggles();
     mountSidebarThemeToggle();
     ensureBurgerWorks();
   }
@@ -124,8 +144,10 @@
     boot();
   }
 
+  // Подстраховки — если DOM подгружается медленно или app.js перерисовывает сайдбар
   window.addEventListener('load', () => {
-    setTimeout(mountSidebarThemeToggle, 400);
-    setTimeout(mountSidebarThemeToggle, 1200);
+    setTimeout(() => { removeOldThemeToggles(); mountSidebarThemeToggle(); }, 400);
+    setTimeout(() => { removeOldThemeToggles(); mountSidebarThemeToggle(); }, 1200);
+    setTimeout(() => { removeOldThemeToggles(); mountSidebarThemeToggle(); }, 2500);
   });
 })();
