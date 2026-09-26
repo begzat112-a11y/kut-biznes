@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#005F40">
+  <title>Демо-вход — КУТ: БИЗНЕС</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
+      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-border: #E3EAE6;
+      --kut-text: #14211C; --kut-muted: #64776E; --kut-danger: #C0392B;
+      --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, #005F40 0%, #003F2A 100%);
+      color: var(--kut-text); min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; -webkit-font-smoothing: antialiased;
+    }
+
+    .card {
+      width: 100%; max-width: 520px; background: #fff;
+      border-radius: 24px; padding: 30px 26px;
+      box-shadow: var(--shadow-lg);
+      animation: cardIn .35s cubic-bezier(.2,.9,.3,1.1);
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 18px; justify-content: center;
+    }
+    .brand__mark {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: var(--kut-green); color: var(--kut-gold);
+      display: grid; place-items: center; font-size: 26px; font-weight: 800;
+      box-shadow: 0 8px 20px rgba(0,95,64,.30);
+    }
+    .brand__text { line-height: 1.15; }
+    .brand__text strong {
+      display: block; font-size: 20px; font-weight: 800;
+      color: var(--kut-green); letter-spacing: -.3px;
+    }
+    .brand__text small {
+      display: block; font-size: 12px; color: var(--kut-muted); margin-top: 2px;
+    }
+
+    .badge-demo {
+      display: block; text-align: center;
+      margin: 0 auto 22px; padding: 6px 14px;
+      background: #FFF8E1; color: var(--kut-gold-dark);
+      border-radius: 999px; font-size: 12px;
+      font-weight: 700; letter-spacing: .4px;
+      width: fit-content;
+    }
+
+    .title {
+      margin: 0 0 8px; text-align: center;
+      font-size: 18px; font-weight: 800;
+      letter-spacing: -.2px;
+    }
+    .subtitle {
+      margin: 0 0 22px; text-align: center;
+      color: var(--kut-muted); font-size: 13px; line-height: 1.5;
+    }
+
+    .role-btn {
+      display: flex; align-items: center; gap: 16px;
+      width: 100%; padding: 18px;
+      background: #fff; border: 1.5px solid var(--kut-border);
+      border-radius: 16px; font-family: inherit;
+      cursor: pointer; text-align: left;
+      transition: all .18s ease;
+      margin-bottom: 12px;
+    }
+    .role-btn:hover:not(:disabled) {
+      border-color: var(--kut-green);
+      background: var(--kut-green-soft);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(0,95,64,.10);
+    }
+    .role-btn:active:not(:disabled) { transform: translateY(0); }
+    .role-btn:disabled { opacity: .6; cursor: wait; }
+
+    .role-btn__icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: grid; place-items: center; font-size: 26px;
+      background: var(--kut-green-soft); color: var(--kut-green);
+      flex-shrink: 0;
+    }
+    .role-btn--owner .role-btn__icon { background: #FFF8E1; color: var(--kut-gold-dark); }
+    .role-btn--manager .role-btn__icon { background: #FFF2DE; color: #E08A1E; }
+    .role-btn--cashier .role-btn__icon { background: #EAF6EF; color: #0F7F3A; }
+
+    .role-btn__text { flex: 1; min-width: 0; }
+    .role-btn__title {
+      font-size: 15px; font-weight: 700; color: var(--kut-text);
+      margin-bottom: 3px;
+    }
+    .role-btn__desc {
+      font-size: 12px; color: var(--kut-muted); line-height: 1.3;
+    }
+
+    .loader {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 12px;
+      padding: 30px 0; text-align: center;
+    }
+    .spinner {
+      width: 34px; height: 34px;
+      border: 3px solid var(--kut-green-soft);
+      border-top-color: var(--kut-green);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader__text { font-size: 13px; color: var(--kut-muted); font-weight: 500; }
+
+    .alert {
+      padding: 12px 14px; border-radius: 12px;
+      font-size: 13px; font-weight: 500; line-height: 1.4;
+      margin-bottom: 16px; word-break: break-word;
+    }
+    .alert--error {
+      background: rgba(192,57,43,.08); color: var(--kut-danger);
+      border: 1px solid rgba(192,57,43,.20);
+    }
+
+    .credentials {
+      margin-top: 22px; padding: 14px 16px;
+      background: #F7F9F8; border: 1px dashed #C7D4CE;
+      border-radius: 12px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 11px; color: #4A5C54;
+      line-height: 1.6;
+    }
+    .credentials strong {
+      display: block; color: #14211C;
+      margin-bottom: 6px; font-size: 12px;
+    }
+    .credentials span { color: #1E7F4A; font-weight: 600; }
+
+    .footer {
+      text-align: center; margin-top: 18px;
+      font-size: 13px; color: var(--kut-muted);
+    }
+    .footer a {
+      color: var(--kut-green); text-decoration: none; font-weight: 600;
+    }
+    .footer a:hover { text-decoration: underline; }
+
+    .hidden { display: none !important; }
+    ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+
+    <div class="brand">
+      <div class="brand__mark">К</div>
+      <div class="brand__text">
+        <strong>КУТ: БИЗНЕС</strong>
+        <small>Демонстрационный вход</small>
+      </div>
+    </div>
+
+    <div class="badge-demo">🎭 РЕЖИМ ТЕСТИРОВАНИЯ</div>
+
+    <!-- Экран загрузки -->
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <div class="loader__text" id="loaderText">Подготовка тестовых аккаунтов...</div>
+    </div>
+
+    <!-- Ошибка -->
+    <div class="alert alert--error hidden" id="errorBox"></div>
+
+    <!-- Экран выбора роли -->
+    <div class="hidden" id="rolesView">
+      <h2 class="title">Выберите роль</h2>
+      <p class="subtitle">Вход под тестовым аккаунтом. Все данные изолированы от вашего основного бизнеса.</p>
+
+      <button class="role-btn role-btn--owner" type="button" data-role="owner">
+        <div class="role-btn__icon">👑</div>
+        <div class="role-btn__text">
+          <div class="role-btn__title">Владелец</div>
+          <div class="role-btn__desc">Полный доступ: дашборд, касса, склад, долги, сотрудники</div>
+        </div>
+      </button>
+
+      <button class="role-btn role-btn--manager" type="button" data-role="manager">
+        <div class="role-btn__icon">👔</div>
+        <div class="role-btn__text">
+          <div class="role-btn__title">Менеджер</div>
+          <div class="role-btn__desc">Касса, склад, долги и просмотр продаж. Без управления сотрудниками</div>
+        </div>
+      </button>
+
+      <button class="role-btn role-btn--cashier" type="button" data-role="cashier">
+        <div class="role-btn__icon">🧑‍💼</div>
+        <div class="role-btn__text">
+          <div class="role-btn__title">Кассир</div>
+          <div class="role-btn__desc">Только касса. Пробивает чеки</div>
+        </div>
+      </button>
+
+      <div class="credentials">
+        <strong>Логины для входа на login.html</strong>
+        Владелец: <span>demo_owner@kut.local</span><br>
+        Менеджер: <span>demo_manager@kut.local</span><br>
+        Кассир: <span>demo_cashier@kut.local</span><br>
+        Пароль у всех: <span>demo1234</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="./login.html">← Обычный вход</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signOut,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDoc,
+      setDoc,
+      addDoc,
+      serverTimestamp,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
+      authDomain:        "kut-biznes.firebaseapp.com",
+      projectId:         "kut-biznes",
+      storageBucket:     "kut-biznes.firebasestorage.app",
+      messagingSenderId: "699153181693",
+      appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
+      measurementId:     "G-VTZ49G265B"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const DEMO_ACCOUNTS = {
+      owner:   { email: 'demo_owner@kut.local',   password: 'demo1234', role: 'owner',   name: 'Тестовый Владелец' },
+      manager: { email: 'demo_manager@kut.local', password: 'demo1234', role: 'manager', name: 'Тестовый Менеджер' },
+      cashier: { email: 'demo_cashier@kut.local', password: 'demo1234', role: 'cashier', name: 'Тестовый Кассир' },
+    };
+
+    const DEMO_PRODUCTS = [
+      { name: 'Лепёшка',           category: 'Выпечка',   unit: 'шт',   qty: 50,  costPrice: 18,   salePrice: 25,   barcode: '2000000000001' },
+      { name: 'Самса',             category: 'Выпечка',   unit: 'шт',   qty: 30,  costPrice: 42,   salePrice: 60,   barcode: '2000000000002' },
+      { name: 'Чай чёрный (пачка)',category: 'Напитки',   unit: 'шт',   qty: 20,  costPrice: 140,  salePrice: 180,  barcode: '2000000000003' },
+      { name: 'Вода 1,5 л',        category: 'Напитки',   unit: 'шт',   qty: 40,  costPrice: 32,   salePrice: 45,   barcode: '2000000000004' },
+      { name: 'Молоко 1 л',        category: 'Продукты',  unit: 'шт',   qty: 15,  costPrice: 58,   salePrice: 75,   barcode: '2000000000005' },
+      { name: 'Сахар 1 кг',        category: 'Продукты',  unit: 'кг',   qty: 25,  costPrice: 78,   salePrice: 95,   barcode: '2000000000006' },
+    ];
+
+    const $ = (s) => document.querySelector(s);
+    const loader    = $('#loader');
+    const loaderTxt = $('#loaderText');
+    const errorBox  = $('#errorBox');
+    const rolesView = $('#rolesView');
+
+    function setLoader(text) {
+      loaderTxt.textContent = text;
+    }
+    function showError(text) {
+      loader.classList.add('hidden');
+      rolesView.classList.add('hidden');
+      errorBox.textContent = text;
+      errorBox.classList.remove('hidden');
+    }
+    function showRoles() {
+      loader.classList.add('hidden');
+      errorBox.classList.add('hidden');
+      rolesView.classList.remove('hidden');
+    }
+
+    // Войти или создать аккаунт
+    async function signInOrCreate(email, password) {
+      try {
+        return await signInWithEmailAndPassword(auth, email, password);
+      } catch (err) {
+        if (err.code === 'auth/user-not-found' ||
+            err.code === 'auth/invalid-credential' ||
+            err.code === 'auth/invalid-login-credentials') {
+          return await createUserWithEmailAndPassword(auth, email, password);
+        }
+        throw err;
+      }
+    }
+
+    // Получить uid demo-владельца
+    async function ensureDemoBusiness() {
+      setLoader('Проверяем тестовый бизнес...');
+
+      // 1. Войти как demo_owner
+      const ownerCred = await signInOrCreate(DEMO_ACCOUNTS.owner.email, DEMO_ACCOUNTS.owner.password);
+      const ownerUid = ownerCred.user.uid;
+
+      // 2. Проверить профиль owner
+      let ownerProfile = null;
+      try {
+        const snap = await getDoc(doc(db, 'users', ownerUid));
+        if (snap.exists()) ownerProfile = snap.data();
+      } catch (_) {}
+
+      // Если профиль уже есть — просто вернуть businessId
+      if (ownerProfile && ownerProfile.businessId) {
+        return { businessId: ownerProfile.businessId, ownerUid };
+      }
+
+      setLoader('Создаём тестовый бизнес...');
+
+      // 3. Создать бизнес
+      const bizRef = await addDoc(collection(db, 'businesses'), {
+        name: 'Тестовый магазин (демо)',
+        ownerUid,
+        ownerEmail: DEMO_ACCOUNTS.owner.email,
+        ownerPhone: '+996700000000',
+        status: 'active',
+        demo: true,
+        createdAt: serverTimestamp(),
+      });
+      const businessId = bizRef.id;
+
+      // 4. Профиль владельца
+      await setDoc(doc(db, 'users', ownerUid), {
+        uid: ownerUid,
+        email: DEMO_ACCOUNTS.owner.email,
+        displayName: DEMO_ACCOUNTS.owner.name,
+        phone: '+996700000000',
+        role: 'owner',
+        businessId,
+        active: true,
+        demo: true,
+        createdAt: serverTimestamp(),
+      });
+
+      setLoader('Создаём менеджера...');
+      await signOut(auth);
+      const mgrCred = await signInOrCreate(DEMO_ACCOUNTS.manager.email, DEMO_ACCOUNTS.manager.password);
+      await setDoc(doc(db, 'users', mgrCred.user.uid), {
+        uid: mgrCred.user.uid,
+        email: DEMO_ACCOUNTS.manager.email,
+        displayName: DEMO_ACCOUNTS.manager.name,
+        phone: '+996700000001',
+        role: 'manager',
+        businessId,
+        active: true,
+        demo: true,
+        createdAt: serverTimestamp(),
+      });
+
+      setLoader('Создаём кассира...');
+      await signOut(auth);
+      const cashCred = await signInOrCreate(DEMO_ACCOUNTS.cashier.email, DEMO_ACCOUNTS.cashier.password);
+      await setDoc(doc(db, 'users', cashCred.user.uid), {
+        uid: cashCred.user.uid,
+        email: DEMO_ACCOUNTS.cashier.email,
+        displayName: DEMO_ACCOUNTS.cashier.name,
+        phone: '+996700000002',
+        role: 'cashier',
+        businessId,
+        active: true,
+        demo: true,
+        createdAt: serverTimestamp(),
+      });
+
+      setLoader('Наполняем склад товарами...');
+      await signOut(auth);
+      await signInWithEmailAndPassword(auth, DEMO_ACCOUNTS.owner.email, DEMO_ACCOUNTS.owner.password);
+
+      for (const p of DEMO_PRODUCTS) {
+        await addDoc(collection(db, 'businesses', businessId, 'products'), {
+          ...p,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      return { businessId, ownerUid };
+    }
+
+    // Войти под ролью
+    async function loginAs(role) {
+      const acc = DEMO_ACCOUNTS[role];
+      if (!acc) return;
+
+      document.querySelectorAll('.role-btn').forEach((b) => b.disabled = true);
+      loader.classList.remove('hidden');
+      rolesView.classList.add('hidden');
+      setLoader('Входим как ' + acc.name + '...');
+
+      try {
+        await signInWithEmailAndPassword(auth, acc.email, acc.password);
+        window.location.href = './index.html';
+      } catch (err) {
+        console.error('[demo] login failed:', err);
+        showError('Не удалось войти: ' + err.code);
+      }
+    }
+
+    // Основной поток
+    (async () => {
+      try {
+        await ensureDemoBusiness();
+        // После ensureDemoBusiness активен demo_owner.
+        // Разлогинимся, чтобы пользователь сам выбрал роль.
+        await signOut(auth);
+        showRoles();
+      } catch (err) {
+        console.error('[demo] init failed:', err);
+        let msg = 'Не удалось подготовить демо: ' + (err.code || err.message);
+        if (err.code === 'permission-denied') {
+          msg = 'Firestore Rules блокируют создание. Обновите правила и нажмите Publish.';
+        } else if (err.code === 'auth/email-already-in-use') {
+          msg = 'Тестовые аккаунты уже существуют. Попробуйте обычный вход на login.html.';
+        }
+        showError(msg);
+      }
+    })();
+
+    document.querySelectorAll('.role-btn').forEach((btn) => {
+      btn.addEventListener('click', () => loginAs(btn.dataset.role));
+    });
+  </script>
+</body>
+</html>
