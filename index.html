@@ -23,36 +23,23 @@
       --sidebar-w: 260px;
     }
     *, *::before, *::after { box-sizing: border-box; }
-
-    /* ⬇️ КРИТИЧНО ДЛЯ МОБИЛЬНЫХ: запрет горизонтального скролла */
     html, body {
-      height: 100%;
-      margin: 0;
-      overflow-x: hidden;
-      max-width: 100%;
-      width: 100%;
+      height: 100%; margin: 0;
+      overflow-x: hidden; max-width: 100%; width: 100%;
     }
     body.page-home {
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: var(--kut-bg); color: var(--kut-text);
       -webkit-font-smoothing: antialiased;
-      overflow-wrap: break-word;
-      word-wrap: break-word;
+      overflow-wrap: break-word; word-wrap: break-word;
     }
 
-    /* ⬇️ Layout — grid */
     .layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      min-height: 100dvh;
-      width: 100%;
-      max-width: 100%;
+      display: grid; grid-template-columns: 1fr;
+      min-height: 100dvh; width: 100%; max-width: 100%;
     }
-    /* ⬇️ КРИТИЧНО: дочерний блок не должен расширяться под содержимое */
     .layout > div {
-      min-width: 0;
-      max-width: 100%;
-      overflow-x: hidden;
+      min-width: 0; max-width: 100%; overflow-x: hidden;
     }
     @media (min-width: 1000px) {
       .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
@@ -61,7 +48,7 @@
     /* ===== Сайдбар ===== */
     .sidebar {
       background: var(--kut-green); color: #fff;
-      padding: 18px 14px; display: flex; flex-direction: column; gap: 16px;
+      padding: 16px 14px; display: flex; flex-direction: column; gap: 14px;
       position: fixed; top: 0; left: 0; bottom: 0;
       width: 82%; max-width: 320px; z-index: 90;
       transform: translateX(-105%);
@@ -103,6 +90,10 @@
     .sidebar__footer { color: rgba(255,255,255,.55); font-size: 11px; text-align: center;
       padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
 
+    /* ===== Плейсхолдеры под профиль и выход (заполняет app.js) ===== */
+    #sidebar-profile-slot { display: block; }
+    #sidebar-logout-slot  { display: block; }
+
     .overlay { position: fixed; inset: 0; background: rgba(15,30,24,.5);
       backdrop-filter: blur(3px); z-index: 80; opacity: 0;
       pointer-events: none; transition: opacity .22s ease; }
@@ -112,44 +103,32 @@
     /* ===== Мобильная шапка ===== */
     .mobile-bar {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 8px;
-      padding: 10px 12px;
+      gap: 8px; padding: 10px 12px;
       background: var(--kut-green); color: #fff;
       position: sticky; top: 0; z-index: 40;
       width: 100%; max-width: 100%;
     }
     @media (min-width: 1000px) { .mobile-bar { display: none; } }
     .burger {
-      width: 40px; height: 40px;
-      display: grid; place-items: center;
-      background: rgba(255,255,255,.10);
-      border: none; border-radius: 12px;
-      color: #fff; cursor: pointer; font-size: 20px;
-      flex-shrink: 0;
+      width: 40px; height: 40px; display: grid; place-items: center;
+      background: rgba(255,255,255,.10); border: none; border-radius: 12px;
+      color: #fff; cursor: pointer; font-size: 20px; flex-shrink: 0;
     }
     .mobile-bar__title {
       font-weight: 700; font-size: 15px;
       overflow: hidden; text-overflow: ellipsis;
-      white-space: nowrap; min-width: 0; flex: 1;
-      text-align: center;
+      white-space: nowrap; min-width: 0; flex: 1; text-align: center;
     }
     .mobile-bar__cta {
-      padding: 8px 12px;
-      background: var(--kut-gold); color: var(--kut-green-dark);
-      border-radius: 10px; text-decoration: none;
-      font-size: 12px; font-weight: 700;
-      white-space: nowrap; flex-shrink: 0;
+      padding: 8px 12px; background: var(--kut-gold); color: var(--kut-green-dark);
+      border-radius: 10px; text-decoration: none; font-size: 12px;
+      font-weight: 700; white-space: nowrap; flex-shrink: 0;
     }
 
     /* ===== Основной контент ===== */
     .main-content {
-      min-width: 0;
-      max-width: 100%;
-      overflow-x: hidden;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      min-width: 0; max-width: 100%; overflow-x: hidden;
+      padding: 16px; display: flex; flex-direction: column; gap: 16px;
     }
     @media (min-width: 1000px) {
       .main-content { padding: 28px 32px; gap: 22px; }
@@ -166,20 +145,15 @@
     }
     .page-head h1 {
       margin: 0; font-size: clamp(20px, 5vw, 24px);
-      font-weight: 800; letter-spacing: -.4px;
-      word-break: break-word;
+      font-weight: 800; letter-spacing: -.4px; word-break: break-word;
     }
     .page-head p { margin: 0; color: var(--kut-muted); font-size: 14px; }
     .page-head__user {
       display: inline-flex; align-items: center; gap: 10px;
-      padding: 8px 12px;
-      background: var(--kut-surface);
-      border: 1px solid var(--kut-border);
-      border-radius: 12px;
+      padding: 8px 12px; background: var(--kut-surface);
+      border: 1px solid var(--kut-border); border-radius: 12px;
       font-size: 13px; color: var(--kut-text); font-weight: 600;
-      max-width: 100%;
-      min-width: 0;
-      flex-wrap: wrap;
+      max-width: 100%; min-width: 0; flex-wrap: wrap;
     }
     .page-head__user span {
       overflow: hidden; text-overflow: ellipsis;
@@ -194,14 +168,9 @@
     /* ===== Аналитика ===== */
     .analytics {
       background: linear-gradient(135deg, #005F40 0%, #003F2A 100%);
-      border-radius: 22px;
-      padding: 22px;
-      color: #fff;
-      box-shadow: var(--shadow-md);
-      position: relative;
-      overflow: hidden;
-      max-width: 100%;
-      min-width: 0;
+      border-radius: 22px; padding: 22px; color: #fff;
+      box-shadow: var(--shadow-md); position: relative;
+      overflow: hidden; max-width: 100%; min-width: 0;
     }
     .analytics::before {
       content: ""; position: absolute; right: -60px; top: -60px;
@@ -211,27 +180,18 @@
     }
     .analytics__head {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 10px; flex-wrap: wrap;
-      margin-bottom: 18px;
-      position: relative; z-index: 1;
-      min-width: 0;
+      gap: 10px; flex-wrap: wrap; margin-bottom: 18px;
+      position: relative; z-index: 1; min-width: 0;
     }
     .analytics__title {
       margin: 0; font-size: 15px; font-weight: 800;
       letter-spacing: .3px; text-transform: uppercase;
-      color: var(--kut-gold);
-      min-width: 0;
+      color: var(--kut-gold); min-width: 0;
     }
-    .analytics__period {
-      font-size: 12px; color: rgba(255,255,255,.7);
-      font-weight: 500;
-    }
+    .analytics__period { font-size: 12px; color: rgba(255,255,255,.7); font-weight: 500; }
     .analytics__grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      position: relative; z-index: 1;
-      min-width: 0;
+      display: grid; grid-template-columns: 1fr; gap: 10px;
+      position: relative; z-index: 1; min-width: 0;
     }
     @media (min-width: 700px) {
       .analytics__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -239,136 +199,87 @@
     .analytics__card {
       background: rgba(255,255,255,.10);
       border: 1px solid rgba(255,255,255,.15);
-      border-radius: 16px;
-      padding: 14px;
+      border-radius: 16px; padding: 14px;
       display: flex; align-items: center; gap: 12px;
-      transition: background .18s ease;
-      min-width: 0;
+      transition: background .18s ease; min-width: 0;
     }
     @media (min-width: 700px) { .analytics__card { padding: 16px; gap: 14px; } }
     .analytics__card:hover { background: rgba(255,255,255,.14); }
     .analytics__icon {
       width: 42px; height: 42px; border-radius: 12px;
       display: grid; place-items: center; font-size: 20px;
-      background: rgba(212,175,55,.20); color: var(--kut-gold);
-      flex-shrink: 0;
+      background: rgba(212,175,55,.20); color: var(--kut-gold); flex-shrink: 0;
     }
     @media (min-width: 700px) { .analytics__icon { width: 46px; height: 46px; font-size: 22px; } }
-    .analytics__card--profit .analytics__icon {
-      background: rgba(30,190,90,.20); color: #7FE4A5;
-    }
-    .analytics__card--stock .analytics__icon {
-      background: rgba(255,255,255,.15); color: #fff;
-    }
+    .analytics__card--profit .analytics__icon { background: rgba(30,190,90,.20); color: #7FE4A5; }
+    .analytics__card--stock .analytics__icon { background: rgba(255,255,255,.15); color: #fff; }
     .analytics__card > div { min-width: 0; flex: 1; }
     .analytics__label {
-      font-size: 11px; text-transform: uppercase;
-      letter-spacing: .5px; font-weight: 700;
-      color: rgba(255,255,255,.75); margin-bottom: 4px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+      font-weight: 700; color: rgba(255,255,255,.75); margin-bottom: 4px;
     }
     .analytics__value {
-      font-size: clamp(18px, 5vw, 26px);
-      font-weight: 800; line-height: 1;
+      font-size: clamp(18px, 5vw, 26px); font-weight: 800; line-height: 1;
       color: #fff; font-variant-numeric: tabular-nums;
-      letter-spacing: -.4px;
-      word-break: break-word;
+      letter-spacing: -.4px; word-break: break-word;
     }
     .analytics__value small {
-      font-size: 12px; font-weight: 600;
-      color: rgba(255,255,255,.65);
+      font-size: 12px; font-weight: 600; color: rgba(255,255,255,.65);
       margin-left: 4px; letter-spacing: 0;
     }
     .analytics__card--revenue .analytics__value { color: #FFD86B; }
     .analytics__card--profit .analytics__value  { color: #7FE4A5; }
     .analytics__card--stock .analytics__value   { color: #fff; }
 
-    /* ===== График ===== */
     .chart-wrap {
-      margin-top: 16px;
-      padding: 14px 12px 10px;
+      margin-top: 16px; padding: 14px 12px 10px;
       background: rgba(255,255,255,.06);
       border: 1px solid rgba(255,255,255,.12);
-      border-radius: 16px;
-      position: relative; z-index: 1;
-      min-width: 0;
-      max-width: 100%;
+      border-radius: 16px; position: relative; z-index: 1;
+      min-width: 0; max-width: 100%;
     }
-    @media (min-width: 700px) {
-      .chart-wrap { padding: 16px 14px 12px; margin-top: 20px; }
-    }
+    @media (min-width: 700px) { .chart-wrap { padding: 16px 14px 12px; margin-top: 20px; } }
     .chart-wrap__head {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
-      min-width: 0;
+      gap: 8px; margin-bottom: 14px; flex-wrap: wrap; min-width: 0;
     }
     .chart-wrap__title {
-      font-size: 11px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .5px;
-      color: rgba(255,255,255,.75);
-      min-width: 0;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; color: rgba(255,255,255,.75); min-width: 0;
     }
     @media (min-width: 700px) { .chart-wrap__title { font-size: 12px; } }
-    .chart-wrap__total {
-      font-size: 13px; font-weight: 700;
-      color: var(--kut-gold);
-      white-space: nowrap;
-    }
+    .chart-wrap__total { font-size: 13px; font-weight: 700; color: var(--kut-gold); white-space: nowrap; }
     .chart {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 4px;
-      align-items: end;
-      height: 100px;
-      min-width: 0;
+      display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px; align-items: end; height: 100px; min-width: 0;
     }
     @media (min-width: 700px) { .chart { gap: 6px; height: 120px; } }
     .chart__col {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 6px;
-      height: 100%; justify-content: flex-end;
-      min-width: 0;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; height: 100%; justify-content: flex-end; min-width: 0;
     }
     .chart__bar {
-      width: 100%;
-      max-width: 36px;
+      width: 100%; max-width: 36px;
       background: linear-gradient(180deg, #FFD86B, #D4AF37);
-      border-radius: 6px 6px 4px 4px;
-      min-height: 3px;
-      transition: height .4s cubic-bezier(.2,.8,.2,1);
-      position: relative;
+      border-radius: 6px 6px 4px 4px; min-height: 3px;
+      transition: height .4s cubic-bezier(.2,.8,.2,1); position: relative;
     }
-    .chart__bar.is-today {
-      background: linear-gradient(180deg, #7FE4A5, #1EBE5A);
-    }
+    .chart__bar.is-today { background: linear-gradient(180deg, #7FE4A5, #1EBE5A); }
     .chart__bar-value {
-      font-size: 9px;
-      font-weight: 700;
-      color: #fff;
-      position: absolute;
-      top: -14px;
-      left: 50%;
-      transform: translateX(-50%);
-      white-space: nowrap;
+      font-size: 9px; font-weight: 700; color: #fff;
+      position: absolute; top: -14px; left: 50%;
+      transform: translateX(-50%); white-space: nowrap;
     }
-    @media (min-width: 700px) {
-      .chart__bar-value { font-size: 10px; top: -16px; }
-    }
+    @media (min-width: 700px) { .chart__bar-value { font-size: 10px; top: -16px; } }
     .chart__label {
-      font-size: 10px;
-      color: rgba(255,255,255,.7);
-      font-weight: 600;
-      text-align: center;
-      text-transform: lowercase;
+      font-size: 10px; color: rgba(255,255,255,.7);
+      font-weight: 600; text-align: center; text-transform: lowercase;
     }
     @media (min-width: 700px) { .chart__label { font-size: 11px; } }
 
-    /* ===== Виджеты ===== */
     .widgets {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      min-width: 0;
-      max-width: 100%;
+      display: grid; grid-template-columns: 1fr; gap: 12px;
+      min-width: 0; max-width: 100%;
     }
     @media (min-width: 700px) {
       .widgets { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -400,12 +311,9 @@
     .widget__sub { margin-top: 10px; font-size: 12px; color: var(--kut-muted);
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap; word-break: break-word; }
 
-    /* ===== Быстрые действия ===== */
     .quick-actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      min-width: 0;
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px; min-width: 0;
     }
     @media (min-width: 700px) {
       .quick-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -413,8 +321,7 @@
     .quick { display: flex; align-items: center; gap: 12px; padding: 14px;
       background: var(--kut-surface); border: 1px solid var(--kut-border);
       border-radius: 14px; text-decoration: none; color: inherit;
-      box-shadow: var(--shadow-sm);
-      min-width: 0; }
+      box-shadow: var(--shadow-sm); min-width: 0; }
     @media (min-width: 700px) { .quick { padding: 16px; } }
     .quick:hover { border-color: var(--kut-green); background: var(--kut-green-soft); }
     .quick__icon { width: 40px; height: 40px; border-radius: 12px;
@@ -426,7 +333,6 @@
     .quick__desc { font-size: 12px; color: var(--kut-muted); margin-top: 2px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* ===== Сотрудники ===== */
     .staff-section { background: var(--kut-surface); border: 1px solid var(--kut-border);
       border-radius: 22px; box-shadow: var(--shadow-sm); overflow: hidden;
       min-width: 0; max-width: 100%; }
@@ -448,7 +354,6 @@
     .staff-mini__value--active { color: var(--kut-green); }
     .staff-mini__value--pending { color: var(--kut-warn); }
 
-    /* ===== Последние продажи ===== */
     .recent { background: var(--kut-surface); border: 1px solid var(--kut-border);
       border-radius: 22px; box-shadow: var(--shadow-sm); overflow: hidden;
       min-width: 0; max-width: 100%; }
@@ -478,7 +383,6 @@
       padding: 8px 0 20px; word-break: break-word; }
     .footer a { color: var(--kut-green); text-decoration: none; }
 
-    /* ===== Мелкие экраны (≤ 380px) ===== */
     @media (max-width: 380px) {
       .main-content { padding: 12px; }
       .analytics { padding: 16px; border-radius: 18px; }
@@ -496,7 +400,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v6.2-MOBILE-FIX';
+      var BUILD = 'v6.4-PROFILE';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -528,6 +432,10 @@
 
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
+
+      <!-- Плейсхолдер: сюда app.js вставит блок профиля -->
+      <div id="sidebar-profile-slot"></div>
+
       <a href="./index.html" class="sidebar__brand">
         <span class="brand__mark" aria-hidden="true">К</span>
         <span class="brand__text">
@@ -535,6 +443,7 @@
           <small>Учёт для малого бизнеса</small>
         </span>
       </a>
+
       <nav class="sidebar__nav" aria-label="Навигация">
         <a href="./index.html" class="nav-link active" aria-current="page">
           <span class="nav-link__icon" aria-hidden="true">🏠</span>
@@ -559,6 +468,7 @@
           <span class="nav-link__badge" id="nav-staff-count" hidden>0</span>
         </a>
       </nav>
+
       <a href="./cash.html" class="sidebar__cta" aria-label="Открыть кассу">
         <span class="sidebar__cta__icon" aria-hidden="true">＋</span>
         <span class="sidebar__cta__text">
@@ -566,7 +476,12 @@
           <small>Новая продажа</small>
         </span>
       </a>
+
       <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
+
+      <!-- Плейсхолдер: сюда app.js вставит кнопку «Выйти» -->
+      <div id="sidebar-logout-slot"></div>
+
     </aside>
 
     <div>
@@ -733,7 +648,7 @@
           КУТ: БИЗНЕС · <a href="./cash.html">Касса</a> ·
           <a href="./stock.html">Склад</a> ·
           <a href="./debts.html">Несие</a>
-          · версия: v6.2
+          · версия: v6.4
         </div>
       </main>
     </div>
