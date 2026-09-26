@@ -1,17 +1,13 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · v3.0 (WhatsApp OTP)
-   Что делает:
-   • Проверяет авторизацию через Firebase Auth
-   • Проверяет наличие phone в профиле — если нет, редирект на login.html
-   • Редирект super_admin → admin.html
-   • Загружает данные бизнеса из Firestore
-   • Отдаёт window.KUT для cash.js / stock.js / debts.js
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v2
+   Работает поверх window.FB из firebase-config.js.
+   Отдаёт window.KUT для cash.js / stock.js / debts.js.
    ========================================================= */
 
 import './firebase-config.js';
 
 // =========================================================
-// 1. УТИЛИТЫ
+// УТИЛИТЫ
 // =========================================================
 
 const fmt = (n) =>
@@ -32,7 +28,7 @@ function todayISO() {
 
 function nowTimeHHMM() {
   const d = new Date();
-  const z = (n) => String(n).padStart(2, '0');
+  const z = (n) => String(d.getHours()).padStart(2, '0');
   return `${z(d.getHours())}:${z(d.getMinutes())}`;
 }
 
@@ -60,7 +56,7 @@ function toDate(ts) {
 }
 
 // =========================================================
-// 2. ТОСТ
+// ТОСТ
 // =========================================================
 
 function toast(message, isError) {
@@ -71,17 +67,26 @@ function toast(message, isError) {
     el.className = 'kut-toast';
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
+    el.style.cssText =
+      'position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));' +
+      'transform:translate(-50%,120%);background:#005F40;color:#fff;' +
+      'padding:12px 18px;border-radius:12px;font-family:Inter,sans-serif;' +
+      'font-size:14px;font-weight:500;box-shadow:0 18px 48px rgba(16,32,25,.20);' +
+      'z-index:300;transition:transform .3s cubic-bezier(.2,.8,.2,1);' +
+      'max-width:90vw;text-align:center;pointer-events:none;';
     document.body.appendChild(el);
   }
   el.textContent = message;
-  el.classList.toggle('kut-toast--error', !!isError);
-  el.classList.add('is-visible');
+  el.style.background = isError ? '#C0392B' : '#005F40';
+  el.style.transform = 'translate(-50%, 0)';
   clearTimeout(el._timer);
-  el._timer = setTimeout(() => el.classList.remove('is-visible'), 2800);
+  el._timer = setTimeout(() => {
+    el.style.transform = 'translate(-50%, 120%)';
+  }, 2800);
 }
 
 // =========================================================
-// 3. СОСТОЯНИЕ ДАШБОРДА
+// СОСТОЯНИЕ ДАШБОРДА
 // =========================================================
 
 const state = {
@@ -93,7 +98,7 @@ const state = {
 };
 
 // =========================================================
-// 4. АГРЕГАТЫ
+// АГРЕГАТЫ
 // =========================================================
 
 function aggregateRevenue() {
@@ -125,7 +130,7 @@ function aggregateDebts() {
 }
 
 // =========================================================
-// 5. РЕНДЕР ДАШБОРДА
+// РЕНДЕР ДАШБОРДА
 // =========================================================
 
 function pick(attr, fallbackIds) {
@@ -273,7 +278,7 @@ function formatSaleDate(ts) {
 }
 
 // =========================================================
-// 6. САЙДБАР
+// САЙДБАР
 // =========================================================
 
 function setupSidebar() {
@@ -308,7 +313,7 @@ function setupSidebar() {
 }
 
 // =========================================================
-// 7. PUBLIC API
+// ПУБЛИЧНЫЙ API window.KUT
 // =========================================================
 
 const KEYS = {
@@ -422,45 +427,46 @@ window.KUT = {
 };
 
 // =========================================================
-// 8. АВТОЗАПУСК
+// АВТОЗАПУСК
 // =========================================================
 
 async function boot() {
   const { user, profile } = await window.FB.waitForAuth();
 
-  // 1. Не авторизован → на вход
   if (!user || !profile) {
     window.location.href = './login.html';
     return;
   }
 
-  // 2. Заблокирован
   if (profile.active === false) {
     alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
     await window.FB.logout();
     return;
   }
 
-  // 3. Проверяем наличие phone — если нет, отправляем на login
-  if (!profile.phone || !/^\+996\d{9}$/.test(profile.phone)) {
-    console.warn('[KUT] Профиль без валидного phone — редирект на login.html');
-    await window.FB.logout().catch(() => {});
-    window.location.href = './login.html';
-    return;
-  }
-
-  // 4. Super admin → отдельная панель
   if (profile.role === 'super_admin') {
     window.location.href = './admin.html';
     return;
   }
 
-  // 5. Бизнес-пользователь
   state.profile = profile;
   state.businessId = profile.businessId;
+
+  // Приветствие в шапке
+  const who = document.getElementById('user-name');
+  if (who) {
+    who.textContent = profile.displayName || profile.email || 'Пользователь';
+  }
+
+  // Если бизнеса нет — покажем сообщение, но не выкинем
   if (!state.businessId) {
-    alert('Не найден businessId. Обратитесь к администратору.');
-    await window.FB.logout();
+    const box = document.querySelector('.main-content');
+    if (box) {
+      box.insertAdjacentHTML('afterbegin',
+        '<div style="padding:14px 16px;background:#FFF8E1;border:1px solid #E3C97A;border-radius:14px;color:#7A5E00;font-size:13px;margin-bottom:16px;">' +
+        '⚠️ У вашего аккаунта пока нет привязанного бизнеса. Обратитесь к супер-администратору.' +
+        '</div>');
+    }
     return;
   }
 
@@ -493,21 +499,14 @@ async function boot() {
   const yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  document.querySelectorAll('[data-kut-logout]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.FB.logout();
-    });
-  });
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.addEventListener('click', () => window.FB.logout());
 
   window.addEventListener('kut:lang', () => {
     if (hasDashboard) renderDashboard();
   });
 
-  console.info(
-    '%cКУТ: БИЗНЕС — сессия активна · телефон: ' + profile.phone + ' · бизнес: ' + state.businessId,
-    'color:#005F40; font-weight:700'
-  );
+  console.info('[KUT] Дашборд загружен · бизнес:', state.businessId);
 }
 
 if (document.readyState === 'loading') {
