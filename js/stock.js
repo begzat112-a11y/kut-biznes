@@ -1,23 +1,18 @@
 /* =========================================================
    КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v2
-   Работает с Firestore через window.KUT и window.FB.
-   Коллекция: businesses/{businessId}/products/{docId}
-   Схема: { name, category, unit, qty, costPrice, salePrice,
-            barcode, createdAt, updatedAt }
+   Работает поверх window.KUT и window.FB.
+   Коллекция: businesses/{businessId}/products
    ========================================================= */
 
 (function () {
   'use strict';
 
-  // =========================================================
-  // 1. КОНСТАНТЫ
-  // =========================================================
   const LOW_STOCK_THRESHOLD = 5;
   const CATEGORIES = ['Одежда', 'Продукты', 'Напитки', 'Выпечка', 'Услуги', 'Хозтовары', 'Другое'];
   const CHIP_CATEGORIES = ['Все', ...CATEGORIES];
 
   // =========================================================
-  // 2. СОСТОЯНИЕ
+  // СОСТОЯНИЕ
   // =========================================================
   const state = {
     products: [],
@@ -30,9 +25,9 @@
   };
 
   // =========================================================
-  // 3. DOM
+  // DOM
   // =========================================================
-  const $ = (sel) => document.querySelector(sel);
+  const $ = (s) => document.querySelector(s);
   const el = {
     openAddBtn:   $('#openAddBtn'),
     emptyAddBtn:  $('#emptyAddBtn'),
@@ -66,15 +61,13 @@
     previewMarkup:     $('#previewMarkup'),
     previewStockValue: $('#previewStockValue'),
 
-    deleteModal:     $('#deleteModal'),
-    deleteName:      $('#deleteName'),
-    confirmDeleteBtn:$('#confirmDeleteBtn'),
-
-    toast: $('#toast'),
+    deleteModal:      $('#deleteModal'),
+    deleteName:       $('#deleteName'),
+    confirmDeleteBtn: $('#confirmDeleteBtn'),
   };
 
   // =========================================================
-  // 4. УТИЛИТЫ
+  // УТИЛИТЫ
   // =========================================================
 
   const fmt = (n) =>
@@ -86,47 +79,20 @@
     }[ch]));
   }
 
-  let toastTimer = null;
-  function showToast(message, isError = false) {
-    if (window.KUT?.toast) { window.KUT.toast(message, isError); return; }
-    if (!el.toast) return;
-    el.toast.textContent = message;
-    el.toast.classList.toggle('toast--error', isError);
-    el.toast.classList.add('is-visible');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.toast.classList.remove('is-visible'), 2600);
-  }
-
-  /** Firestore Timestamp | ISO | Date → Date */
-  function toDate(ts) {
-    if (!ts) return null;
-    if (typeof ts.toDate === 'function') return ts.toDate();
-    if (ts.seconds) return new Date(ts.seconds * 1000);
-    const d = new Date(ts);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  function formatDate(ts) {
-    const d = toDate(ts);
-    if (!d) return '—';
-    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  function showToast(message, isError) {
+    if (window.KUT?.toast) window.KUT.toast(message, isError);
+    else console.log('[stock]', message);
   }
 
   function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-  /**
-   * Ждём, пока app.js выполнит boot() и установит businessId.
-   * Если пользователя редиректит — цикл прерывается по таймауту.
-   */
   async function waitForReady(timeoutMs) {
-    timeoutMs = timeoutMs || 20000;
+    timeoutMs = timeoutMs || 25000;
     const start = Date.now();
-
     while (!window.KUT) {
       if (Date.now() - start > timeoutMs) return null;
       await sleep(50);
     }
-
     while (true) {
       const st = window.KUT.getState ? window.KUT.getState() : null;
       if (st && st.businessId) return st;
@@ -135,13 +101,29 @@
     }
   }
 
+  function emojiForCategory(cat) {
+    switch (cat) {
+      case 'Одежда':    return '👕';
+      case 'Продукты':  return '🥫';
+      case 'Напитки':   return '🥤';
+      case 'Выпечка':   return '🥖';
+      case 'Услуги':    return '✂️';
+      case 'Хозтовары': return '🧴';
+      default:          return '📦';
+    }
+  }
+
   // =========================================================
-  // 5. СКАНЕР ШТРИХКОДА
+  // СКАНЕР ШТРИХКОДА
   // =========================================================
+
+  let scannerModal = null;
+  let scannerInstance = null;
 
   function ensureScannerModal() {
     if (document.getElementById('stockScannerModal')) {
-      return document.getElementById('stockScannerModal');
+      scannerModal = document.getElementById('stockScannerModal');
+      return scannerModal;
     }
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -152,9 +134,11 @@
       <div class="modal__dialog" role="dialog" aria-modal="true" style="max-width:520px;">
         <h3 style="margin:0 0 4px;">📷 Сканер штрихкода</h3>
         <p style="margin:0 0 14px; color:#64776E; font-size:13px;">
-          Наведите камеру на штрихкод товара. Распознавание произойдёт автоматически.
+          Наведите камеру на штрихкод товара.
         </p>
-        <div id="stockScannerReader" style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
+        <div id="stockScannerReader"
+             style="width:100%; border-radius:14px; overflow:hidden;
+                    background:#000; min-height:220px;"></div>
         <div style="display:flex; gap:10px; margin-top:16px;">
           <button class="btn btn--ghost btn--block" type="button" data-close-scan>Отмена</button>
         </div>
@@ -163,25 +147,24 @@
     modal.addEventListener('click', (e) => {
       if (e.target.matches('[data-close-scan]')) stopScanner();
     });
+    scannerModal = modal;
     return modal;
   }
 
-  let scannerInstance = null;
-
   async function openScanner() {
     if (!window.Html5Qrcode) {
-      showToast('Сканер не загружен. Проверьте интернет и обновите страницу.', true);
+      showToast('Сканер ещё загружается. Попробуйте через секунду.', true);
       return;
     }
+    const Html5Qrcode = window.Html5Qrcode;
     const modal = ensureScannerModal();
-    const reader = modal.querySelector('#stockScannerReader');
-    reader.innerHTML = '';
+    const readerEl = modal.querySelector('#stockScannerReader');
+    readerEl.innerHTML = '';
     modal.hidden = false;
     document.body.style.overflow = 'hidden';
 
     try {
-      scannerInstance = new window.Html5Qrcode('stockScannerReader');
-
+      scannerInstance = new Html5Qrcode('stockScannerReader');
       const config = {
         fps: 10,
         qrbox: { width: 280, height: 180 },
@@ -212,7 +195,7 @@
       );
     } catch (err) {
       console.error('[stock scanner]', err);
-      showToast('Не удалось запустить камеру. Проверьте разрешения.', true);
+      showToast('Не удалось запустить камеру.', true);
       stopScanner();
     }
   }
@@ -231,7 +214,7 @@
   }
 
   // =========================================================
-  // 6. РЕНДЕР
+  // РЕНДЕР
   // =========================================================
 
   function renderStats() {
@@ -263,26 +246,13 @@
     return state.products
       .filter((p) => {
         const matchCat = state.category === 'Все' || p.category === state.category;
-        const matchSearch =
-          !q ||
+        const matchSearch = !q ||
           String(p.name).toLowerCase().includes(q) ||
           String(p.category).toLowerCase().includes(q) ||
           String(p.barcode || '').includes(q);
         return matchCat && matchSearch;
       })
       .sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru'));
-  }
-
-  function emojiForCategory(cat) {
-    switch (cat) {
-      case 'Одежда':    return '👕';
-      case 'Продукты':  return '🥫';
-      case 'Напитки':   return '🥤';
-      case 'Выпечка':   return '🥖';
-      case 'Услуги':    return '✂️';
-      case 'Хозтовары': return '🧴';
-      default:          return '📦';
-    }
   }
 
   function renderTable() {
@@ -301,11 +271,9 @@
 
     if (items.length === 0) {
       el.stockBody.innerHTML = `
-        <tr>
-          <td colspan="7" style="text-align:center; padding:40px 16px; color:var(--kut-muted);">
-            По вашему запросу ничего не найдено.
-          </td>
-        </tr>`;
+        <tr><td colspan="7" style="text-align:center; padding:40px 16px; color:var(--kut-muted);">
+          По вашему запросу ничего не найдено.
+        </td></tr>`;
       return;
     }
 
@@ -316,15 +284,15 @@
       const profitLabel = `${profit > 0 ? '+' : ''}${fmt(profit)} KGS`;
       const barcode = p.barcode ? escapeHtml(p.barcode) : '—';
       const ownerActions = state.isOwner ? `
-        <button class="icon-btn" type="button" data-act="edit" aria-label="Редактировать" title="Редактировать">✏️</button>
-        <button class="icon-btn icon-btn--danger" type="button" data-act="delete" aria-label="Удалить" title="Удалить">🗑️</button>
+        <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
+        <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">🗑️</button>
       ` : '';
 
       return `
         <tr data-id="${escapeHtml(p.id)}">
           <td data-label="Товар">
             <div class="cell-name">
-              <div class="cell-name__emoji" aria-hidden="true">${emojiForCategory(p.category)}</div>
+              <div class="cell-name__emoji">${emojiForCategory(p.category)}</div>
               <div class="cell-name__text">
                 <div class="cell-name__title" title="${escapeHtml(p.name)}">${escapeHtml(window.KUT_LANG?.tProduct(p.name) || p.name)}</div>
                 <div class="cell-name__sub">Штрихкод: ${barcode}</div>
@@ -335,10 +303,10 @@
             <span class="badge">${escapeHtml(window.KUT_LANG?.tCategory(p.category) || p.category)}</span>
           </td>
           <td data-label="Остаток">
-            <div class="qty-cell" role="group" aria-label="Количество">
-              ${state.isOwner ? `<button class="qty-btn" type="button" data-act="dec" aria-label="Уменьшить">−</button>` : ''}
+            <div class="qty-cell" role="group">
+              ${state.isOwner ? `<button class="qty-btn" type="button" data-act="dec">−</button>` : ''}
               <span class="qty-value">${fmt(p.qty)}<small>${escapeHtml(p.unit || 'шт')}</small></span>
-              ${state.isOwner ? `<button class="qty-btn" type="button" data-act="inc" aria-label="Увеличить">+</button>` : ''}
+              ${state.isOwner ? `<button class="qty-btn" type="button" data-act="inc">+</button>` : ''}
             </div>
           </td>
           <td data-label="Закупка"><span class="price price--cost">${fmt(cost)} KGS</span></td>
@@ -349,38 +317,12 @@
           <td data-label="Действия">
             <div class="row-actions">${ownerActions}</div>
           </td>
-        </tr>
-      `;
+        </tr>`;
     }).join('');
   }
 
   // =========================================================
-  // 7. ДАННЫЕ — Firestore
-  // =========================================================
-
-  async function loadProducts() {
-    try {
-      const items = await window.FB.getCollection('products');
-      state.products = items;
-      renderStats();
-      renderTable();
-    } catch (err) {
-      console.error('[stock] loadProducts failed:', err);
-      showToast('Не удалось загрузить товары', true);
-    }
-  }
-
-  function subscribeProducts() {
-    if (state.unsubProducts) state.unsubProducts();
-    state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
-      state.products = items;
-      renderStats();
-      renderTable();
-    });
-  }
-
-  // =========================================================
-  // 8. ОПЕРАЦИИ
+  // ОПЕРАЦИИ
   // =========================================================
 
   async function changeQty(productId, delta) {
@@ -390,7 +332,7 @@
     try {
       await window.FB.updateItem('products', productId, { qty: Number(next.toFixed(2)) });
     } catch (err) {
-      console.error('[stock] changeQty failed:', err);
+      console.error('[stock] changeQty:', err);
       showToast('Не удалось обновить количество', true);
     }
   }
@@ -458,14 +400,13 @@
       el.confirmDeleteBtn.disabled = true;
       el.confirmDeleteBtn.textContent = 'Удаляем...';
     }
-
     try {
       await window.FB.deleteItem('products', id);
       state.deletingId = null;
       closeModal(el.deleteModal);
       if (p) showToast(`Товар «${p.name}» удалён`);
     } catch (err) {
-      console.error('[stock] delete failed:', err);
+      console.error('[stock] delete:', err);
       showToast('Не удалось удалить товар', true);
     } finally {
       if (el.confirmDeleteBtn) {
@@ -482,7 +423,9 @@
     const barcode = el.fBarcode ? el.fBarcode.value.trim() : '';
 
     if (barcode) {
-      const dup = state.products.find((x) => x.barcode === barcode && x.id !== state.editingId);
+      const dup = state.products.find(
+        (x) => x.barcode === barcode && x.id !== state.editingId
+      );
       if (dup) {
         setFieldError('fBarcode', `Такой штрихкод уже у товара «${dup.name}»`);
         return;
@@ -514,8 +457,8 @@
       }
       closeModal(el.productModal);
     } catch (err) {
-      console.error('[stock] save failed:', err);
-      showToast('Не удалось сохранить товар. Проверьте права.', true);
+      console.error('[stock] save:', err);
+      showToast('Не удалось сохранить. Проверьте права.', true);
     } finally {
       if (el.saveBtn) {
         el.saveBtn.disabled = false;
@@ -525,7 +468,7 @@
   }
 
   // =========================================================
-  // 9. ВАЛИДАЦИЯ
+  // ВАЛИДАЦИЯ
   // =========================================================
 
   function setFieldError(fieldId, message) {
@@ -543,9 +486,8 @@
       h.textContent = '';
       h.classList.remove('is-error');
     });
-    document.querySelectorAll('#productForm input, #productForm select').forEach((i) => {
-      i.classList.remove('is-invalid');
-    });
+    document.querySelectorAll('#productForm input, #productForm select')
+      .forEach((i) => i.classList.remove('is-invalid'));
   }
 
   function validateForm() {
@@ -600,7 +542,7 @@
   }
 
   // =========================================================
-  // 10. МОДАЛЬНЫЕ ОКНА
+  // МОДАЛЬНЫЕ ОКНА
   // =========================================================
 
   let lastFocused = null;
@@ -616,7 +558,7 @@
   }
 
   // =========================================================
-  // 11. СОБЫТИЯ
+  // СОБЫТИЯ
   // =========================================================
 
   function bindEvents() {
@@ -688,7 +630,7 @@
   }
 
   // =========================================================
-  // 12. ИНИЦИАЛИЗАЦИЯ
+  // ИНИЦИАЛИЗАЦИЯ
   // =========================================================
 
   function renderCategoryOptions() {
@@ -699,28 +641,31 @@
   }
 
   async function init() {
-    // 1. Ждём готовности ядра (auth + businessId)
     const st = await waitForReady();
-    if (!st) return; // app.js сделал редирект
+    if (!st) {
+      console.warn('[stock] Не дождались businessId');
+      return;
+    }
 
-    // 2. Определяем роль (только владелец может редактировать)
-    state.isOwner = st.profile?.role === 'owner' || st.profile?.role === 'super_admin';
-
-    // 3. Если роль cashier — прячем кнопку «Добавить»
+    // Роль: только owner может редактировать
+    const role = st.profile?.role;
+    state.isOwner = role === 'owner' || role === 'super_admin';
     if (!state.isOwner && el.openAddBtn) el.openAddBtn.style.display = 'none';
     if (!state.isOwner && el.emptyAddBtn) el.emptyAddBtn.style.display = 'none';
 
-    // 4. Базовый рендер
     renderCategoryOptions();
     renderChips();
     renderStats();
 
-    // 5. Подписка + первичная загрузка
-    subscribeProducts();
-    await loadProducts();
+    // Реалтайм-подписка на products
+    state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
+      state.products = items;
+      renderStats();
+      renderTable();
+    });
 
-    // 6. События
     bindEvents();
+    console.info('[stock] Подключено · бизнес:', st.businessId);
   }
 
   if (document.readyState === 'loading') {
