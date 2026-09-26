@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
   <title>Супер-Администратор — КУТ: БИЗНЕС</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
-      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-border: #E3EAE6;
-      --kut-text: #14211C; --kut-muted: #64776E; --kut-danger: #C0392B;
-      --kut-success: #1EBE5A;
+      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-bg: #F4F7F5;
+      --kut-surface: #FFFFFF; --kut-border: #E3EAE6; --kut-text: #14211C;
+      --kut-muted: #64776E; --kut-danger: #C0392B; --kut-success: #1EBE5A;
       --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
       --shadow-md: 0 6px 18px rgba(16,32,25,.08);
     }
@@ -21,31 +23,183 @@
     html, body { margin: 0; min-height: 100%; }
     body {
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: #F4F7F5; color: var(--kut-text); -webkit-font-smoothing: antialiased;
+      background: var(--kut-bg); color: var(--kut-text);
+      -webkit-font-smoothing: antialiased;
     }
-    .topbar { background: var(--kut-green); color: #fff; box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 40; }
-    .topbar__inner { max-width: 1400px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .topbar__brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; text-decoration: none; }
-    .brand__mark { width: 36px; height: 36px; border-radius: 10px; background: var(--kut-gold); color: var(--kut-green-dark); display: grid; place-items: center; font-weight: 800; font-size: 17px; }
-    .topbar__badge { font-size: 11px; padding: 3px 8px; background: rgba(212,175,55,.20); color: var(--kut-gold); border-radius: 999px; font-weight: 700; margin-left: 6px; }
-    .topbar__user { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.85); font-size: 13px; }
-    .topbar__logout { padding: 8px 14px; border: 1px solid rgba(255,255,255,.25); background: transparent; color: #fff; border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+    .topbar {
+      background: var(--kut-green); color: #fff;
+      box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 40;
+    }
+    .topbar__inner {
+      max-width: 1400px; margin: 0 auto; padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .topbar__brand {
+      display: inline-flex; align-items: center; gap: 10px;
+      color: #fff; font-weight: 700; text-decoration: none;
+    }
+    .brand__mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--kut-gold); color: var(--kut-green-dark);
+      display: grid; place-items: center; font-weight: 800; font-size: 17px;
+    }
+    .topbar__badge {
+      font-size: 11px; padding: 3px 8px;
+      background: rgba(212,175,55,.20); color: var(--kut-gold);
+      border-radius: 999px; font-weight: 700; margin-left: 6px;
+    }
+    .topbar__user {
+      display: flex; align-items: center; gap: 12px;
+      color: rgba(255,255,255,.85); font-size: 13px;
+    }
+    .topbar__logout {
+      padding: 8px 14px; border: 1px solid rgba(255,255,255,.25);
+      background: transparent; color: #fff; border-radius: 10px;
+      font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
     .topbar__logout:hover { background: rgba(255,255,255,.12); }
+
     .wrap { max-width: 1400px; margin: 0 auto; padding: 24px 20px 40px; }
     .page-head { margin-bottom: 20px; }
     .page-head h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
     .page-head p { margin: 6px 0 0; color: var(--kut-muted); font-size: 14px; }
-    .card { background: #fff; border: 1px solid var(--kut-border); border-radius: 22px; box-shadow: var(--shadow-md); overflow: hidden; }
-    .card__head { padding: 16px 20px; border-bottom: 1px solid var(--kut-border); }
+
+    .stats { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 22px; }
+    @media (min-width: 640px) { .stats { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+    .stat {
+      background: #fff; border: 1px solid var(--kut-border);
+      border-radius: 22px; padding: 18px;
+      display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-sm);
+    }
+    .stat__icon {
+      width: 46px; height: 46px; border-radius: 12px;
+      background: var(--kut-green-soft); color: var(--kut-green);
+      display: grid; place-items: center; font-size: 22px; flex-shrink: 0;
+    }
+    .stat--gold .stat__icon { background: #FFF8E1; color: var(--kut-gold-dark); }
+    .stat--warn .stat__icon { background: #FFF2DE; color: #E08A1E; }
+    .stat__label {
+      font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
+      font-weight: 700; color: var(--kut-muted); margin-bottom: 4px;
+    }
+    .stat__value {
+      font-size: 24px; font-weight: 800; color: var(--kut-text);
+      line-height: 1; font-variant-numeric: tabular-nums;
+    }
+    .stat__value small {
+      font-size: 12px; font-weight: 600; color: var(--kut-muted);
+      margin-left: 4px;
+    }
+
+    .card {
+      background: #fff; border: 1px solid var(--kut-border);
+      border-radius: 22px; box-shadow: var(--shadow-md); overflow: hidden;
+    }
+    .card__head {
+      padding: 16px 20px; border-bottom: 1px solid var(--kut-border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+    }
     .card__head h2 { margin: 0; font-size: 16px; font-weight: 700; }
-    .card__body { padding: 24px 20px; }
-    .empty-state { text-align: center; padding: 40px 20px; color: var(--kut-muted); }
-    .empty-state__icon { font-size: 48px; margin-bottom: 12px; opacity: .8; }
-    .empty-state h3 { margin: 0 0 8px; color: var(--kut-text); font-size: 17px; font-weight: 700; }
-    .empty-state p { margin: 0; font-size: 14px; }
-    .status-row { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: var(--kut-green-soft); border-radius: 12px; margin-bottom: 16px; font-size: 13px; color: var(--kut-green); font-weight: 500; }
-    .status-row__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--kut-success); }
-    .diag { margin-top: 16px; padding: 10px 12px; background: #F7F9F8; border: 1px dashed #C7D4CE; border-radius: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #4A5C54; line-height: 1.5; word-break: break-word; max-height: 180px; overflow-y: auto; }
+
+    .card__actions { display: inline-flex; gap: 8px; }
+    .btn-sm {
+      padding: 8px 14px; border-radius: 10px;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--kut-border);
+      background: #fff; color: var(--kut-text);
+      transition: all .18s ease;
+    }
+    .btn-sm:hover {
+      background: var(--kut-green-soft); border-color: var(--kut-green);
+      color: var(--kut-green);
+    }
+
+    .diag {
+      padding: 12px 20px; background: #F7F9F8;
+      border-bottom: 1px solid var(--kut-border);
+      font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+      color: #4A5C54; line-height: 1.55;
+      max-height: 200px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .diag strong { color: #14211C; }
+    .diag .ok { color: #1E7F4A; }
+    .diag .err { color: #C0392B; font-weight: 600; }
+    .diag .warn { color: #B87117; font-weight: 600; }
+
+    .table-wrap { overflow-x: auto; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .admin-table thead th {
+      text-align: left; font-size: 12px; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--kut-muted); font-weight: 700;
+      padding: 14px 20px; background: #FBFDFC;
+      border-bottom: 1px solid var(--kut-border); white-space: nowrap;
+    }
+    .admin-table tbody td {
+      padding: 16px 20px; border-bottom: 1px solid var(--kut-border);
+      vertical-align: middle;
+    }
+    .admin-table tbody tr:last-child td { border-bottom: none; }
+    .admin-table tbody tr:hover { background: #FAFCFB; }
+
+    .biz-name { font-weight: 700; color: var(--kut-text); }
+    .biz-sub { font-size: 13px; color: var(--kut-muted); margin-top: 2px; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 11px; border-radius: 999px;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+    }
+    .status-badge--active { background: rgba(30,190,90,.12); color: #0F7F3A; }
+    .status-badge--blocked { background: rgba(192,57,43,.10); color: var(--kut-danger); }
+    .status-badge--unknown { background: rgba(100,119,110,.12); color: var(--kut-muted); }
+    .status-badge__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    .empty-row, .loading-row {
+      text-align: center; padding: 50px 20px; color: var(--kut-muted);
+    }
+    .loading-row { font-size: 14px; }
+    .empty-row .icon {
+      font-size: 42px; display: block; margin-bottom: 10px; opacity: .7;
+    }
+    .empty-row h3 {
+      margin: 0 0 8px; color: var(--kut-text); font-size: 17px;
+    }
+    .empty-row p { margin: 0; font-size: 14px; }
+
+    @media (max-width: 720px) {
+      .admin-table thead { display: none; }
+      .admin-table,
+      .admin-table tbody,
+      .admin-table tr,
+      .admin-table td { display: block; width: 100%; }
+      .admin-table tr { padding: 16px 20px; border-bottom: 1px solid var(--kut-border); }
+      .admin-table tr:last-child { border-bottom: none; }
+      .admin-table td {
+        padding: 4px 0; border: none;
+        display: flex; justify-content: space-between;
+        align-items: center; gap: 12px;
+      }
+      .admin-table td::before {
+        content: attr(data-label);
+        font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
+        font-weight: 700; color: var(--kut-muted); flex-shrink: 0;
+      }
+      .admin-table td[data-label="Компания"] { display: block; padding-bottom: 10px; }
+      .admin-table td[data-label="Компания"]::before { display: none; }
+    }
+
+    .no-access {
+      text-align: center; padding: 100px 20px;
+      color: var(--kut-muted); font-size: 15px;
+    }
+    .no-access h2 { margin: 0 0 8px; color: var(--kut-text); font-size: 22px; }
+
+    .hidden { display: none !important; }
+    ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
   </style>
 </head>
 <body>
@@ -63,103 +217,325 @@
     </div>
   </header>
 
-  <main class="wrap">
+  <main class="wrap" id="adminContent" hidden>
     <div class="page-head">
       <h1>Панель супер-администратора</h1>
       <p>Управление всеми зарегистрированными бизнесами системы</p>
     </div>
 
-    <div class="status-row">
-      <span class="status-row__dot"></span>
-      <span>Вход выполнен. Система работает штатно.</span>
-    </div>
-
-    <section class="card">
-      <div class="card__head">
-        <h2>Зарегистрированные бизнесы</h2>
+    <section class="stats">
+      <div class="stat">
+        <div class="stat__icon">🏢</div>
+        <div>
+          <div class="stat__label">Всего бизнесов</div>
+          <div class="stat__value" id="statTotalBiz">0<small>комп.</small></div>
+        </div>
       </div>
-      <div class="card__body">
-        <div class="empty-state">
-          <div class="empty-state__icon">🏢</div>
-          <h3>Пока нет зарегистрированных бизнесов</h3>
-          <p>Как только владельцы начнут регистрироваться, они появятся здесь.</p>
+      <div class="stat stat--gold">
+        <div class="stat__icon">✅</div>
+        <div>
+          <div class="stat__label">Активных</div>
+          <div class="stat__value" id="statActiveBiz">0<small>комп.</small></div>
+        </div>
+      </div>
+      <div class="stat stat--warn">
+        <div class="stat__icon">🚫</div>
+        <div>
+          <div class="stat__label">Заблокированных</div>
+          <div class="stat__value" id="statBlockedBiz">0<small>комп.</small></div>
         </div>
       </div>
     </section>
 
-    <div class="diag" id="diagBox"><strong>Диагностика:</strong><br>инициализация...</div>
+    <section class="card">
+      <div class="card__head">
+        <h2>Зарегистрированные бизнесы</h2>
+        <div class="card__actions">
+          <button class="btn-sm" type="button" id="refreshBtn">🔄 Обновить</button>
+        </div>
+      </div>
+
+      <div class="diag" id="diagBox"><strong>Диагностика:</strong></div>
+
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Компания</th>
+              <th>Email владельца</th>
+              <th>Дата регистрации</th>
+              <th>Статус</th>
+              <th aria-label="Действия"></th>
+            </tr>
+          </thead>
+          <tbody id="bizTableBody">
+            <tr><td colspan="5" class="loading-row">Загрузка данных...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
+  <div class="no-access hidden" id="noAccess">
+    <h2>Доступ запрещён</h2>
+    <p>Эта страница доступна только супер-администратору.</p>
+    <a href="./login.html" style="display:inline-block; margin-top:16px; padding:12px 22px;
+       background:#005F40; color:#fff; border-radius:12px; text-decoration:none; font-weight:600;">
+      Перейти к входу
+    </a>
+  </div>
+
   <script type="module">
-    const d = document.getElementById('diagBox');
-    const diag = (l) => { if (d) { d.innerHTML += '<br>' + l; d.scrollTop = d.scrollHeight; } };
-    diag('Модуль запущен');
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDoc,
+      getDocs,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-    const appMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const authMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-    const fsMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-
+    // =========================================================
+    // CONFIG
+    // =========================================================
     const firebaseConfig = {
-      apiKey: "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
-      authDomain: "kut-biznes.firebaseapp.com",
-      projectId: "kut-biznes",
-      storageBucket: "kut-biznes.firebasestorage.app",
+      apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
+      authDomain:        "kut-biznes.firebaseapp.com",
+      projectId:         "kut-biznes",
+      storageBucket:     "kut-biznes.firebasestorage.app",
       messagingSenderId: "699153181693",
-      appId: "1:699153181693:web:2f10e57664a8a0cefc4794",
-      measurementId: "G-VTZ49G265B"
+      appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
+      measurementId:     "G-VTZ49G265B"
     };
 
-    const app  = appMod.initializeApp(firebaseConfig);
-    const auth = authMod.getAuth(app);
-    const db   = fsMod.getFirestore(app);
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
 
-    diag('✓ Firebase: ' + firebaseConfig.projectId);
+    const $ = (s) => document.querySelector(s);
 
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await authMod.signOut(auth);
-      window.location.href = './login.html';
-    });
+    // =========================================================
+    // Диагностика
+    // =========================================================
+    const diagBox = $('#diagBox');
+    function diag(text, cls) {
+      const span = document.createElement('span');
+      if (cls) span.className = cls;
+      span.textContent = text + '\n';
+      diagBox.appendChild(span);
+      diagBox.scrollTop = diagBox.scrollHeight;
+    }
+    function diagReset() {
+      diagBox.innerHTML = '<strong>Диагностика:</strong>\n';
+    }
 
-    authMod.onAuthStateChanged(auth, async (user) => {
+    // =========================================================
+    // СОСТОЯНИЕ
+    // =========================================================
+    let allBusinesses = [];
+    let allUsers = [];
+
+    // =========================================================
+    // DOM
+    // =========================================================
+    const tbody = $('#bizTableBody');
+
+    function formatDate(ts) {
+      if (!ts) return '—';
+      let d;
+      if (typeof ts.toDate === 'function') d = ts.toDate();
+      else if (ts.seconds) d = new Date(ts.seconds * 1000);
+      else d = new Date(ts);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[ch]));
+    }
+
+    // =========================================================
+    // ПРОВЕРКА РОЛИ
+    // =========================================================
+    onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        diag('✗ Нет пользователя → login');
+        diag('✗ Нет пользователя → login.html', 'err');
         window.location.href = './login.html';
         return;
       }
 
-      diag('✓ Auth OK: ' + user.uid);
+      diag('✓ Auth OK: ' + user.uid, 'ok');
 
       try {
-        const snap = await fsMod.getDoc(fsMod.doc(db, 'users', user.uid));
+        const snap = await getDoc(doc(db, 'users', user.uid));
         if (!snap.exists()) {
-          diag('✗ users/' + user.uid + ' не найден → login');
-          await authMod.signOut(auth);
+          diag('✗ users/' + user.uid + ' не найден → login.html', 'err');
+          await signOut(auth);
           window.location.href = './login.html';
           return;
         }
 
         const profile = snap.data();
-        diag('✓ Профиль: role=' + (profile.role || '—'));
+        diag('✓ Роль: ' + (profile.role || '—'), 'ok');
 
         if (profile.active === false) {
-          diag('✗ Аккаунт заблокирован');
-          await authMod.signOut(auth);
+          diag('✗ Аккаунт заблокирован', 'err');
+          await signOut(auth);
           window.location.href = './login.html';
           return;
         }
 
         if (profile.role !== 'super_admin') {
-          diag('✗ Роль не super_admin → index');
-          window.location.href = './index.html';
+          diag('✗ Роль не super_admin → index.html', 'err');
+          $('#noAccess').classList.remove('hidden');
           return;
         }
 
-        document.getElementById('adminEmail').textContent = profile.email || user.email || '—';
-        diag('✓ Доступ к админ-панели разрешён');
+        $('#adminEmail').textContent = profile.email || user.email || '—';
+        $('#adminContent').classList.remove('hidden');
+
+        diag('→ Загружаем businesses...', 'warn');
+        await loadBusinesses();
+
+        diag('→ Загружаем users...', 'warn');
+        await loadUsers();
+
+        renderAll();
       } catch (err) {
-        diag('✗ Ошибка: ' + err.code + ' ' + err.message);
+        diag('✗ Ошибка проверки: ' + err.code + ' ' + err.message, 'err');
       }
     });
+
+    // =========================================================
+    // ЗАГРУЗКА BUSINESSES
+    // =========================================================
+    async function loadBusinesses() {
+      try {
+        const snap = await getDocs(collection(db, 'businesses'));
+        allBusinesses = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        diag('  ✓ businesses: ' + allBusinesses.length + ' шт.', 'ok');
+      } catch (err) {
+        diag('  ✗ businesses: ' + err.code + ' | ' + err.message, 'err');
+        allBusinesses = [];
+      }
+    }
+
+    // =========================================================
+    // ЗАГРУЗКА USERS
+    // =========================================================
+    async function loadUsers() {
+      try {
+        const snap = await getDocs(collection(db, 'users'));
+        allUsers = snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+        diag('  ✓ users: ' + allUsers.length + ' шт.', 'ok');
+      } catch (err) {
+        diag('  ✗ users: ' + err.code + ' | ' + err.message, 'err');
+        allUsers = [];
+      }
+    }
+
+    // =========================================================
+    // СТАТИСТИКА
+    // =========================================================
+    function renderStats() {
+      const total = allBusinesses.length;
+      const active = allBusinesses.filter((b) => b.status !== 'blocked' && b.active !== false).length;
+      const blocked = total - active;
+
+      $('#statTotalBiz').innerHTML = total + '<small>комп.</small>';
+      $('#statActiveBiz').innerHTML = active + '<small>комп.</small>';
+      $('#statBlockedBiz').innerHTML = blocked + '<small>комп.</small>';
+    }
+
+    // =========================================================
+    // РЕНДЕР ТАБЛИЦЫ
+    // =========================================================
+    function renderAll() {
+      renderStats();
+
+      if (allBusinesses.length === 0) {
+        tbody.innerHTML = `
+          <tr><td colspan="5" class="empty-row">
+            <span class="icon">🏢</span>
+            <h3>Пока нет зарегистрированных бизнесов</h3>
+            <p>Как только владельцы начнут регистрироваться, они появятся здесь.</p>
+          </td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = allBusinesses.map((b) => {
+        const owner = allUsers.find((u) => u.uid === b.ownerUid)
+                   || allUsers.find((u) => u.businessId === b.id && u.role === 'owner');
+
+        const isBlocked = b.status === 'blocked' || b.active === false;
+        const isActive = !isBlocked;
+        const statusCls = isActive ? 'status-badge--active' : 'status-badge--blocked';
+        const statusText = isActive ? 'Активен' : 'Заблокирован';
+
+        const ownerEmail = b.ownerEmail || (owner ? owner.email : '—');
+        const ownerPhone = b.ownerPhone || (owner ? owner.phone : '');
+
+        return `
+          <tr>
+            <td data-label="Компания">
+              <div class="biz-name">${escapeHtml(b.name || 'Без названия')}</div>
+              <div class="biz-sub">ID: ${escapeHtml(b.id)}</div>
+            </td>
+            <td data-label="Email владельца">
+              <div>${escapeHtml(ownerEmail)}</div>
+              ${ownerPhone ? `<div class="biz-sub">${escapeHtml(ownerPhone)}</div>` : ''}
+            </td>
+            <td data-label="Дата регистрации">${formatDate(b.createdAt)}</td>
+            <td data-label="Статус">
+              <span class="status-badge ${statusCls}">
+                <span class="status-badge__dot"></span>
+                ${statusText}
+              </span>
+            </td>
+            <td data-label="Действия">
+              <button class="btn-sm" type="button" data-copy="${escapeHtml(b.id)}">Скопировать ID</button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      tbody.querySelectorAll('[data-copy]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.copy;
+          navigator.clipboard?.writeText(id).then(() => {
+            btn.textContent = 'Скопировано';
+            setTimeout(() => { btn.textContent = 'Скопировать ID'; }, 1200);
+          });
+        });
+      });
+    }
+
+    // =========================================================
+    // КНОПКА «ОБНОВИТЬ»
+    // =========================================================
+    $('#refreshBtn').addEventListener('click', async () => {
+      diagReset();
+      diag('→ Ручное обновление', 'warn');
+      await loadBusinesses();
+      await loadUsers();
+      renderAll();
+    });
+
+    // =========================================================
+    // ВЫХОД
+    // =========================================================
+    $('#logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = './login.html';
+    });
+
+    console.info('[KUT admin] Готово');
   </script>
 </body>
 </html>
