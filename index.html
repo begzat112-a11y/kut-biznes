@@ -90,7 +90,6 @@
     .sidebar__footer { color: rgba(255,255,255,.55); font-size: 11px; text-align: center;
       padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
 
-    /* ===== Плейсхолдеры под профиль и выход (заполняет app.js) ===== */
     #sidebar-profile-slot { display: block; }
     #sidebar-logout-slot  { display: block; }
 
@@ -119,10 +118,16 @@
       overflow: hidden; text-overflow: ellipsis;
       white-space: nowrap; min-width: 0; flex: 1; text-align: center;
     }
-    .mobile-bar__cta {
-      padding: 8px 12px; background: var(--kut-gold); color: var(--kut-green-dark);
-      border-radius: 10px; text-decoration: none; font-size: 12px;
-      font-weight: 700; white-space: nowrap; flex-shrink: 0;
+    .mobile-bar__badge {
+      font-size: 10px;
+      padding: 4px 8px;
+      background: rgba(212,175,55,.22);
+      color: var(--kut-gold);
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      flex-shrink: 0;
+      text-transform: uppercase;
     }
 
     /* ===== Основной контент ===== */
@@ -131,39 +136,45 @@
       padding: 16px; display: flex; flex-direction: column; gap: 16px;
     }
     @media (min-width: 1000px) {
-      .main-content { padding: 28px 32px; gap: 22px; }
+      .main-content { padding: 28px 32px 32px; gap: 22px; }
+    }
+    /* ⬇️ Отступ снизу, чтобы контент не уезжал под bottom-nav + FAB */
+    @media (max-width: 999px) {
+      body.page-home .main-content {
+        padding-bottom: calc(110px + env(safe-area-inset-bottom));
+      }
     }
 
     /* ===== Заголовок страницы ===== */
     .page-head {
-      display: flex; flex-direction: column; gap: 8px;
+      display: flex; flex-direction: column; gap: 10px;
       min-width: 0; max-width: 100%;
+      align-items: flex-start;
     }
     @media (min-width: 720px) {
-      .page-head { flex-direction: row; align-items: flex-end;
+      .page-head { flex-direction: row; align-items: center;
         justify-content: space-between; gap: 16px; }
     }
     .page-head h1 {
       margin: 0; font-size: clamp(20px, 5vw, 24px);
       font-weight: 800; letter-spacing: -.4px; word-break: break-word;
     }
-    .page-head p { margin: 0; color: var(--kut-muted); font-size: 14px; }
-    .page-head__user {
-      display: inline-flex; align-items: center; gap: 10px;
-      padding: 8px 12px; background: var(--kut-surface);
-      border: 1px solid var(--kut-border); border-radius: 12px;
-      font-size: 13px; color: var(--kut-text); font-weight: 600;
-      max-width: 100%; min-width: 0; flex-wrap: wrap;
+    .page-head p { margin: 4px 0 0; color: var(--kut-muted); font-size: 14px; }
+
+    /* Бейдж роли */
+    .role-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 999px;
+      font-size: 11px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .6px;
+      width: fit-content;
+      transition: background .18s ease, color .18s ease;
     }
-    .page-head__user span {
-      overflow: hidden; text-overflow: ellipsis;
-      white-space: nowrap; min-width: 0; max-width: 200px;
-    }
-    .page-head__user button {
-      background: transparent; border: none; color: var(--kut-danger);
-      font-family: inherit; font-size: 12px; font-weight: 600;
-      cursor: pointer; flex-shrink: 0;
-    }
+    .role-badge--owner   { background: #FFF8E1; color: #B8952A; }
+    .role-badge--manager { background: #FFF2DE; color: #9A5B10; }
+    .role-badge--cashier { background: #EAF6EF; color: #0F7F3A; }
+    .role-badge--admin   { background: #E0F0FF; color: #005C8C; }
+    .role-badge--user    { background: #EEF2F0; color: #64776E; }
 
     /* ===== Аналитика ===== */
     .analytics {
@@ -231,6 +242,7 @@
     .analytics__card--profit .analytics__value  { color: #7FE4A5; }
     .analytics__card--stock .analytics__value   { color: #fff; }
 
+    /* ===== График ===== */
     .chart-wrap {
       margin-top: 16px; padding: 14px 12px 10px;
       background: rgba(255,255,255,.06);
@@ -277,92 +289,34 @@
     }
     @media (min-width: 700px) { .chart__label { font-size: 11px; } }
 
-    .widgets {
-      display: grid; grid-template-columns: 1fr; gap: 12px;
-      min-width: 0; max-width: 100%;
-    }
-    @media (min-width: 700px) {
-      .widgets { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-    }
-    .widget {
-      position: relative; background: var(--kut-surface);
-      border: 1px solid var(--kut-border); border-radius: 22px;
-      padding: 20px; box-shadow: var(--shadow-sm);
-      overflow: hidden; transition: transform .15s ease, box-shadow .18s ease;
-      min-width: 0;
-    }
-    .widget:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-    .widget__top { display: flex; align-items: center; justify-content: space-between;
-      gap: 10px; margin-bottom: 12px; }
-    .widget__label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
-      font-weight: 700; color: var(--kut-muted); word-break: break-word; }
-    .widget__icon { width: 42px; height: 42px; border-radius: 12px;
-      display: grid; place-items: center; background: var(--kut-green-soft);
-      color: var(--kut-green); font-size: 20px; flex-shrink: 0; }
-    .widget--gold .widget__icon { background: #FFF8E1; color: var(--kut-gold-dark); }
-    .widget--warn .widget__icon { background: #FFF2DE; color: var(--kut-warn); }
-    .widget__value { font-size: clamp(22px, 6vw, 30px); font-weight: 800;
-      line-height: 1; letter-spacing: -.6px; font-variant-numeric: tabular-nums;
-      word-break: break-word; }
-    .widget__value small { font-size: 14px; font-weight: 600; color: var(--kut-muted); margin-left: 6px; }
-    .widget--primary .widget__value { color: var(--kut-green); }
-    .widget--gold .widget__value { color: var(--kut-gold-dark); }
-    .widget--warn .widget__value { color: var(--kut-warn); }
-    .widget__sub { margin-top: 10px; font-size: 12px; color: var(--kut-muted);
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap; word-break: break-word; }
-
-    .quick-actions {
-      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px; min-width: 0;
-    }
-    @media (min-width: 700px) {
-      .quick-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-    }
-    .quick { display: flex; align-items: center; gap: 12px; padding: 14px;
+    /* ===== Последние продажи ===== */
+    .recent {
       background: var(--kut-surface); border: 1px solid var(--kut-border);
-      border-radius: 14px; text-decoration: none; color: inherit;
-      box-shadow: var(--shadow-sm); min-width: 0; }
-    @media (min-width: 700px) { .quick { padding: 16px; } }
-    .quick:hover { border-color: var(--kut-green); background: var(--kut-green-soft); }
-    .quick__icon { width: 40px; height: 40px; border-radius: 12px;
-      display: grid; place-items: center; background: var(--kut-green-soft);
-      color: var(--kut-green); font-size: 20px; flex-shrink: 0; }
-    .quick > span:last-child { min-width: 0; }
-    .quick__title { font-weight: 700; font-size: 14px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .quick__desc { font-size: 12px; color: var(--kut-muted); margin-top: 2px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .staff-section { background: var(--kut-surface); border: 1px solid var(--kut-border);
-      border-radius: 22px; box-shadow: var(--shadow-sm); overflow: hidden;
-      min-width: 0; max-width: 100%; }
-    .staff-section__head { display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; padding: 16px 18px; border-bottom: 1px solid var(--kut-border);
-      flex-wrap: wrap; }
-    .staff-section__head h2 { margin: 0; font-size: 16px; font-weight: 700;
-      display: flex; align-items: center; gap: 8px; }
-    .staff-section__head a { font-size: 13px; color: var(--kut-green);
-      text-decoration: none; font-weight: 600; }
-    .staff-section__body { padding: 16px 18px; }
-    .staff-mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    @media (max-width: 480px) { .staff-mini { grid-template-columns: 1fr; gap: 8px; } }
-    .staff-mini__item { padding: 12px 14px; background: #FBFDFC;
-      border: 1px solid var(--kut-border); border-radius: 12px; min-width: 0; }
-    .staff-mini__label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
-      font-weight: 700; color: var(--kut-muted); margin-bottom: 4px; word-break: break-word; }
-    .staff-mini__value { font-size: 20px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-    .staff-mini__value--active { color: var(--kut-green); }
-    .staff-mini__value--pending { color: var(--kut-warn); }
-
-    .recent { background: var(--kut-surface); border: 1px solid var(--kut-border);
-      border-radius: 22px; box-shadow: var(--shadow-sm); overflow: hidden;
-      min-width: 0; max-width: 100%; }
-    .recent__head { display: flex; align-items: center; justify-content: space-between;
-      gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--kut-border);
-      flex-wrap: wrap; }
+      border-radius: 22px; box-shadow: var(--shadow-sm);
+      overflow: hidden; min-width: 0; max-width: 100%;
+      display: flex; flex-direction: column;
+      max-height: 50vh;
+    }
+    .recent__head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 16px 18px;
+      border-bottom: 1px solid var(--kut-border); flex-wrap: wrap;
+      flex-shrink: 0;
+    }
     .recent__head h2 { margin: 0; font-size: 16px; font-weight: 700; }
-    .recent__head a { font-size: 13px; color: var(--kut-green); text-decoration: none; font-weight: 600; }
-    .recent__list { padding: 6px 8px; }
+    .recent__head a { font-size: 13px; color: var(--kut-green);
+      text-decoration: none; font-weight: 600; }
+    .recent__list {
+      padding: 6px 8px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+      min-height: 0;
+    }
+    .recent__list::-webkit-scrollbar { width: 6px; }
+    .recent__list::-webkit-scrollbar-thumb {
+      background: var(--kut-border); border-radius: 3px;
+    }
     .sale-row { display: flex; align-items: center; gap: 10px; padding: 10px;
       border-radius: 12px; min-width: 0; }
     .sale-row + .sale-row { border-top: 1px dashed var(--kut-border); }
@@ -376,13 +330,134 @@
     .sale-row__amount { font-size: 14px; font-weight: 800; color: var(--kut-green);
       font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
     .sale-row__amount--debt { color: var(--kut-warn); }
-    .recent__empty { padding: 34px 18px; text-align: center; color: var(--kut-muted); font-size: 14px; }
+    .recent__empty { padding: 34px 18px; text-align: center;
+      color: var(--kut-muted); font-size: 14px; }
     .recent__empty span { display: block; font-size: 30px; margin-bottom: 6px; opacity: .8; }
 
     .footer { text-align: center; color: var(--kut-muted); font-size: 12px;
-      padding: 8px 0 20px; word-break: break-word; }
+      padding: 8px 0 4px; word-break: break-word; }
     .footer a { color: var(--kut-green); text-decoration: none; }
 
+    /* =========================================================
+       НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ (Bottom Navigation Bar)
+       ========================================================= */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(0,95,64,.10);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+      box-shadow: 0 -6px 24px rgba(16,32,25,.06);
+    }
+    @media (min-width: 1000px) {
+      .bottom-nav { display: none; }
+    }
+
+    .bottom-nav__item {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px;
+      padding: 8px 4px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--kut-muted);
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+      transition: background .18s ease, color .18s ease, transform .12s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .bottom-nav__item:active { transform: scale(.96); }
+    .bottom-nav__icon {
+      font-size: 22px;
+      line-height: 1;
+      filter: grayscale(.4) opacity(.85);
+      transition: filter .18s ease, transform .18s ease;
+    }
+    .bottom-nav__item.is-active {
+      color: var(--kut-green);
+      background: var(--kut-green-soft);
+    }
+    .bottom-nav__item.is-active .bottom-nav__icon {
+      filter: none;
+      transform: translateY(-1px);
+    }
+
+    /* =========================================================
+       ПЛАВАЮЩАЯ КНОПКА «+» (над панелью, справа)
+       ========================================================= */
+    .fab-plus {
+      position: fixed;
+      right: 16px;
+      bottom: calc(84px + env(safe-area-inset-bottom));
+      z-index: 65;
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #FFD86B, #D4AF37);
+      color: #003F2A;
+      font-size: 34px;
+      font-weight: 400;
+      line-height: 1;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      text-decoration: none;
+      padding-bottom: 4px;
+      box-shadow:
+        0 10px 26px rgba(212,175,55,.50),
+        0 4px 12px rgba(16,32,25,.18);
+      transition: transform .15s ease, box-shadow .18s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fab-plus::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid rgba(212,175,55,.35);
+      animation: fabPulse 2.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes fabPulse {
+      0%, 100% { transform: scale(1); opacity: .55; }
+      50%      { transform: scale(1.10); opacity: .15; }
+    }
+    .fab-plus:hover { transform: scale(1.04); }
+    .fab-plus:active { transform: scale(.94); }
+    .fab-plus__tip {
+      position: absolute;
+      right: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--kut-green-dark);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+    }
+    .fab-plus:hover .fab-plus__tip { opacity: 1; }
+
+    @media (min-width: 1000px) {
+      .fab-plus { display: none; }
+    }
+
+    /* ===== Мелкие экраны (≤ 380px) ===== */
     @media (max-width: 380px) {
       .main-content { padding: 12px; }
       .analytics { padding: 16px; border-radius: 18px; }
@@ -390,9 +465,9 @@
       .analytics__icon { width: 38px; height: 38px; font-size: 18px; }
       .analytics__value { font-size: 18px; }
       .chart-wrap { padding: 12px 10px 8px; }
-      .widget { padding: 16px; }
-      .quick { padding: 12px; gap: 10px; }
-      .quick__icon { width: 36px; height: 36px; font-size: 18px; }
+      .bottom-nav__icon { font-size: 20px; }
+      .bottom-nav__item { padding: 6px 3px; }
+      .fab-plus { width: 56px; height: 56px; font-size: 30px; }
     }
   </style>
 </head>
@@ -400,7 +475,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v6.4-PROFILE';
+      var BUILD = 'v6.6-BOTTOM-NAV';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -432,8 +507,7 @@
 
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
-
-      <!-- Плейсхолдер: сюда app.js вставит блок профиля -->
+      <!-- Плейсхолдер: app.js вставит профиль -->
       <div id="sidebar-profile-slot"></div>
 
       <a href="./index.html" class="sidebar__brand">
@@ -479,30 +553,28 @@
 
       <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
 
-      <!-- Плейсхолдер: сюда app.js вставит кнопку «Выйти» -->
+      <!-- Плейсхолдер: app.js вставит кнопку «Выйти» -->
       <div id="sidebar-logout-slot"></div>
-
     </aside>
 
     <div>
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
         <span class="mobile-bar__title">КУТ: БИЗНЕС</span>
-        <a href="./cash.html" class="mobile-bar__cta">＋ Касса</a>
+        <span class="mobile-bar__badge" id="mobile-role-badge">—</span>
       </header>
 
       <main class="main-content">
+        <!-- Приветствие + бейдж роли -->
         <div class="page-head">
           <div>
             <h1>Здравствуйте! 👋</h1>
             <p>Сводка по вашему бизнесу на сегодня</p>
           </div>
-          <div class="page-head__user">
-            <span id="user-name">—</span>
-            <button type="button" id="logout-btn">Выйти</button>
-          </div>
+          <span class="role-badge role-badge--user" id="role-badge">Пользователь</span>
         </div>
 
+        <!-- Финансовая аналитика (статичная) -->
         <section class="analytics" aria-label="Финансовая аналитика">
           <div class="analytics__head">
             <h2 class="analytics__title">📊 Финансовая аналитика</h2>
@@ -542,95 +614,23 @@
           </div>
         </section>
 
-        <section class="widgets" aria-label="Дополнительные показатели">
-          <article class="widget widget--primary">
-            <div class="widget__top">
-              <span class="widget__label">Всего выручка</span>
-              <span class="widget__icon">💰</span>
-            </div>
-            <div class="widget__value">
-              <span id="dashboard-total-sales" data-kut="revenue-total">0</span><small>KGS</small>
-            </div>
-            <div class="widget__sub" id="sales-sub">Продаж пока не было</div>
-          </article>
+        <!-- Скрытые виджеты (для совместимости с app.js) — визуально не отображаются -->
+        <div hidden>
+          <span id="dashboard-total-sales" data-kut="revenue-total">0</span>
+          <span id="dashboard-stock-value" data-kut="stock-value">0</span>
+          <span id="dashboard-total-debts" data-kut="debts-sum">0</span>
+          <span id="sales-sub"></span>
+          <span id="stock-sub"></span>
+          <span id="debts-sub"></span>
+          <span id="nav-debts-count-2"></span>
+          <span id="staff-section"></span>
+          <span id="staff-total"></span>
+          <span id="staff-active"></span>
+          <span id="staff-pending"></span>
+          <span id="nav-staff-count-2"></span>
+        </div>
 
-          <article class="widget widget--gold">
-            <div class="widget__top">
-              <span class="widget__label">Стоимость склада</span>
-              <span class="widget__icon">📦</span>
-            </div>
-            <div class="widget__value">
-              <span id="dashboard-stock-value" data-kut="stock-value">0</span><small>KGS</small>
-            </div>
-            <div class="widget__sub" id="stock-sub">Склад пуст</div>
-          </article>
-
-          <article class="widget widget--warn">
-            <div class="widget__top">
-              <span class="widget__label">Нам должны (Несие)</span>
-              <span class="widget__icon">📒</span>
-            </div>
-            <div class="widget__value">
-              <span id="dashboard-total-debts" data-kut="debts-sum">0</span><small>KGS</small>
-            </div>
-            <div class="widget__sub" id="debts-sub">Активных должников нет</div>
-          </article>
-        </section>
-
-        <section class="staff-section" id="staff-section" hidden aria-label="Сотрудники">
-          <div class="staff-section__head">
-            <h2><span aria-hidden="true">👥</span> Сотрудники</h2>
-            <a href="./staff.html">Управлять сотрудниками →</a>
-          </div>
-          <div class="staff-section__body">
-            <div class="staff-mini">
-              <div class="staff-mini__item">
-                <div class="staff-mini__label">Всего</div>
-                <div class="staff-mini__value" id="staff-total">0</div>
-              </div>
-              <div class="staff-mini__item">
-                <div class="staff-mini__label">Активных</div>
-                <div class="staff-mini__value staff-mini__value--active" id="staff-active">0</div>
-              </div>
-              <div class="staff-mini__item">
-                <div class="staff-mini__label">Ожидают входа</div>
-                <div class="staff-mini__value staff-mini__value--pending" id="staff-pending">0</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="quick-actions" aria-label="Быстрые действия">
-          <a href="./cash.html" class="quick">
-            <span class="quick__icon">🧾</span>
-            <span>
-              <span class="quick__title">Касса</span>
-              <span class="quick__desc">Продать товар</span>
-            </span>
-          </a>
-          <a href="./stock.html" class="quick">
-            <span class="quick__icon">📦</span>
-            <span>
-              <span class="quick__title">Склад</span>
-              <span class="quick__desc">Остатки и цены</span>
-            </span>
-          </a>
-          <a href="./debts.html" class="quick">
-            <span class="quick__icon">📒</span>
-            <span>
-              <span class="quick__title">Несие</span>
-              <span class="quick__desc">Тетрадь долгов</span>
-            </span>
-          </a>
-          <a href="./staff.html" class="quick" id="quick-staff" hidden>
-            <span class="quick__icon">👥</span>
-            <span>
-              <span class="quick__title">Сотрудники</span>
-              <span class="quick__desc">Кассиры и доступ</span>
-            </span>
-          </a>
-        </section>
-
+        <!-- Последние продажи -->
         <section class="recent" aria-label="Последние продажи">
           <div class="recent__head">
             <h2>Последние продажи</h2>
@@ -645,14 +645,41 @@
         </section>
 
         <div class="footer">
-          КУТ: БИЗНЕС · <a href="./cash.html">Касса</a> ·
-          <a href="./stock.html">Склад</a> ·
-          <a href="./debts.html">Несие</a>
-          · версия: v6.4
+          КУТ: БИЗНЕС · версия: v6.6
         </div>
       </main>
     </div>
   </div>
+
+  <!-- =========================================================
+       НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ
+       ========================================================= -->
+  <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
+    <a href="./index.html" class="bottom-nav__item" data-page="index">
+      <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
+      <span>Главная</span>
+    </a>
+    <a href="./cash.html" class="bottom-nav__item" data-page="cash">
+      <span class="bottom-nav__icon" aria-hidden="true">⚡</span>
+      <span>Касса</span>
+    </a>
+    <a href="./stock.html" class="bottom-nav__item" data-page="stock">
+      <span class="bottom-nav__icon" aria-hidden="true">📦</span>
+      <span>Склад</span>
+    </a>
+    <a href="./debts.html" class="bottom-nav__item" data-page="debts">
+      <span class="bottom-nav__icon" aria-hidden="true">📒</span>
+      <span>Несие</span>
+    </a>
+  </nav>
+
+  <!-- =========================================================
+       ПЛАВАЮЩАЯ КНОПКА «+» — открывает кассу со сканером
+       ========================================================= -->
+  <a href="./cash.html?scan=1" class="fab-plus" aria-label="Быстрая продажа со сканером">
+    <span aria-hidden="true">+</span>
+    <span class="fab-plus__tip">Продажа по штрихкоду</span>
+  </a>
 
   <script type="module" src="./js/app.js"></script>
 </body>
