@@ -1,17 +1,13 @@
 /* =========================================================
-   КУТ: БИЗНЕС — UI Chrome v9.4.1
-   • Динамический заголовок страницы
-   • Компактная иконка темы справа от бренда (без текста)
-   • Жёсткая зачистка всех старых .theme-toggle
-   • Страховка для бургера
+   КУТ: БИЗНЕС — UI Chrome v9.4.2
+   • Заголовок страницы
+   • Иконка темы в шапке шторки
+   • Жёсткая зачистка всех .theme-toggle по всему DOM
    ========================================================= */
 
 (function () {
   'use strict';
 
-  // =========================================================
-  // 1. ЗАГОЛОВКИ СТРАНИЦ
-  // =========================================================
   const PAGE_TITLES = {
     'index.html':     'Главная',
     '':               'Главная',
@@ -39,29 +35,26 @@
     document.title = title + ' — КУТ: БИЗНЕС';
   }
 
-  // =========================================================
-  // 2. УБИРАЕМ ВСЕ СТАРЫЕ .theme-toggle ГДЕ БЫ ОНИ НИ БЫЛИ
-  //    (в шапке, в сайдбаре, в футере — везде)
-  // =========================================================
+  // Убираем ВСЕ .theme-toggle, кроме того, что создаёт сам ui-chrome
   function removeOldThemeToggles() {
-    // Удаляем все .theme-toggle, которые НЕ создал наш mountSidebarThemeToggle
-    // (наш имеет родителя .sidebar__brand-row и не имеет старой структуры)
     document.querySelectorAll('.theme-toggle').forEach((el) => {
       const parent = el.parentElement;
       const inBrandRow = parent && parent.classList.contains('sidebar__brand-row');
       if (!inBrandRow) el.remove();
     });
-
-    // Дополнительная чистка — осиротевшие слоты со старой плашкой
-    document.querySelectorAll('.sidebar-theme__text, .sidebar-theme__chevron, .sidebar-theme__icon').forEach((el) => {
-      // Удаляем только если это «голый» слот вне .sidebar-theme
+    // Осиротевшие внутренние части старой кнопки
+    document.querySelectorAll('.sidebar-theme__text, .sidebar-theme__chevron').forEach((el) => {
       if (!el.closest('.sidebar-theme')) el.remove();
     });
   }
 
-  // =========================================================
-  // 3. МОНТИРУЕМ ИКОНКУ ТЕМЫ СПРАВА ОТ БРЕНДА
-  // =========================================================
+  function updateThemeButton(btn, theme) {
+    const isLight = theme === 'light';
+    btn.textContent = isLight ? '☀️' : '🌙';
+    btn.setAttribute('aria-label', isLight ? 'Включить тёмную тему' : 'Включить светлую тему');
+    btn.setAttribute('title',       isLight ? 'Тёмная тема'         : 'Светлая тема');
+  }
+
   function mountSidebarThemeToggle() {
     const themeApi = window.KUT_THEME;
     if (!themeApi || typeof themeApi.toggle !== 'function') return;
@@ -69,7 +62,6 @@
     const slot = document.getElementById('sidebar-theme-slot');
     if (!slot) return;
 
-    // Уже смонтировано?
     if (slot.querySelector('.sidebar-theme')) {
       updateThemeButton(slot.querySelector('.sidebar-theme'), themeApi.get());
       return;
@@ -79,9 +71,6 @@
     btn.type = 'button';
     btn.className = 'sidebar-theme';
     btn.textContent = '🌙';
-    btn.setAttribute('aria-label', 'Переключить тему');
-    btn.setAttribute('title', 'Переключить тему');
-
     updateThemeButton(btn, themeApi.get());
 
     btn.addEventListener('click', () => {
@@ -92,16 +81,6 @@
     slot.appendChild(btn);
   }
 
-  function updateThemeButton(btn, theme) {
-    const isLight = theme === 'light';
-    btn.textContent = isLight ? '☀️' : '🌙';
-    btn.setAttribute('aria-label', isLight ? 'Включить тёмную тему' : 'Включить светлую тему');
-    btn.setAttribute('title',       isLight ? 'Тёмная тема'         : 'Светлая тема');
-  }
-
-  // =========================================================
-  // 4. СТРАХОВКА ДЛЯ БУРГЕРА
-  // =========================================================
   function ensureBurgerWorks() {
     const burger = document.getElementById('burger');
     const sidebar = document.getElementById('sidebar');
@@ -111,13 +90,11 @@
 
     setTimeout(() => {
       if (burger.dataset.wired === '1') return;
-
       burger.addEventListener('click', () => {
         const isOpen = sidebar.classList.toggle('is-open');
         if (overlay) overlay.classList.toggle('is-open', isOpen);
         document.body.style.overflow = isOpen ? 'hidden' : '';
       });
-
       if (overlay) {
         overlay.addEventListener('click', () => {
           sidebar.classList.remove('is-open');
@@ -128,9 +105,6 @@
     }, 300);
   }
 
-  // =========================================================
-  // 5. ЗАПУСК
-  // =========================================================
   function boot() {
     setPageTitle();
     removeOldThemeToggles();
@@ -144,7 +118,6 @@
     boot();
   }
 
-  // Подстраховки — если DOM подгружается медленно или app.js перерисовывает сайдбар
   window.addEventListener('load', () => {
     setTimeout(() => { removeOldThemeToggles(); mountSidebarThemeToggle(); }, 400);
     setTimeout(() => { removeOldThemeToggles(); mountSidebarThemeToggle(); }, 1200);
