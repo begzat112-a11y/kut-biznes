@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v10 · v9.4
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v10 · v9.5
    + Периоды аналитики (Сегодня / Вчера / 7 дней / Месяц)
    + Модуль «Критические остатки»
    + Детализация кассы: наличные + карта/перевод
@@ -133,10 +133,10 @@ const state = {
 // ПЕРИОДЫ АНАЛИТИКИ
 // =========================================================
 const PERIOD_LABELS = {
-  today:     'за сегодня',
-  yesterday: 'за вчера',
-  week:      'за 7 дней',
-  month:     'за текущий месяц',
+  today:     'Сводка за сегодня',
+  yesterday: 'Сводка за вчера',
+  week:      'Сводка за 7 дней',
+  month:     'Сводка за месяц',
 };
 
 function startOfMonth() {
@@ -478,9 +478,12 @@ function setupPeriodFilter() {
     if (!period || period === state.period) return;
 
     state.period = period;
+
+    // Переключаем активный класс на чипсах
     wrap.querySelectorAll('.period-chip').forEach((c) => {
       const active = c.dataset.period === period;
       c.classList.toggle('is-active', active);
+      c.classList.toggle('active', active);
       c.setAttribute('aria-selected', String(active));
     });
 
