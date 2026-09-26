@@ -39,10 +39,7 @@
       .sidebar { transform: none; width: var(--sidebar-w); max-width: none;
         position: sticky; top: 0; height: 100dvh; }
     }
-    .sidebar__brand {
-      display: flex; align-items: center; gap: 10px;
-      text-decoration: none;
-    }
+    .sidebar__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
     .brand__mark {
       width: 38px; height: 38px; border-radius: 10px;
       background: linear-gradient(135deg, #E7C14A, #B88F1D);
@@ -197,7 +194,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v9.3-THEME-TOP';
+      var BUILD = 'v9.4-DASHBOARD';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -283,17 +280,14 @@
     <div>
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
-
         <span class="mobile-bar__title">
           КУТ: БИЗНЕС · <span id="page-title">Главная</span>
         </span>
-
         <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
           <span class="net-pill__dot" aria-hidden="true"></span>
           <span class="net-pill__label">онлайн</span>
           <span class="net-pill__qty" id="net-queue-qty">0</span>
         </span>
-
         <div data-kut-lang></div>
       </header>
 
@@ -306,6 +300,15 @@
           <span class="role-badge role-badge--user" id="role-badge">Пользователь</span>
         </div>
 
+        <!-- ============ ФИЛЬТР ПЕРИОДОВ ============ -->
+        <div class="period-chips" id="periodChips" role="tablist" aria-label="Период аналитики">
+          <button class="period-chip" type="button" role="tab" data-period="today">Сегодня</button>
+          <button class="period-chip" type="button" role="tab" data-period="yesterday">Вчера</button>
+          <button class="period-chip" type="button" role="tab" data-period="week">7 дней</button>
+          <button class="period-chip is-active" type="button" role="tab" data-period="month" aria-selected="true">Месяц</button>
+        </div>
+
+        <!-- ============ АНАЛИТИКА ============ -->
         <section class="analytics" aria-label="Финансовая аналитика">
           <div class="analytics__head">
             <h2 class="analytics__title">📊 Финансовая аналитика</h2>
@@ -313,13 +316,27 @@
           </div>
 
           <div class="analytics__grid">
+            <!-- Карточка «Выручка» с детализацией Наличные / Карта -->
             <div class="analytics__card analytics__card--revenue glass-tap">
               <div class="analytics__icon">💵</div>
               <div>
                 <div class="analytics__label">Выручка</div>
                 <div class="analytics__value" id="analyticsRevenue">0<small>KGS</small></div>
+                <div class="cash-split" aria-label="Структура выручки">
+                  <div class="cash-split__row">
+                    <span class="cash-split__dot cash-split__dot--cash" aria-hidden="true"></span>
+                    <span class="cash-split__label">Наличные</span>
+                    <span class="cash-split__value" id="analyticsCash">0</span>
+                  </div>
+                  <div class="cash-split__row">
+                    <span class="cash-split__dot cash-split__dot--card" aria-hidden="true"></span>
+                    <span class="cash-split__label">Карта / Перевод</span>
+                    <span class="cash-split__value" id="analyticsCard">0</span>
+                  </div>
+                </div>
               </div>
             </div>
+
             <div class="analytics__card analytics__card--profit glass-tap">
               <div class="analytics__icon">📈</div>
               <div>
@@ -327,6 +344,7 @@
                 <div class="analytics__value" id="analyticsProfit">0<small>KGS</small></div>
               </div>
             </div>
+
             <div class="analytics__card analytics__card--stock glass-tap">
               <div class="analytics__icon">📦</div>
               <div>
@@ -345,6 +363,20 @@
           </div>
         </section>
 
+        <!-- ============ КРИТИЧЕСКИЕ ОСТАТКИ ============ -->
+        <section class="critical-stock" id="criticalStock" hidden aria-live="polite">
+          <header class="critical-stock__head">
+            <span class="critical-stock__icon" aria-hidden="true">⚠️</span>
+            <div class="critical-stock__title">
+              <strong>Внимание! Заканчиваются товары</strong>
+              <small id="criticalStockSub">Меньше 5 единиц на складе</small>
+            </div>
+            <a class="critical-stock__link" href="./stock.html">Склад →</a>
+          </header>
+          <ul class="critical-stock__list" id="criticalStockList"></ul>
+        </section>
+
+        <!-- Скрытые виджеты для совместимости с app.js -->
         <div hidden>
           <span id="dashboard-total-sales" data-kut="revenue-total">0</span>
           <span id="dashboard-stock-value" data-kut="stock-value">0</span>
@@ -358,6 +390,7 @@
           <span id="staff-pending"></span>
         </div>
 
+        <!-- ============ ПОСЛЕДНИЕ ПРОДАЖИ ============ -->
         <section class="recent" aria-label="Последние продажи">
           <div class="recent__head">
             <h2>Последние продажи</h2>
@@ -371,7 +404,7 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · v9.3</div>
+        <div class="footer">КУТ: БИЗНЕС · v9.4</div>
       </main>
     </div>
   </div>
