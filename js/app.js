@@ -1,42 +1,35 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v4
-   + секция «Сотрудники» в дашборде владельца
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v5
+   + привязка продаж к кассиру
+   + роль manager
+   + секция «Сотрудники» на дашборде
    ========================================================= */
 
 import './firebase-config.js';
 
-// =========================================================
-// УТИЛИТЫ
-// =========================================================
-
 const fmt = (n) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
-
 const fmtMoney = (n) => fmt(n) + ' KGS';
 
 function uid(prefix) {
   return (prefix || 'id_') + Date.now().toString(36) + '_' +
     Math.random().toString(36).slice(2, 7);
 }
-
 function todayISO() {
   const d = new Date();
   const z = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
-
 function nowTimeHHMM() {
   const d = new Date();
   const z = (n) => String(d.getHours()).padStart(2, '0');
   return `${z(d.getHours())}:${z(d.getMinutes())}`;
 }
-
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[ch]));
 }
-
 function normalizePhone(raw) {
   let d = String(raw || '').replace(/\D/g, '');
   if (!d) return '';
@@ -45,7 +38,6 @@ function normalizePhone(raw) {
   d = d.slice(0, 9);
   return '+996' + d;
 }
-
 function toDate(ts) {
   if (!ts) return null;
   if (typeof ts.toDate === 'function') return ts.toDate();
@@ -53,10 +45,6 @@ function toDate(ts) {
   const d = new Date(ts);
   return isNaN(d.getTime()) ? null : d;
 }
-
-// =========================================================
-// ТОСТ
-// =========================================================
 
 function toast(message, isError) {
   let el = document.getElementById('kut-toast');
@@ -79,14 +67,8 @@ function toast(message, isError) {
   el.style.background = isError ? '#C0392B' : '#005F40';
   el.style.transform = 'translate(-50%, 0)';
   clearTimeout(el._timer);
-  el._timer = setTimeout(() => {
-    el.style.transform = 'translate(-50%, 120%)';
-  }, 2800);
+  el._timer = setTimeout(() => { el.style.transform = 'translate(-50%, 120%)'; }, 2800);
 }
-
-// =========================================================
-// СОСТОЯНИЕ ДАШБОРДА
-// =========================================================
 
 const state = {
   businessId: null,
@@ -96,10 +78,6 @@ const state = {
   debts: [],
   staff: [],
 };
-
-// =========================================================
-// АГРЕГАТЫ
-// =========================================================
 
 function aggregateRevenue() {
   const sales = state.sales || [];
@@ -112,23 +90,19 @@ function aggregateRevenue() {
                     .reduce((s, x) => s + (Number(x.total) || 0), 0);
   return { total, cash, wallet, debt, count: sales.length };
 }
-
 function aggregateStock() {
   const products = state.products || [];
   const costValue = products.reduce(
-    (sum, p) => sum + (Number(p.qty) || 0) * (Number(p.costPrice) || 0), 0
-  );
+    (sum, p) => sum + (Number(p.qty) || 0) * (Number(p.costPrice) || 0), 0);
   const lowStock = products.filter((p) => Number(p.qty) < 5).length;
   return { count: products.length, costValue, lowStock };
 }
-
 function aggregateDebts() {
   const debts = state.debts || [];
   const active = debts.filter((d) => d.status !== 'paid' && Number(d.amount) > 0);
   const sum = active.reduce((s, d) => s + (Number(d.amount) || 0), 0);
   return { count: active.length, sum };
 }
-
 function aggregateStaff() {
   const staff = state.staff || [];
   const total = staff.length;
@@ -137,30 +111,20 @@ function aggregateStaff() {
   return { total, active, pending };
 }
 
-// =========================================================
-// РЕНДЕР ДАШБОРДА
-// =========================================================
-
 function pick(attr, fallbackIds) {
   const byData = document.querySelector(`[data-kut="${attr}"]`);
   if (byData) return byData;
-  if (fallbackIds) {
-    for (const id of fallbackIds) {
-      const el = document.getElementById(id);
-      if (el) return el;
-    }
+  if (fallbackIds) for (const id of fallbackIds) {
+    const el = document.getElementById(id);
+    if (el) return el;
   }
   return null;
 }
-
 function setNum(attr, value, fallbackIds) {
-  const el = pick(attr, fallbackIds);
-  if (el) el.textContent = fmt(value);
+  const el = pick(attr, fallbackIds); if (el) el.textContent = fmt(value);
 }
-
 function setText(attr, value, fallbackIds) {
-  const el = pick(attr, fallbackIds);
-  if (el) el.textContent = value;
+  const el = pick(attr, fallbackIds); if (el) el.textContent = value;
 }
 
 function renderDashboard() {
@@ -180,34 +144,23 @@ function renderDashboard() {
     ['sales-sub']);
 
   setText('stock-sub',
-    stock.count > 0
-      ? `Позиций: ${stock.count} · заканчивается: ${stock.lowStock}`
-      : 'Склад пуст',
+    stock.count > 0 ? `Позиций: ${stock.count} · заканчивается: ${stock.lowStock}` : 'Склад пуст',
     ['stock-sub']);
 
   setText('debts-sub',
-    debts.count > 0
-      ? `Активных должников: ${debts.count}`
-      : 'Активных должников нет',
+    debts.count > 0 ? `Активных должников: ${debts.count}` : 'Активных должников нет',
     ['debts-sub']);
 
-  // Бейдж долгов в сайдбаре
   const badge = document.getElementById('nav-debts-count');
   if (badge) {
-    if (debts.count > 0) {
-      badge.textContent = String(debts.count);
-      badge.hidden = false;
-    } else {
-      badge.hidden = true;
-    }
+    if (debts.count > 0) { badge.textContent = String(debts.count); badge.hidden = false; }
+    else badge.hidden = true;
   }
 
-  // Секция и бейдж сотрудников (только для владельца)
-  const isOwner = state.profile?.role === 'owner';
-  if (isOwner) {
+  const isManager = state.profile?.role === 'owner' || state.profile?.role === 'manager';
+  if (isManager) {
     const sec = document.getElementById('staff-section');
     if (sec) sec.hidden = false;
-
     const st = document.getElementById('staff-total');
     const sa = document.getElementById('staff-active');
     const sp = document.getElementById('staff-pending');
@@ -217,12 +170,8 @@ function renderDashboard() {
 
     const navBadge = document.getElementById('nav-staff-count');
     if (navBadge) {
-      if (staff.pending > 0) {
-        navBadge.textContent = String(staff.pending);
-        navBadge.hidden = false;
-      } else {
-        navBadge.hidden = true;
-      }
+      if (staff.pending > 0) { navBadge.textContent = String(staff.pending); navBadge.hidden = false; }
+      else navBadge.hidden = true;
     }
   }
 
@@ -235,43 +184,33 @@ function renderDashboard() {
 function renderRecentSales() {
   const container = document.getElementById('recent-sales');
   if (!container) return;
-
-  const sales = (state.sales || [])
-    .slice()
+  const sales = (state.sales || []).slice()
     .sort((a, b) => {
       const ta = toDate(a.createdAt)?.getTime() || 0;
       const tb = toDate(b.createdAt)?.getTime() || 0;
       return tb - ta;
-    })
-    .slice(0, 5);
+    }).slice(0, 5);
 
   if (sales.length === 0) {
-    container.innerHTML = `
-      <div class="recent__empty">
-        <span aria-hidden="true">🧾</span>
-        Продаж ещё не было. Начните с кассы.
-      </div>`;
+    container.innerHTML = `<div class="recent__empty"><span>🧾</span>Продаж ещё не было. Начните с кассы.</div>`;
     return;
   }
-
   container.innerHTML = sales.map((s) => {
     const itemsCount = Array.isArray(s.items)
-      ? s.items.reduce((n, i) => n + (Number(i.qty) || 0), 0)
-      : 0;
+      ? s.items.reduce((n, i) => n + (Number(i.qty) || 0), 0) : 0;
     const emoji = methodEmoji(s.paymentMethod);
     const title = methodTitle(s.paymentMethod, s.customer);
+    const cashierLabel = s.cashierName ? ` · 🧑‍💼 ${escapeHtml(s.cashierName)}` : '';
     const amountCls = s.paymentMethod === 'debt' ? ' sale-row__amount--debt' : '';
-
     return `
       <div class="sale-row">
-        <div class="sale-row__avatar" aria-hidden="true">${emoji}</div>
+        <div class="sale-row__avatar">${emoji}</div>
         <div class="sale-row__info">
           <div class="sale-row__title">${escapeHtml(title)}</div>
-          <div class="sale-row__meta">${formatSaleDate(s.createdAt)} · ${itemsCount} поз.</div>
+          <div class="sale-row__meta">${formatSaleDate(s.createdAt)} · ${itemsCount} поз.${cashierLabel}</div>
         </div>
         <div class="sale-row__amount${amountCls}">${fmtMoney(s.total)}</div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
@@ -283,7 +222,6 @@ function methodEmoji(m) {
     default:       return '🧾';
   }
 }
-
 function methodTitle(m, customer) {
   switch (m) {
     case 'cash':   return 'Продажа · Наличные';
@@ -292,33 +230,21 @@ function methodTitle(m, customer) {
     default:       return 'Продажа';
   }
 }
-
 function formatSaleDate(ts) {
-  const d = toDate(ts);
-  if (!d) return '—';
+  const d = toDate(ts); if (!d) return '—';
   const now = new Date();
   const z = (n) => String(n).padStart(2, '0');
-  if (d.toDateString() === now.toDateString()) {
-    return `сегодня, ${z(d.getHours())}:${z(d.getMinutes())}`;
-  }
-  const y = new Date(now);
-  y.setDate(now.getDate() - 1);
-  if (d.toDateString() === y.toDateString()) {
-    return `вчера, ${z(d.getHours())}:${z(d.getMinutes())}`;
-  }
+  if (d.toDateString() === now.toDateString()) return `сегодня, ${z(d.getHours())}:${z(d.getMinutes())}`;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return `вчера, ${z(d.getHours())}:${z(d.getMinutes())}`;
   return `${z(d.getDate())}.${z(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
-
-// =========================================================
-// САЙДБАР
-// =========================================================
 
 function setupSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('overlay');
   const burger = document.getElementById('burger');
   if (!sidebar || !burger) return;
-
   const open = () => {
     sidebar.classList.add('is-open');
     if (overlay) overlay.classList.add('is-open');
@@ -329,51 +255,34 @@ function setupSidebar() {
     if (overlay) overlay.classList.remove('is-open');
     document.body.style.overflow = '';
   };
-
   burger.addEventListener('click', () => {
     sidebar.classList.contains('is-open') ? close() : open();
   });
   if (overlay) overlay.addEventListener('click', close);
   sidebar.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
-
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sidebar.classList.contains('is-open')) close();
   });
-  window.addEventListener('resize', () => {
-    if (window.innerWidth >= 1000) close();
-  });
+  window.addEventListener('resize', () => { if (window.innerWidth >= 1000) close(); });
 }
-
-// =========================================================
-// АВТО-ПРИВЯЗКА КАССИРА
-// =========================================================
 
 async function tryClaimStaffInvite(profile, user) {
   const phone = profile.phone;
   if (!phone || !/^\+\d{8,15}$/.test(phone)) return null;
-
   const phoneKey = phone.replace(/\D/g, '');
   const { db, doc, getDoc, updateDoc, serverTimestamp } = window.FB;
-
   try {
     const staffRef = doc(db, 'staff', phoneKey);
     const snap = await getDoc(staffRef);
     if (!snap.exists()) return null;
-
     const staff = snap.data();
     if (!staff.businessId) return null;
     if (staff.active === false) return null;
-
     await updateDoc(doc(db, 'users', user.uid), {
       businessId: staff.businessId,
       updatedAt: serverTimestamp(),
     });
-
-    await updateDoc(staffRef, {
-      uid: user.uid,
-      claimedAt: serverTimestamp(),
-    });
-
+    await updateDoc(staffRef, { uid: user.uid, claimedAt: serverTimestamp() });
     console.info('[KUT] Кассир привязан к бизнесу:', staff.businessId);
     return { ...profile, businessId: staff.businessId };
   } catch (err) {
@@ -382,10 +291,6 @@ async function tryClaimStaffInvite(profile, user) {
   }
 }
 
-// =========================================================
-// PUBLIC API
-// =========================================================
-
 const KEYS = {
   products:  'kut_products',
   sales:     'kut:sales',
@@ -393,9 +298,9 @@ const KEYS = {
   customers: 'kut:customers',
 };
 
-function getProducts() { return state.products || []; }
-function getSales()    { return state.sales || []; }
-function getDebts()    { return state.debts || []; }
+const getProducts = () => state.products || [];
+const getSales    = () => state.sales || [];
+const getDebts    = () => state.debts || [];
 
 async function reloadAll() {
   if (!state.businessId) return;
@@ -409,7 +314,7 @@ async function reloadAll() {
   state.debts = debts;
 }
 
-async function registerSale({ cart, total, paymentMethod, customer, customerPhone }) {
+async function registerSale({ cart, total, paymentMethod, customer, customerPhone, cashier }) {
   if (!state.businessId) return { ok: false, error: 'no_business' };
 
   for (const item of cart) {
@@ -426,6 +331,14 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
   const bizId = state.businessId;
   const { db, collection, doc, writeBatch, serverTimestamp } = window.FB;
 
+  // Данные кассира по умолчанию — из state (если не передали снаружи)
+  const staffInfo = cashier || {
+    uid:  state.profile?.uid || '',
+    name: state.profile?.displayName || state.profile?.email || '',
+    email: state.profile?.email || '',
+    role: state.profile?.role || 'cashier',
+  };
+
   try {
     const batch = writeBatch(db);
 
@@ -435,6 +348,10 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       total: Number(total) || 0,
       paymentMethod,
       customer: paymentMethod === 'debt' ? String(customer || '').trim() : null,
+      // ⬇️ Привязка к кассиру
+      cashierUid:  staffInfo.uid,
+      cashierName: staffInfo.name,
+      cashierRole: staffInfo.role,
       createdAt: serverTimestamp(),
     });
 
@@ -443,10 +360,7 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       if (!p) continue;
       const newQty = Math.max(0, (Number(p.qty) || 0) - Number(item.qty));
       const pRef = doc(db, 'businesses', bizId, 'products', item.id);
-      batch.update(pRef, {
-        qty: Number(newQty.toFixed(2)),
-        updatedAt: serverTimestamp(),
-      });
+      batch.update(pRef, { qty: Number(newQty.toFixed(2)), updatedAt: serverTimestamp() });
     }
 
     if (paymentMethod === 'debt') {
@@ -463,6 +377,8 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
         payments: [],
         saleId: saleRef.id,
         source: 'cash',
+        cashierUid: staffInfo.uid,
+        cashierName: staffInfo.name,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -471,7 +387,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
     await batch.commit();
     await reloadAll();
     renderDashboard();
-
     return { ok: true, sale: { id: saleRef.id } };
   } catch (err) {
     console.error('[KUT] registerSale failed:', err);
@@ -481,48 +396,28 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
 
 window.KUT = {
   keys: KEYS,
-  fmt, fmtMoney, uid, todayISO, normalizePhone, escapeHtml,
-  toast,
+  fmt, fmtMoney, uid, todayISO, normalizePhone, escapeHtml, toast, toDate,
   getProducts, getSales, getDebts,
-  registerSale,
-  reloadAll,
+  registerSale, reloadAll,
   aggregateRevenue, aggregateStock, aggregateDebts, aggregateStaff,
   renderDashboard,
   getState: () => state,
-  read: () => null,
-  write: () => false,
-  onStorage: () => {},
+  read: () => null, write: () => false, onStorage: () => {},
 };
-
-// =========================================================
-// АВТОЗАПУСК
-// =========================================================
 
 async function boot() {
   const { user, profile } = await window.FB.waitForAuth();
-
-  if (!user || !profile) {
-    window.location.href = './login.html';
-    return;
-  }
-
+  if (!user || !profile) { window.location.href = './login.html'; return; }
   if (profile.active === false) {
     alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
-    await window.FB.logout();
-    return;
+    await window.FB.logout(); return;
   }
-
-  if (profile.role === 'super_admin') {
-    window.location.href = './admin.html';
-    return;
-  }
+  if (profile.role === 'super_admin') { window.location.href = './admin.html'; return; }
 
   state.profile = profile;
   state.businessId = profile.businessId;
 
-  // Авто-привязка кассира через приглашение
   if (!state.businessId && profile.role === 'cashier') {
-    console.info('[KUT] У кассира нет businessId — ищем приглашение');
     const claimed = await tryClaimStaffInvite(profile, user);
     if (claimed) {
       state.profile = claimed;
@@ -530,15 +425,11 @@ async function boot() {
     }
   }
 
-  // Приветствие
   const who = document.getElementById('user-name');
-  if (who) {
-    who.textContent = profile.displayName || profile.email || 'Пользователь';
-  }
+  if (who) who.textContent = profile.displayName || profile.email || 'Пользователь';
 
-  // Ссылка «Сотрудники» в сайдбаре и быстрых действиях — только для owner
-  const isOwner = profile.role === 'owner' || profile.role === 'super_admin';
-  if (isOwner) {
+  const isManager = profile.role === 'owner' || profile.role === 'manager';
+  if (isManager) {
     const navStaff = document.getElementById('nav-staff-link');
     const quickStaff = document.getElementById('quick-staff');
     if (navStaff) navStaff.hidden = false;
@@ -550,8 +441,7 @@ async function boot() {
     if (box) {
       box.insertAdjacentHTML('afterbegin',
         '<div style="padding:14px 16px;background:#FFF8E1;border:1px solid #E3C97A;border-radius:14px;color:#7A5E00;font-size:13px;margin-bottom:16px;">' +
-        '⚠️ У вашего аккаунта пока нет привязанного бизнеса. Попросите владельца пригласить вас в разделе «Сотрудники».' +
-        '</div>');
+        '⚠️ У вашего аккаунта пока нет привязанного бизнеса. Попросите владельца пригласить вас в разделе «Сотрудники».</div>');
     }
     return;
   }
@@ -567,33 +457,18 @@ async function boot() {
   if (hasDashboard) {
     renderDashboard();
 
-    window.FB.subscribeCollection('products', (items) => {
-      state.products = items;
-      renderDashboard();
-    });
-    window.FB.subscribeCollection('sales', (items) => {
-      state.sales = items;
-      renderDashboard();
-    });
-    window.FB.subscribeCollection('debts', (items) => {
-      state.debts = items;
-      renderDashboard();
-    });
+    window.FB.subscribeCollection('products', (items) => { state.products = items; renderDashboard(); });
+    window.FB.subscribeCollection('sales',    (items) => { state.sales = items;    renderDashboard(); });
+    window.FB.subscribeCollection('debts',    (items) => { state.debts = items;    renderDashboard(); });
 
-    // Подписка на сотрудников (только для владельца)
-    if (isOwner) {
+    if (isManager) {
       try {
         const { db, collection, query, where, onSnapshot } = window.FB;
-        const q = query(
-          collection(db, 'staff'),
-          where('businessId', '==', state.businessId)
-        );
+        const q = query(collection(db, 'staff'), where('businessId', '==', state.businessId));
         onSnapshot(q, (snap) => {
           state.staff = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           renderDashboard();
-        }, (err) => {
-          console.warn('[KUT] staff subscribe error:', err);
-        });
+        }, (err) => console.warn('[KUT] staff subscribe error:', err));
       } catch (err) {
         console.warn('[KUT] staff subscribe init:', err);
       }
@@ -607,9 +482,7 @@ async function boot() {
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) logoutBtn.addEventListener('click', () => window.FB.logout());
 
-  window.addEventListener('kut:lang', () => {
-    if (hasDashboard) renderDashboard();
-  });
+  window.addEventListener('kut:lang', () => { if (hasDashboard) renderDashboard(); });
 
   console.info('[KUT] Дашборд загружен · бизнес:', state.businessId, '· роль:', profile.role);
 }
