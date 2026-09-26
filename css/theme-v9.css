@@ -1,22 +1,20 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Design System v9 «Refined Dark Pine»
-   Дополнительный слой к style.css.
-   Переопределяет токены + добавляет glassmorphism-компоненты,
-   тёмную тему, увеличенные тач-таргеты и пульсирующие бейджи.
-   Все ID и классы из app.js сохранены — логика не ломается.
+   КУТ: БИЗНЕС — Design System v9.1 «Refined Pine»
+   Две темы: тёмная (по умолчанию) и светлая.
+   Переключаются через [data-theme="light"|"dark"] на <html>.
+   Логика — js/theme.js. Токены и компоненты — здесь.
    ========================================================= */
 
 /* =========================================================
-   1. ДИЗАЙН-ТОКЕНЫ — Refined Dark Pine
+   1. ТЁМНАЯ ТЕМА (по умолчанию) — Refined Dark Pine
    ========================================================= */
-:root {
-  /* Фон — глубокий хвойный */
+:root,
+[data-theme="dark"] {
   --pine-900:   #071410;
   --pine-800:   #0A1F18;
   --pine-700:   #0E2A21;
   --pine-600:   #123528;
 
-  /* Стекло */
   --glass-1:        rgba(255, 255, 255, 0.06);
   --glass-2:        rgba(255, 255, 255, 0.02);
   --glass-border:   rgba(255, 255, 255, 0.09);
@@ -25,46 +23,98 @@
   --glass-shadow:   0 10px 34px rgba(0, 0, 0, 0.42);
   --glass-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.32);
 
-  /* Акценты */
   --gold:        #D4AF37;
   --gold-soft:   #F0D772;
   --gold-glow:   rgba(212, 175, 55, 0.28);
-  --emerald:     #34D399;   /* плюс / прибыль */
+  --emerald:     #34D399;
   --emerald-dim: rgba(52, 211, 153, 0.14);
-  --coral:       #FF5C5C;   /* долг / критика */
+  --coral:       #FF5C5C;
   --coral-dim:   rgba(255, 92, 92, 0.14);
   --coral-glow:  rgba(255, 92, 92, 0.42);
-  --sky:         #7DD3FC;   /* нейтральный информационный */
+  --sky:         #7DD3FC;
 
-  /* Текст */
   --text-1: #EDF5F1;
   --text-2: rgba(237, 245, 241, 0.72);
   --text-3: rgba(237, 245, 241, 0.48);
 
-  /* Перебиваем базовые токены КУТ под тёмную тему */
   --kut-bg:        var(--pine-900);
   --kut-surface:   var(--pine-700);
   --kut-border:    var(--glass-border);
   --kut-text:      var(--text-1);
   --kut-muted:     var(--text-2);
-  --kut-green:     #005F40;   /* оставляем фирменный для брендовых элементов */
+  --kut-green:     #005F40;
   --kut-green-soft: rgba(212, 175, 55, 0.14);
   --kut-gold:      var(--gold);
   --kut-danger:    var(--coral);
   --kut-warn:      var(--gold);
 
-  /* Радиусы */
   --radius-sm: 12px;
   --radius:    16px;
   --radius-lg: 22px;
+
+  /* Фон-градиент — тёмный */
+  --bg-layer-1: radial-gradient(1200px 800px at 50% -10%, #0F2E24 0%, transparent 60%);
+  --bg-layer-2: radial-gradient(900px 700px at 100% 100%, #0B241C 0%, transparent 55%);
+  --bg-layer-3: linear-gradient(180deg, #0A1F18 0%, #071410 100%);
+
+  --theme-toggle-bg: rgba(255,255,255,.10);
+  --theme-toggle-color: #F0D772;
 }
 
 /* =========================================================
-   2. БАЗА — фон и текст
+   2. СВЕТЛАЯ ТЕМА — Refined Soft Pine
    ========================================================= */
-html, body {
-  background: var(--pine-900);
+[data-theme="light"] {
+  --pine-900:   #F4F7F5;
+  --pine-800:   #FFFFFF;
+  --pine-700:   #FFFFFF;
+  --pine-600:   #E6F1ED;
+
+  --glass-1:        rgba(0, 95, 64, 0.04);
+  --glass-2:        rgba(0, 95, 64, 0.02);
+  --glass-border:   rgba(0, 95, 64, 0.10);
+  --glass-border-2: rgba(0, 95, 64, 0.18);
+  --glass-inner:    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --glass-shadow:   0 10px 30px rgba(16, 32, 25, 0.10);
+  --glass-shadow-sm: 0 4px 14px rgba(16, 32, 25, 0.08);
+
+  --gold:        #B8952A;
+  --gold-soft:   #8A6E15;
+  --gold-glow:   rgba(184, 149, 42, 0.22);
+  --emerald:     #0F7F3A;
+  --emerald-dim: rgba(15, 127, 58, 0.10);
+  --coral:       #C0392B;
+  --coral-dim:   rgba(192, 57, 43, 0.10);
+  --coral-glow:  rgba(192, 57, 43, 0.30);
+  --sky:         #0284C7;
+
+  --text-1: #14211C;
+  --text-2: #4A5C54;
+  --text-3: #7A8783;
+
+  --kut-bg:        #F4F7F5;
+  --kut-surface:   #FFFFFF;
+  --kut-border:    rgba(0, 95, 64, 0.10);
+  --kut-text:      var(--text-1);
+  --kut-muted:     var(--text-2);
+  --kut-green:     #005F40;
+  --kut-green-soft: #E6F1ED;
+  --kut-gold:      #B8952A;
+  --kut-danger:    #C0392B;
+  --kut-warn:      #E08A1E;
+
+  --bg-layer-1: radial-gradient(1200px 800px at 50% -10%, #E6F1ED 0%, transparent 60%);
+  --bg-layer-2: radial-gradient(900px 700px at 100% 100%, #EAF6EF 0%, transparent 55%);
+  --bg-layer-3: linear-gradient(180deg, #F4F7F5 0%, #EDF3EF 100%);
+
+  --theme-toggle-bg: rgba(0, 95, 64, 0.08);
+  --theme-toggle-color: #B8952A;
 }
+
+/* =========================================================
+   3. БАЗА — фон и текст
+   ========================================================= */
+html, body { background: var(--pine-900); }
 
 body,
 body.page-home,
@@ -73,11 +123,12 @@ body.page-stock,
 body.page-debts,
 body.page-staff {
   background:
-    radial-gradient(1200px 800px at 50% -10%, #0F2E24 0%, transparent 60%),
-    radial-gradient(900px 700px at 100% 100%, #0B241C 0%, transparent 55%),
-    linear-gradient(180deg, #0A1F18 0%, #071410 100%);
+    var(--bg-layer-1),
+    var(--bg-layer-2),
+    var(--bg-layer-3);
   background-attachment: fixed;
   color: var(--text-1);
+  transition: background .35s ease, color .35s ease;
 }
 
 ::selection {
@@ -86,23 +137,49 @@ body.page-staff {
 }
 
 /* =========================================================
-   3. ВЕРХНЯЯ ШАПКА + ИНДИКАТОР СЕТИ
+   4. КНОПКА-ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ (в шапке)
+   ========================================================= */
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: var(--theme-toggle-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--theme-toggle-color);
+  font-size: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: transform .15s ease, background .18s ease, color .22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.theme-toggle:hover { background: rgba(212,175,55,.14); }
+.theme-toggle:active { transform: scale(.92); }
+
+/* =========================================================
+   5. ВЕРХНЯЯ ШАПКА + ИНДИКАТОР СЕТИ
    ========================================================= */
 .mobile-bar,
 .topbar,
 .header-panel {
-  background: rgba(10, 31, 24, 0.72) !important;
+  background: rgba(10, 31, 24, 0.72);
   backdrop-filter: blur(22px) saturate(140%);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
   border-bottom: 1px solid var(--glass-border);
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
+  transition: background .35s ease;
+}
+[data-theme="light"] .mobile-bar,
+[data-theme="light"] .topbar,
+[data-theme="light"] .header-panel {
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 6px 22px rgba(16, 32, 25, 0.06);
 }
 
 .mobile-bar__title,
-.brand__name {
-  color: var(--text-1);
-  letter-spacing: .2px;
-}
+.brand__name { color: var(--text-1); letter-spacing: .2px; }
 
 .burger {
   width: 44px; height: 44px;
@@ -113,68 +190,77 @@ body.page-staff {
   transition: transform .12s ease, background .18s ease, border-color .18s ease;
 }
 .burger:active { transform: scale(.94); }
-.burger:hover  { background: rgba(255,255,255,.1); border-color: var(--glass-border-2); }
+.burger:hover  { background: rgba(212,175,55,.10); border-color: var(--glass-border-2); }
 
-/* Сетевой pill */
 .net-pill {
-  background: rgba(52, 211, 153, 0.16) !important;
-  border: 1px solid rgba(52, 211, 153, 0.32) !important;
-  color: #B8F2D4 !important;
-  padding: 6px 10px !important;
-  font-size: 11px !important;
+  background: rgba(52, 211, 153, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  color: var(--emerald);
+  padding: 6px 10px;
+  font-size: 11px;
   letter-spacing: .3px;
   backdrop-filter: blur(10px);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
 }
 .net-pill__dot {
-  background: var(--emerald) !important;
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.9) !important;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--emerald);
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.9);
+  animation: netPulse 2s ease-in-out infinite;
 }
 .net-pill.is-offline {
-  background: var(--coral-dim) !important;
-  border-color: rgba(255, 92, 92, 0.42) !important;
-  color: #FFC9C9 !important;
+  background: var(--coral-dim);
+  border-color: rgba(255, 92, 92, 0.42);
+  color: var(--coral);
 }
 .net-pill.is-offline .net-pill__dot {
-  background: var(--coral) !important;
-  box-shadow: 0 0 10px var(--coral-glow) !important;
+  background: var(--coral);
+  box-shadow: 0 0 10px var(--coral-glow);
+  animation: netPulse 1s ease-in-out infinite;
 }
+@keyframes netPulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
 /* =========================================================
-   4. САЙДБАР — тёмное стекло
+   6. САЙДБАР
    ========================================================= */
 .sidebar {
-  background:
-    linear-gradient(180deg, #0C251C 0%, #08180F 100%) !important;
+  background: linear-gradient(180deg, #0C251C 0%, #08180F 100%);
   border-right: 1px solid var(--glass-border);
-  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.30);
+  transition: background .35s ease;
 }
-
-.sidebar__brand,
-.sidebar__cta {
-  color: var(--text-1);
+[data-theme="light"] .sidebar {
+  background: linear-gradient(180deg, #005F40 0%, #003F2A 100%);
+  box-shadow: 20px 0 60px rgba(16, 32, 25, 0.18);
 }
+.sidebar__brand, .sidebar__cta { color: var(--text-1); }
 
 .nav-link {
-  color: rgba(237, 245, 241, 0.75);
+  color: rgba(237, 245, 241, 0.78);
   border-radius: 14px;
   transition: background .16s ease, color .16s ease, transform .12s ease;
 }
-.nav-link:hover,
-.nav-link.active {
+.nav-link:hover, .nav-link.active {
   background: var(--glass-1);
   color: #fff;
 }
 .nav-link.active {
   box-shadow: inset 3px 0 0 var(--gold);
-  background: linear-gradient(90deg, rgba(212,175,55,.14) 0%, rgba(212,175,55,.02) 100%);
+  background: linear-gradient(90deg, rgba(212,175,55,.14), rgba(212,175,55,.02));
 }
 .nav-link__badge {
   background: var(--coral);
   color: #fff;
   box-shadow: 0 0 12px var(--coral-glow);
   animation: pulseBadge 2s ease-in-out infinite;
+  margin-left: auto;
+  font-size: 11px; font-weight: 800;
+  padding: 3px 8px; border-radius: 999px;
 }
-
 .sidebar__cta {
   background: linear-gradient(135deg, #E7C14A, #B88F1D);
   color: #06150F;
@@ -184,12 +270,9 @@ body.page-staff {
 .sidebar__cta:active { transform: scale(.98); }
 
 /* =========================================================
-   5. ЗАГОЛОВОК СТРАНИЦЫ + БЕЙДЖ РОЛИ
+   7. ЗАГОЛОВОК + БЕЙДЖ РОЛИ
    ========================================================= */
-.page-head h1 {
-  color: var(--text-1);
-  letter-spacing: -.5px;
-}
+.page-head h1 { color: var(--text-1); letter-spacing: -.5px; }
 .page-head p { color: var(--text-2); }
 
 .role-badge {
@@ -208,7 +291,7 @@ body.page-staff {
 .role-badge--user    { background: var(--glass-1); color: var(--text-2); }
 
 /* =========================================================
-   6. АНАЛИТИКА — контейнер + glass-карточки
+   8. АНАЛИТИКА — контейнер + glass-карточки
    ========================================================= */
 .analytics {
   background:
@@ -219,18 +302,21 @@ body.page-staff {
   box-shadow: var(--glass-shadow);
   position: relative;
   overflow: hidden;
+  transition: background .35s ease;
+}
+[data-theme="light"] .analytics {
+  background:
+    radial-gradient(600px 260px at 15% 0%, rgba(212,175,55,.10), transparent 60%),
+    linear-gradient(150deg, #005F40 0%, #003F2A 100%);
 }
 .analytics::before {
-  content: "";
-  position: absolute; inset: 0;
+  content: ""; position: absolute; inset: 0;
   background: linear-gradient(120deg, rgba(255,255,255,.04) 0%, transparent 40%);
   pointer-events: none;
 }
-
 .analytics__title { color: var(--gold-soft); letter-spacing: .5px; }
-.analytics__period { color: var(--text-3); }
+.analytics__period { color: rgba(255,255,255,.7); }
 
-/* Grid-карточки */
 .analytics__card {
   position: relative;
   background: linear-gradient(145deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
@@ -247,52 +333,35 @@ body.page-staff {
   transform: scale(.98);
   box-shadow: 0 4px 12px rgba(0,0,0,.36), var(--glass-inner);
 }
-
-/* Иконки в карточках */
 .analytics__icon {
-  width: 46px; height: 46px;
-  border-radius: 14px;
-  background: rgba(212,175,55,.16);
-  color: var(--gold-soft);
+  width: 46px; height: 46px; border-radius: 14px;
+  background: rgba(212,175,55,.16); color: var(--gold-soft);
+  display: grid; place-items: center; font-size: 22px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+  flex-shrink: 0;
 }
-.analytics__card--profit .analytics__icon {
-  background: var(--emerald-dim);
-  color: var(--emerald);
-}
-.analytics__card--stock .analytics__icon {
-  background: rgba(125,211,252,.12);
-  color: var(--sky);
-}
+.analytics__card--profit .analytics__icon { background: var(--emerald-dim); color: var(--emerald); }
+.analytics__card--stock  .analytics__icon { background: rgba(125,211,252,.12); color: var(--sky); }
 
-/* Лейблы и значения */
-.analytics__label {
-  color: var(--text-3);
-  font-weight: 700;
-  letter-spacing: .5px;
-}
-.analytics__value {
-  color: var(--text-1);
-  font-weight: 800;
-  letter-spacing: -.5px;
-}
-.analytics__value small { color: var(--text-3); }
-
-.analytics__card--revenue .analytics__value { color: var(--gold-soft); text-shadow: 0 0 22px rgba(212,175,55,.28); }
-.analytics__card--profit  .analytics__value { color: var(--emerald);   text-shadow: 0 0 22px rgba(52,211,153,.24); }
-.analytics__card--stock   .analytics__value { color: var(--text-1); }
+.analytics__label { color: rgba(255,255,255,.7); font-weight: 700; letter-spacing: .5px; }
+.analytics__value { color: #fff; font-weight: 800; letter-spacing: -.5px; }
+.analytics__value small { color: rgba(255,255,255,.65); }
+.analytics__card--revenue .analytics__value { color: #FFD86B; text-shadow: 0 0 22px rgba(212,175,55,.28); }
+.analytics__card--profit  .analytics__value { color: #7FE4A5; text-shadow: 0 0 22px rgba(52,211,153,.24); }
+.analytics__card--stock   .analytics__value { color: #fff; }
 
 /* =========================================================
-   7. ГРАФИК ВЫРУЧКИ ПО ДНЯМ
+   9. ГРАФИК
    ========================================================= */
 .chart-wrap {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--glass-border);
   border-radius: 18px;
   backdrop-filter: blur(14px);
+  transition: background .35s ease;
 }
-.chart-wrap__title { color: var(--text-3); }
-.chart-wrap__total { color: var(--gold-soft); }
+.chart-wrap__title { color: rgba(255,255,255,.7); }
+.chart-wrap__total { color: #FFD86B; }
 .chart__bar {
   background: linear-gradient(180deg, #F0D772 0%, #B88F1D 100%);
   box-shadow: 0 4px 14px rgba(212,175,55,.28);
@@ -301,22 +370,21 @@ body.page-staff {
   background: linear-gradient(180deg, #6EF0B6 0%, #17A46F 100%);
   box-shadow: 0 4px 14px rgba(52,211,153,.36);
 }
-.chart__label { color: var(--text-3); }
+.chart__label { color: rgba(255,255,255,.7); }
 
 /* =========================================================
-   8. ПОСЛЕДНИЕ ПРОДАЖИ
+   10. ПОСЛЕДНИЕ ПРОДАЖИ
    ========================================================= */
 .recent {
   background: linear-gradient(150deg, #0E2A21 0%, #081A14 100%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+  transition: background .35s ease;
 }
-.recent__head {
-  border-bottom: 1px solid var(--glass-border);
-}
+[data-theme="light"] .recent { background: var(--pine-800); }
+.recent__head { border-bottom: 1px solid var(--glass-border); }
 .recent__head h2 { color: var(--text-1); }
 .recent__head a  { color: var(--gold-soft); }
-
 .sale-row__avatar {
   background: rgba(212,175,55,.14);
   color: var(--gold-soft);
@@ -329,15 +397,20 @@ body.page-staff {
 .recent__empty { color: var(--text-3); }
 
 /* =========================================================
-   9. НИЖНЯЯ НАВИГАЦИЯ — 48×48 + пульсирующий бейдж
+   11. НИЖНЯЯ НАВИГАЦИЯ — 48×48 + пульсирующий бейдж
    ========================================================= */
 .bottom-nav {
-  background: rgba(10, 24, 18, 0.82) !important;
+  background: rgba(10, 24, 18, 0.82);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   border-top: 1px solid var(--glass-border);
-  box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.28);
   height: 76px;
+  transition: background .35s ease;
+}
+[data-theme="light"] .bottom-nav {
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 -10px 34px rgba(16, 32, 25, 0.08);
 }
 
 .bottom-nav__item {
@@ -349,6 +422,7 @@ body.page-staff {
   letter-spacing: .4px;
   border-radius: 14px;
   transition: color .16s ease, background .18s ease, transform .12s ease;
+  position: relative;
 }
 .bottom-nav__item .bottom-nav__icon {
   font-size: 24px;
@@ -356,7 +430,6 @@ body.page-staff {
   transition: filter .2s ease, transform .18s ease;
 }
 .bottom-nav__item:active { transform: scale(.92); }
-
 .bottom-nav__item.active {
   color: var(--gold-soft);
   background: linear-gradient(180deg, rgba(212,175,55,.14), rgba(212,175,55,.02));
@@ -366,7 +439,6 @@ body.page-staff {
   transform: translateY(-2px) scale(1.06);
 }
 
-/* Кнопка сканера */
 .bottom-nav__scan {
   width: 80px; height: 80px;
   border: 5px solid var(--pine-700);
@@ -378,37 +450,41 @@ body.page-staff {
     inset 0 1px 0 rgba(255,255,255,.5);
   transition: transform .12s ease, box-shadow .2s ease;
 }
+[data-theme="light"] .bottom-nav__scan { border-color: #fff; }
 .bottom-nav__scan:active { transform: scale(.92); }
 .bottom-nav__scan::after {
+  content: ""; position: absolute; inset: -8px; border-radius: 50%;
   border: 2px solid rgba(212,175,55,.5);
   animation: navScanPulse 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes navScanPulse {
+  0%,100% { transform: scale(1); opacity:.55; }
+  50%     { transform: scale(1.12); opacity:.15; }
 }
 
-/* 🔴 Пульсирующий бейдж долгов на иконке «Несие» */
+/* 🔴 Бейдж долгов */
 .badge-notify {
   position: absolute;
-  top: 4px;
-  right: 6px;
-  min-width: 20px;
-  height: 20px;
+  top: 4px; right: 6px;
+  min-width: 20px; height: 20px;
   padding: 0 6px;
   background: var(--coral);
   color: #fff;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 11px; font-weight: 800;
   border-radius: 999px;
-  display: grid;
-  place-items: center;
+  display: grid; place-items: center;
   box-shadow: 0 0 0 2px var(--pine-800), 0 0 12px var(--coral-glow);
   pointer-events: none;
   animation: pulseBadge 1.6s ease-in-out infinite;
 }
+[data-theme="light"] .badge-notify {
+  box-shadow: 0 0 0 2px #fff, 0 0 12px var(--coral-glow);
+}
 .badge-notify[hidden] { display: none; }
 
-.bottom-nav__item { position: relative; }
-
 @keyframes pulseBadge {
-  0%, 100% {
+  0%,100% {
     transform: scale(1);
     box-shadow: 0 0 0 2px var(--pine-800), 0 0 0 0 rgba(255,92,92,.65);
   }
@@ -419,22 +495,17 @@ body.page-staff {
 }
 
 /* =========================================================
-   10. МИКРО-ВЗАИМОДЕЙСТВИЯ
+   12. МИКРО-ВЗАИМОДЕЙСТВИЯ
    ========================================================= */
-button,
-a,
-.glass-tap {
-  -webkit-tap-highlight-color: transparent;
-}
+button, a, .glass-tap { -webkit-tap-highlight-color: transparent; }
 
-/* Единый отклик на все тач-элементы */
 .glass-tap,
 .analytics__card,
 .sale-row,
 .quick,
 .stat,
 .widget {
-  transition: transform .14s cubic-bezier(.2, .8, .2, 1),
+  transition: transform .14s cubic-bezier(.2,.8,.2,1),
               box-shadow .22s ease,
               border-color .22s ease,
               background .22s ease;
@@ -443,11 +514,8 @@ a,
 .sale-row:active,
 .quick:active,
 .stat:active,
-.widget:active {
-  transform: scale(.98);
-}
+.widget:active { transform: scale(.98); }
 
-/* Фокус — доступность на клавиатуре */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible {
@@ -457,14 +525,10 @@ input:focus-visible {
 }
 
 /* =========================================================
-   11. ОБЩИЕ КОМПОНЕНТЫ (для других страниц)
+   13. ОБЩИЕ КОМПОНЕНТЫ (все страницы)
    ========================================================= */
-.card,
-.widget,
-.stat,
-.stock-card,
-.debts-card,
-.staff-card {
+.card, .widget, .stat,
+.stock-card, .debts-card, .staff-card {
   background: linear-gradient(150deg, rgba(255,255,255,.05), rgba(255,255,255,.015)) !important;
   border: 1px solid var(--glass-border) !important;
   backdrop-filter: blur(18px) saturate(140%);
@@ -472,15 +536,27 @@ input:focus-visible {
   box-shadow: var(--glass-shadow-sm), var(--glass-inner) !important;
   color: var(--text-1);
 }
+[data-theme="light"] .card,
+[data-theme="light"] .widget,
+[data-theme="light"] .stat,
+[data-theme="light"] .stock-card,
+[data-theme="light"] .debts-card,
+[data-theme="light"] .staff-card {
+  background: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(16,32,25,.06), inset 0 1px 0 rgba(255,255,255,1) !important;
+}
 
-.toolbar,
-.search input,
-.field input,
-.field select,
-.field textarea {
+.toolbar, .search input, .field input, .field select, .field textarea {
   background: rgba(255,255,255,.04) !important;
   border-color: var(--glass-border) !important;
   color: var(--text-1) !important;
+}
+[data-theme="light"] .toolbar,
+[data-theme="light"] .search input,
+[data-theme="light"] .field input,
+[data-theme="light"] .field select,
+[data-theme="light"] .field textarea {
+  background: #FFFFFF !important;
 }
 .search input::placeholder,
 .field input::placeholder { color: var(--text-3) !important; }
@@ -492,8 +568,13 @@ input:focus-visible {
   box-shadow: 0 0 0 4px rgba(212,175,55,.14) !important;
   background: rgba(255,255,255,.06) !important;
 }
+[data-theme="light"] .search input:focus,
+[data-theme="light"] .field input:focus,
+[data-theme="light"] .field select:focus,
+[data-theme="light"] .field textarea:focus {
+  background: #FFFFFF !important;
+}
 
-/* Кнопки */
 .btn--primary {
   background: linear-gradient(135deg, #E7C14A 0%, #B88F1D 100%);
   color: #06150F;
@@ -508,17 +589,15 @@ input:focus-visible {
   color: var(--text-1);
 }
 .btn--ghost:hover { background: rgba(255,255,255,.10); }
+[data-theme="light"] .btn--ghost:hover { background: rgba(0,95,64,.06); }
 
-/* Чипы категорий */
 .chip, .cat-chip {
   background: rgba(255,255,255,.04);
   border: 1px solid var(--glass-border);
   color: var(--text-2);
 }
-.chip:hover, .cat-chip:hover {
-  border-color: rgba(212,175,55,.35);
-  color: var(--gold-soft);
-}
+[data-theme="light"] .chip, [data-theme="light"] .cat-chip { background: #FFFFFF; }
+.chip:hover, .cat-chip:hover { border-color: rgba(212,175,55,.35); color: var(--gold-soft); }
 .chip.is-active, .cat-chip.is-active {
   background: linear-gradient(135deg, #E7C14A, #B88F1D);
   color: #06150F;
@@ -526,42 +605,51 @@ input:focus-visible {
   box-shadow: 0 6px 18px rgba(212,175,55,.32);
 }
 
-/* Таблицы */
-.data-table thead th,
-.stock-table thead th,
-.debts-table thead th,
-.staff-table thead th {
+.data-table thead th, .stock-table thead th, .debts-table thead th, .staff-table thead th {
   background: rgba(255,255,255,.03) !important;
   color: var(--text-3) !important;
   border-bottom: 1px solid var(--glass-border) !important;
 }
-.data-table tbody td,
-.stock-table tbody td,
-.debts-table tbody td,
-.staff-table tbody td {
+[data-theme="light"] .data-table thead th,
+[data-theme="light"] .stock-table thead th,
+[data-theme="light"] .debts-table thead th,
+[data-theme="light"] .staff-table thead th { background: #FBFDFC !important; }
+
+.data-table tbody td, .stock-table tbody td, .debts-table tbody td, .staff-table tbody td {
   border-bottom: 1px solid rgba(255,255,255,.05) !important;
   color: var(--text-1);
 }
-.data-table tbody tr:hover,
-.stock-table tbody tr:hover,
-.debts-table tbody tr:hover,
-.staff-table tbody tr:hover {
-  background: rgba(255,255,255,.03) !important;
-}
+[data-theme="light"] .data-table tbody td,
+[data-theme="light"] .stock-table tbody td,
+[data-theme="light"] .debts-table tbody td,
+[data-theme="light"] .staff-table tbody td { border-bottom: 1px solid rgba(0,95,64,.08) !important; }
 
 /* =========================================================
-   12. ТАЧ-ТАРГЕТЫ НА ТАЧ-УСТРОЙСТВАХ
+   14. МОДАЛКИ
+   ========================================================= */
+.modal__dialog {
+  background: var(--pine-800) !important;
+  color: var(--text-1);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+[data-theme="light"] .modal__dialog { background: #FFFFFF !important; }
+.modal__dialog h3 { color: var(--text-1); }
+.modal__subtitle { color: var(--text-2); }
+.modal__backdrop { background: rgba(4, 12, 9, 0.65); }
+
+/* =========================================================
+   15. ТАЧ-ТАРГЕТЫ
    ========================================================= */
 @media (hover: none) and (pointer: coarse) {
   .btn, .icon-btn, .chip, .cat-chip, .quick-amount, .lang-option {
-    min-height: 48px;
-    min-width: 48px;
+    min-height: 48px; min-width: 48px;
   }
   .icon-btn { min-width: 48px; min-height: 48px; }
 }
 
 /* =========================================================
-   13. ПЛАНШЕТ / ПК — тёмная тема без изменений компоновки
+   16. ПЛАНШЕТ / ПК
    ========================================================= */
 @media (min-width: 1000px) {
   .bottom-nav { display: none !important; }
