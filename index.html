@@ -17,6 +17,7 @@
       --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-bg: #F4F7F5;
       --kut-surface: #FFFFFF; --kut-border: #E3EAE6; --kut-text: #14211C;
       --kut-muted: #64776E; --kut-danger: #C0392B; --kut-warn: #E08A1E;
+      --kut-success: #1EBE5A;
       --shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
       --shadow-md: 0 6px 18px rgba(16,32,25,.08);
       --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
@@ -95,10 +96,10 @@
     .overlay.is-open { opacity: 1; pointer-events: auto; }
     @media (min-width: 1000px) { .overlay { display: none; } }
 
-    /* ===== Верхняя полоса (только имя + язык) ===== */
+    /* ===== Верхняя шапка: одна строка ===== */
     .mobile-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px;
       background: var(--kut-green); color: #fff;
       position: sticky; top: 0; z-index: 40;
       width: 100%; max-width: 100%;
@@ -109,15 +110,57 @@
       background: rgba(255,255,255,.10); border: none; border-radius: 12px;
       color: #fff; cursor: pointer; font-size: 20px; flex-shrink: 0;
     }
+    @media (min-width: 1000px) { .burger { display: none; } }
     .mobile-bar__title {
       font-weight: 700; font-size: 15px;
       overflow: hidden; text-overflow: ellipsis;
       white-space: nowrap; min-width: 0; flex: 1;
-      text-align: left; margin-left: 4px;
+      margin-left: 2px;
     }
-    @media (min-width: 1000px) {
-      .mobile-bar .burger { display: none; }
-      .mobile-bar__title { margin-left: 0; }
+
+    /* Индикатор сети */
+    .net-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 9px; border-radius: 999px;
+      font-size: 11px; font-weight: 700;
+      background: rgba(30,190,90,.20); color: #B9F5CE;
+      border: 1px solid rgba(30,190,90,.35);
+      white-space: nowrap; flex-shrink: 0;
+      transition: background .18s ease, color .18s ease, border-color .18s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .net-pill__dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #1EBE5A; flex-shrink: 0;
+      box-shadow: 0 0 8px rgba(30,190,90,.8);
+      animation: netPulse 2s ease-in-out infinite;
+    }
+    .net-pill.is-offline {
+      background: rgba(192,57,43,.20);
+      color: #FFD0C8;
+      border-color: rgba(192,57,43,.45);
+    }
+    .net-pill.is-offline .net-pill__dot {
+      background: #C0392B;
+      box-shadow: 0 0 8px rgba(192,57,43,.8);
+      animation: netPulse 1s ease-in-out infinite;
+    }
+    .net-pill__qty {
+      display: none;
+      background: #C0392B; color: #fff;
+      padding: 1px 6px; border-radius: 999px;
+      font-size: 10px; margin-left: 2px;
+    }
+    .net-pill.is-offline[data-queue]:not([data-queue="0"]) .net-pill__qty {
+      display: inline-block;
+    }
+    @keyframes netPulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: .35; }
+    }
+    @media (max-width: 380px) {
+      .net-pill__label { display: none; }
+      .net-pill { padding: 5px 7px; }
     }
 
     /* ===== Основной контент ===== */
@@ -392,7 +435,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v8.0-CLEAN-TOPBAR';
+      var BUILD = 'v8.1-NET-PILL';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -473,10 +516,18 @@
     </aside>
 
     <div>
-      <!-- Верхняя полоса: только бренд + переключатель языка -->
+      <!-- Единая верхняя шапка: бургер + бренд + сеть + язык -->
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
         <span class="mobile-bar__title">КУТ: БИЗНЕС</span>
+
+        <!-- Индикатор сети/офлайн-очереди -->
+        <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
+          <span class="net-pill__dot" aria-hidden="true"></span>
+          <span class="net-pill__label">онлайн</span>
+          <span class="net-pill__qty" id="net-queue-qty">0</span>
+        </span>
+
         <div data-kut-lang></div>
       </header>
 
@@ -555,7 +606,7 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · версия: v8.0</div>
+        <div class="footer">КУТ: БИЗНЕС · версия: v8.1</div>
       </main>
     </div>
   </div>
