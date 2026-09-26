@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="./css/theme-v9.css">
 
   <style>
-    /* ===== Локальные размеры (тема — в theme-v9.css) ===== */
     :root { --sidebar-w: 260px; }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; overflow-x: hidden; max-width: 100%; width: 100%; }
@@ -22,7 +21,6 @@
       -webkit-font-smoothing: antialiased;
       overflow-wrap: break-word; word-wrap: break-word;
     }
-
     .layout { display: grid; grid-template-columns: 1fr; min-height: 100dvh; width: 100%; max-width: 100%; }
     .layout > div { min-width: 0; max-width: 100%; overflow-x: hidden; }
     @media (min-width: 1000px) {
@@ -60,7 +58,6 @@
     }
     .brand__text strong { display: block; font-size: 15px; }
     .brand__text small { display: block; font-size: 11px; color: rgba(237,245,241,.5); margin-top: 2px; }
-
     .sidebar__nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
     .nav-link {
       display: flex; align-items: center; gap: 12px;
@@ -76,7 +73,6 @@
       padding: 3px 8px;
       border-radius: 999px;
     }
-
     .sidebar__cta {
       margin-top: auto; padding: 14px 16px; border-radius: 16px;
       text-decoration: none; font-weight: 700;
@@ -93,7 +89,7 @@
       color: rgba(237,245,241,.35); font-size: 11px; text-align: center;
       padding-top: 10px; border-top: 1px solid rgba(255,255,255,.06);
     }
-    #sidebar-profile-slot, #sidebar-logout-slot { display: block; }
+    #sidebar-profile-slot, #sidebar-logout-slot, #sidebar-theme-slot { display: block; }
 
     /* Overlay */
     .overlay {
@@ -117,30 +113,13 @@
       display: grid; place-items: center;
       font-size: 20px; cursor: pointer; flex-shrink: 0;
     }
-    @media (min-width: 1000px) { .burger { display: none; } }
+    @media (min-width: 1000px) { .burger { display: grid; } }
     .mobile-bar__title {
       font-weight: 700; font-size: 15px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       min-width: 0; flex: 1; margin-left: 2px;
     }
-
-    /* Кнопка-переключатель темы */
-    .theme-toggle {
-      width: 44px; height: 44px;
-      display: grid; place-items: center;
-      background: var(--theme-toggle-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      color: var(--theme-toggle-color);
-      font-size: 20px;
-      cursor: pointer;
-      flex-shrink: 0;
-      padding: 0;
-      transition: transform .15s ease, background .18s ease, color .22s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .theme-toggle:hover { background: rgba(212,175,55,.14); }
-    .theme-toggle:active { transform: scale(.92); }
+    .mobile-bar__title #page-title { color: inherit; font-weight: 600; }
 
     /* Основной контент */
     .main-content {
@@ -152,12 +131,8 @@
       .main-content { padding: 26px 32px 34px; gap: 22px; }
     }
     @media (max-width: 999px) {
-      body.page-home .main-content {
-        padding-bottom: calc(110px + env(safe-area-inset-bottom));
-      }
+      body.page-home .main-content { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
     }
-
-    /* Заголовок страницы */
     .page-head {
       display: flex; flex-direction: column; gap: 10px;
       align-items: flex-start; min-width: 0;
@@ -168,7 +143,6 @@
     .page-head h1 { margin: 0; font-size: clamp(20px, 5vw, 24px); font-weight: 800; }
     .page-head p { margin: 4px 0 0; font-size: 14px; }
 
-    /* Аналитика */
     .analytics { padding: 22px; border-radius: 24px; }
     .analytics__head {
       display: flex; align-items: center; justify-content: space-between;
@@ -193,7 +167,6 @@
     }
     .analytics__value small { font-size: 12px; margin-left: 4px; letter-spacing: 0; }
 
-    /* График */
     .chart-wrap { margin-top: 18px; padding: 16px 14px 12px; }
     .chart-wrap__head {
       display: flex; justify-content: space-between; gap: 8px;
@@ -207,7 +180,6 @@
     .chart__bar-value { font-size: 10px; font-weight: 700; color: #fff; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
     .chart__label { font-size: 10px; font-weight: 700; text-transform: lowercase; }
 
-    /* Последние продажи */
     .recent { border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; max-height: 55vh; }
     .recent__head { display: flex; justify-content: space-between; gap: 10px; padding: 16px 18px; flex-shrink: 0; }
     .recent__head h2 { margin: 0; font-size: 16px; font-weight: 700; }
@@ -241,10 +213,9 @@
 </head>
 <body class="page-home">
 
-  <!-- Kill-switch: сброс кэша после обновления -->
   <script>
     (function () {
-      var BUILD = 'v9.1-DUAL-THEME';
+      var BUILD = 'v9.2-GLOBAL-HEADER';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -275,7 +246,6 @@
   <div class="overlay" id="overlay" aria-hidden="true"></div>
 
   <div class="layout">
-    <!-- ============ САЙДБАР ============ -->
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
       <div id="sidebar-profile-slot"></div>
 
@@ -322,14 +292,18 @@
 
       <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
 
+      <!-- 🎨 Слот для кнопки «Сменить тему» — заполнит js/ui-chrome.js -->
+      <div id="sidebar-theme-slot"></div>
       <div id="sidebar-logout-slot"></div>
     </aside>
 
-    <!-- ============ ОСНОВНОЙ БЛОК ============ -->
     <div>
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
-        <span class="mobile-bar__title">КУТ: БИЗНЕС</span>
+
+        <span class="mobile-bar__title">
+          КУТ: БИЗНЕС · <span id="page-title">Главная</span>
+        </span>
 
         <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
           <span class="net-pill__dot" aria-hidden="true"></span>
@@ -337,7 +311,6 @@
           <span class="net-pill__qty" id="net-queue-qty">0</span>
         </span>
 
-        <button class="theme-toggle" type="button" aria-label="Переключить тему">🌙</button>
         <div data-kut-lang></div>
       </header>
 
@@ -350,7 +323,6 @@
           <span class="role-badge role-badge--user" id="role-badge">Пользователь</span>
         </div>
 
-        <!-- ============ АНАЛИТИКА ============ -->
         <section class="analytics" aria-label="Финансовая аналитика">
           <div class="analytics__head">
             <h2 class="analytics__title">📊 Финансовая аналитика</h2>
@@ -390,7 +362,6 @@
           </div>
         </section>
 
-        <!-- Скрытые виджеты для совместимости с app.js -->
         <div hidden>
           <span id="dashboard-total-sales" data-kut="revenue-total">0</span>
           <span id="dashboard-stock-value" data-kut="stock-value">0</span>
@@ -404,7 +375,6 @@
           <span id="staff-pending"></span>
         </div>
 
-        <!-- ============ ПОСЛЕДНИЕ ПРОДАЖИ ============ -->
         <section class="recent" aria-label="Последние продажи">
           <div class="recent__head">
             <h2>Последние продажи</h2>
@@ -418,12 +388,11 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · v9.1 · Dual Theme</div>
+        <div class="footer">КУТ: БИЗНЕС · v9.2 · Global Header</div>
       </main>
     </div>
   </div>
 
-  <!-- ============ НИЖНЯЯ НАВИГАЦИЯ ============ -->
   <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
     <a href="./index.html" class="bottom-nav__item" data-page="index">
       <span class="bottom-nav__icon" aria-hidden="true">🏠</span>
@@ -443,14 +412,10 @@
     <a href="./debts.html" class="bottom-nav__item" data-page="debts">
       <span class="bottom-nav__icon" aria-hidden="true">📒</span>
       <span>Несие</span>
-      <!-- 🔴 Пульсирующий бейдж уведомлений — синхронизируется с сайдбаром -->
       <span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span>
     </a>
   </nav>
 
-  <!-- =========================================================
-       Синхронизатор бейджа долгов (сайдбар → нижний бар)
-       ========================================================= -->
   <script>
     (function () {
       function sync() {
@@ -458,27 +423,19 @@
         var dst = document.getElementById('nav-debts-count-bottom');
         if (!src || !dst) return;
         var has = !src.hidden && src.textContent && src.textContent !== '0';
-        if (has) {
-          dst.textContent = src.textContent;
-          dst.hidden = false;
-        } else {
-          dst.hidden = true;
-        }
+        if (has) { dst.textContent = src.textContent; dst.hidden = false; }
+        else { dst.hidden = true; }
       }
-      setTimeout(sync, 500);
-      setTimeout(sync, 1500);
-      setTimeout(sync, 3000);
-
+      setTimeout(sync, 500); setTimeout(sync, 1500); setTimeout(sync, 3000);
       var src = document.getElementById('nav-debts-count');
       if (src && 'MutationObserver' in window) {
-        new MutationObserver(sync).observe(src, {
-          attributes: true, childList: true, characterData: true, subtree: true
-        });
+        new MutationObserver(sync).observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
       }
     })();
   </script>
 
   <script src="./js/theme.js"></script>
+  <script src="./js/ui-chrome.js"></script>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
