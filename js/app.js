@@ -1,11 +1,10 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v10
-   + Умная центральная кнопка сканера (сквозная по всем страницам)
-   + Подсветка активной вкладки по URL
-   + Профиль и кнопка «Выйти» в сайдбаре
-   + Модалка «Мой профиль» с системой заявок
-   + QR-оплата: registerSale принимает paymentMethod: 'qr'
-   + Индикатор сети + попытка включить офлайн-очередь Firestore
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v10 · v9.4
+   + Периоды аналитики (Сегодня / Вчера / 7 дней / Месяц)
+   + Модуль «Критические остатки»
+   + Детализация кассы: наличные + карта/перевод
+   + Сквозная центральная кнопка-сканер
+   + Профиль, заявки, роли
    ========================================================= */
 
 import './firebase-config.js';
@@ -75,7 +74,6 @@ function roleClass(role) {
     default:            return 'user';
   }
 }
-
 function getCurrentPage() {
   let file = (window.location.pathname || '').split('/').pop().toLowerCase();
   if (!file || file === '') file = 'index.html';
@@ -128,22 +126,51 @@ const state = {
   staff: [],
   requests: [],
   unsubRequests: null,
+  period: 'month', // today | yesterday | week | month
 };
 
 // =========================================================
-// АГРЕГАТЫ
+// ПЕРИОДЫ АНАЛИТИКИ
 // =========================================================
+const PERIOD_LABELS = {
+  today:     'за сегодня',
+  yesterday: 'за вчера',
+  week:      'за 7 дней',
+  month:     'за текущий месяц',
+};
+
 function startOfMonth() {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
 }
-function getMonthSales() {
-  const start = startOfMonth();
+
+/** Диапазон [from, to) для текущего периода */
+function getPeriodRange(period) {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const DAY = 86400000;
+
+  switch (period) {
+    case 'today':     return { from: startOfToday,           to: Date.now() + 1 };
+    case 'yesterday': return { from: startOfToday - DAY,     to: startOfToday };
+    case 'week':      return { from: startOfToday - 6 * DAY, to: Date.now() + 1 };
+    case 'month':     return { from: startOfMonth(),         to: Date.now() + 1 };
+    default:          return { from: 0,                      to: Date.now() + 1 };
+  }
+}
+
+/** Продажи за выбранный период */
+function getPeriodSales() {
+  const { from, to } = getPeriodRange(state.period);
   return (state.sales || []).filter((s) => {
     const t = toDate(s.createdAt)?.getTime() || 0;
-    return t >= start;
+    return t >= from && t < to;
   });
 }
+
+// =========================================================
+// АГРЕГАТЫ
+// =========================================================
 function sumOfSale(s) {
   return Number(s.totalSum != null ? s.totalSum : s.total) || 0;
 }
@@ -155,21 +182,25 @@ function costOfSale(s) {
     return sum + qty * cost;
   }, 0);
 }
+
 function aggregateRevenue() {
-  const m = getMonthSales();
+  const m = getPeriodSales();
   const total  = m.reduce((s, x) => s + sumOfSale(x), 0);
   const cash   = m.filter((s) => s.paymentMethod === 'cash').reduce((s, x) => s + sumOfSale(x), 0);
   const wallet = m.filter((s) => s.paymentMethod === 'wallet').reduce((s, x) => s + sumOfSale(x), 0);
   const qr     = m.filter((s) => s.paymentMethod === 'qr').reduce((s, x) => s + sumOfSale(x), 0);
   const debt   = m.filter((s) => s.paymentMethod === 'debt').reduce((s, x) => s + sumOfSale(x), 0);
-  return { total, cash, wallet, qr, debt, count: m.length };
+  const card   = wallet + qr; // карта / перевод (безнал)
+  return { total, cash, wallet, qr, card, debt, count: m.length };
 }
+
 function aggregateProfit() {
-  const m = getMonthSales();
+  const m = getPeriodSales();
   const revenue = m.reduce((s, x) => s + sumOfSale(x), 0);
   const cost = m.reduce((s, x) => s + costOfSale(x), 0);
   return { revenue, cost, profit: revenue - cost };
 }
+
 function aggregateStock() {
   const products = state.products || [];
   const costValue = products.reduce(
@@ -177,12 +208,14 @@ function aggregateStock() {
   const lowStock = products.filter((p) => Number(p.qty) < 5).length;
   return { count: products.length, costValue, lowStock };
 }
+
 function aggregateDebts() {
   const debts = state.debts || [];
   const active = debts.filter((d) => d.status !== 'paid' && Number(d.amount) > 0);
   const sum = active.reduce((s, d) => s + (Number(d.amount) || 0), 0);
   return { count: active.length, sum };
 }
+
 function aggregateStaff() {
   const staff = state.staff || [];
   return {
@@ -191,6 +224,8 @@ function aggregateStaff() {
     pending: staff.filter((s) => !s.uid).length,
   };
 }
+
+/** График недели — ВСЕГДА текущая неделя (не зависит от периода) */
 function aggregateWeekChart() {
   const now = new Date();
   const day = now.getDay();
@@ -290,13 +325,15 @@ function renderAnalytics() {
   if (elProfit) elProfit.innerHTML = `${fmt(Math.round(profit.profit))}<small>KGS</small>`;
   if (elStock)  elStock.innerHTML  = `${fmt(Math.round(stock.costValue))}<small>KGS</small>`;
 
+  // Детализация кассы — Наличные / Карта-Перевод
+  const elCash = document.getElementById('analyticsCash');
+  const elCard = document.getElementById('analyticsCard');
+  if (elCash) elCash.textContent = fmt(Math.round(rev.cash)) + ' KGS';
+  if (elCard) elCard.textContent = fmt(Math.round(rev.card)) + ' KGS';
+
+  // Подпись периода
   const period = document.getElementById('analytics-period');
-  if (period) {
-    const now = new Date();
-    const monthNames = ['январь','февраль','март','апрель','май','июнь',
-                        'июль','август','сентябрь','октябрь','ноябрь','декабрь'];
-    period.textContent = 'за ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
-  }
+  if (period) period.textContent = PERIOD_LABELS[state.period] || '';
 
   renderWeekChart();
 }
@@ -323,6 +360,54 @@ function renderWeekChart() {
   }).join('');
 }
 
+/** Модуль «Критические остатки» */
+function renderCriticalStock() {
+  const wrap = document.getElementById('criticalStock');
+  const list = document.getElementById('criticalStockList');
+  const sub  = document.getElementById('criticalStockSub');
+  if (!wrap || !list) return;
+
+  const THRESHOLD = 5;
+  const critical = (state.products || [])
+    .filter((p) => Number(p.qty) < THRESHOLD)
+    .sort((a, b) => Number(a.qty) - Number(b.qty));
+
+  if (critical.length === 0) {
+    wrap.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
+
+  wrap.hidden = false;
+  if (sub) {
+    sub.textContent = critical.length === 1
+      ? 'Позиция с остатком < 5'
+      : `${critical.length} позиц. с остатком < 5`;
+  }
+
+  const visible = critical.slice(0, 8);
+  list.innerHTML = visible.map((p) => {
+    const qty = Number(p.qty) || 0;
+    const isZero = qty <= 0;
+    const unit = escapeHtml(p.unit || 'шт');
+    return `
+      <li class="critical-stock__item${isZero ? ' is-zero' : ''}">
+        <span class="critical-stock__name">${escapeHtml(p.name || 'Без названия')}</span>
+        <span class="critical-stock__qty">
+          <strong>${fmt(qty)}</strong>
+          <small>${unit}</small>
+        </span>
+      </li>`;
+  }).join('');
+
+  if (critical.length > visible.length) {
+    list.insertAdjacentHTML('beforeend', `
+      <li class="critical-stock__more">
+        и ещё ${critical.length - visible.length}…
+      </li>`);
+  }
+}
+
 function renderDashboard() {
   const revenue = aggregateRevenue();
   const stock = aggregateStock();
@@ -335,7 +420,7 @@ function renderDashboard() {
 
   setText('revenue-sub',
     revenue.count > 0
-      ? `Продаж за месяц: ${revenue.count} · нал. ${fmt(revenue.cash)} · QR ${fmt(revenue.qr)} · несие ${fmt(revenue.debt)}`
+      ? `Продаж: ${revenue.count} · нал. ${fmt(revenue.cash)} · карта ${fmt(revenue.card)} · несие ${fmt(revenue.debt)}`
       : 'Продаж пока не было',
     ['sales-sub']);
 
@@ -354,6 +439,7 @@ function renderDashboard() {
   }
 
   renderAnalytics();
+  renderCriticalStock();
 
   const isManager = state.profile?.role === 'owner' || state.profile?.role === 'manager';
   if (isManager) {
@@ -376,6 +462,31 @@ function renderDashboard() {
   if (upd) upd.textContent = nowTimeHHMM();
 
   renderRecentSales();
+}
+
+/** Обработчик клика по чипсам периода */
+function setupPeriodFilter() {
+  const wrap = document.getElementById('periodChips');
+  if (!wrap) return;
+  if (wrap.dataset.wired === '1') return;
+  wrap.dataset.wired = '1';
+
+  wrap.addEventListener('click', (e) => {
+    const btn = e.target.closest('.period-chip');
+    if (!btn) return;
+    const period = btn.dataset.period;
+    if (!period || period === state.period) return;
+
+    state.period = period;
+    wrap.querySelectorAll('.period-chip').forEach((c) => {
+      const active = c.dataset.period === period;
+      c.classList.toggle('is-active', active);
+      c.setAttribute('aria-selected', String(active));
+    });
+
+    // Перерисовываем только то, что зависит от периода
+    renderAnalytics();
+  });
 }
 
 function renderRecentSales() {
@@ -461,7 +572,7 @@ function renderRoleBadge(profile) {
 }
 
 // =========================================================
-// НИЖНЯЯ ПАНЕЛЬ — ПОДСВЕТКА
+// НИЖНЯЯ ПАНЕЛЬ
 // =========================================================
 function setupBottomNavHighlight() {
   const nav = document.getElementById('bottomNav') || document.querySelector('.bottom-nav');
@@ -476,12 +587,11 @@ function setupBottomNavHighlight() {
   });
 }
 
-// =========================================================
-// УМНАЯ ЦЕНТРАЛЬНАЯ КНОПКА СКАНЕРА
-// =========================================================
 function setupBottomNavScan() {
   const btn = document.getElementById('bottomNavScan');
   if (!btn) return;
+  if (btn.dataset.wired === '1') return;
+  btn.dataset.wired = '1';
 
   btn.addEventListener('click', () => {
     const page = getCurrentPage();
@@ -496,7 +606,6 @@ function setupBottomNavScan() {
     if (page === 'stock') {
       const modal = document.getElementById('productModal');
       const isOpen = modal && !modal.hidden;
-
       if (!isOpen) {
         const addBtn = document.getElementById('openAddBtn');
         if (addBtn) addBtn.click();
@@ -543,6 +652,9 @@ function setupSidebar() {
   const overlay = document.getElementById('overlay');
   const burger = document.getElementById('burger');
   if (!sidebar || !burger) return;
+  if (burger.dataset.wired === '1') return;
+  burger.dataset.wired = '1';
+
   const open = () => {
     sidebar.classList.add('is-open');
     if (overlay) overlay.classList.add('is-open');
@@ -565,7 +677,7 @@ function setupSidebar() {
 }
 
 // =========================================================
-// ПРОФИЛЬ + КНОПКА ВЫХОДА
+// ПРОФИЛЬ
 // =========================================================
 function mountProfileBlock() {
   const slot = document.getElementById('sidebar-profile-slot');
@@ -619,10 +731,7 @@ function injectProfileStyles() {
       transition: background .18s ease, border-color .18s ease;
       margin-bottom: 4px;
     }
-    .sidebar-profile:hover {
-      background: rgba(255,255,255,.14);
-      border-color: rgba(212,175,55,.35);
-    }
+    .sidebar-profile:hover { background: rgba(255,255,255,.14); border-color: rgba(212,175,55,.35); }
     .sidebar-profile__avatar {
       width: 42px; height: 42px; border-radius: 50%;
       display: grid; place-items: center;
@@ -646,10 +755,7 @@ function injectProfileStyles() {
       color: rgba(212,175,55,.95);
       text-transform: uppercase; letter-spacing: .3px;
     }
-    .sidebar-profile__chevron {
-      font-size: 20px; color: rgba(255,255,255,.5);
-      flex-shrink: 0; line-height: 1;
-    }
+    .sidebar-profile__chevron { font-size: 20px; color: rgba(255,255,255,.5); flex-shrink: 0; line-height: 1; }
     .sidebar-logout {
       display: flex; align-items: center; gap: 10px;
       width: 100%; padding: 12px 14px;
@@ -661,18 +767,12 @@ function injectProfileStyles() {
       transition: background .18s ease, color .18s ease, border-color .18s ease;
       margin-top: 8px;
     }
-    .sidebar-logout:hover {
-      background: rgba(192,57,43,.24); color: #fff;
-      border-color: rgba(192,57,43,.50);
-    }
+    .sidebar-logout:hover { background: rgba(192,57,43,.24); color: #fff; border-color: rgba(192,57,43,.50); }
     .sidebar-logout__icon { font-size: 16px; flex-shrink: 0; }
     .sidebar-logout__text { flex: 1; }
 
     .kut-modal[hidden] { display: none; }
-    .kut-modal {
-      position: fixed; inset: 0; z-index: 110;
-      display: grid; place-items: center; padding: 16px;
-    }
+    .kut-modal { position: fixed; inset: 0; z-index: 110; display: grid; place-items: center; padding: 16px; }
     .kut-modal__backdrop {
       position: absolute; inset: 0;
       background: rgba(15,30,24,.55);
@@ -689,18 +789,13 @@ function injectProfileStyles() {
     .kut-modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: #14211C; }
     .kut-modal__subtitle { margin: 0 0 18px; color: #64776E; font-size: 13px; line-height: 1.4; }
     @keyframes kutFadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes kutPopIn {
-      from { opacity: 0; transform: translateY(12px) scale(.96); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
+    @keyframes kutPopIn { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .kut-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .kut-field label { font-size: 13px; font-weight: 600; color: #14211C; }
     .kut-field label .kut-req { color: #C0392B; margin-left: 2px; }
     .kut-field input {
-      width: 100%; padding: 12px 14px;
-      border-radius: 10px; border: 1.5px solid #E3EAE6;
-      background: #fff; font-family: inherit; font-size: 15px;
-      color: #14211C; outline: none;
+      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1.5px solid #E3EAE6;
+      background: #fff; font-family: inherit; font-size: 15px; color: #14211C; outline: none;
       transition: border-color .18s ease, box-shadow .18s ease;
     }
     .kut-field input:focus { border-color: #005F40; box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
@@ -724,10 +819,7 @@ function injectProfileStyles() {
       border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
     }
     .kut-request:last-child { margin-bottom: 0; }
-    .kut-request__head {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px; margin-bottom: 8px;
-    }
+    .kut-request__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .kut-request__name { font-weight: 700; font-size: 14px; color: #14211C; }
     .kut-request__date { font-size: 11px; color: #64776E; font-variant-numeric: tabular-nums; }
     .kut-request__diff { font-size: 12px; color: #64776E; line-height: 1.6; margin-bottom: 10px; }
@@ -735,31 +827,23 @@ function injectProfileStyles() {
     .kut-request__arrow { color: #005F40; font-weight: 700; margin: 0 6px; }
     .kut-request__actions { display: flex; gap: 8px; }
     .kut-request__actions button {
-      flex: 1; padding: 9px 12px; border-radius: 10px;
-      border: 1px solid transparent;
+      flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid transparent;
       font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
     }
     .kut-btn-approve { background: #005F40; color: #fff; }
     .kut-btn-approve:hover { background: #003F2A; }
-    .kut-btn-reject {
-      background: transparent; color: #C0392B;
-      border-color: rgba(192,57,43,.30) !important;
-    }
+    .kut-btn-reject { background: transparent; color: #C0392B; border-color: rgba(192,57,43,.30) !important; }
     .kut-btn-reject:hover { background: rgba(192,57,43,.08); border-color: #C0392B !important; }
     .kut-requests__empty { font-size: 13px; color: #64776E; padding: 10px 0; text-align: center; }
     .kut-actions { display: flex; gap: 10px; margin-top: 20px; }
     .kut-actions button {
-      flex: 1; padding: 13px 16px;
-      border-radius: 12px; border: 1px solid transparent;
+      flex: 1; padding: 13px 16px; border-radius: 12px; border: 1px solid transparent;
       font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
     }
     .kut-btn-primary { background: #005F40; color: #fff; }
     .kut-btn-primary:hover { background: #003F2A; }
     .kut-btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-    .kut-btn-ghost {
-      background: transparent; color: #14211C;
-      border-color: #E3EAE6 !important;
-    }
+    .kut-btn-ghost { background: transparent; color: #14211C; border-color: #E3EAE6 !important; }
     .kut-btn-ghost:hover { background: #E6F1ED; border-color: #005F40 !important; color: #005F40; }
     .kut-info-box {
       padding: 10px 12px; background: #FFF8E1;
@@ -773,9 +857,6 @@ function injectProfileStyles() {
   document.head.appendChild(style);
 }
 
-// =========================================================
-// МОДАЛКА ПРОФИЛЯ
-// =========================================================
 function ensureProfileModal() {
   let modal = document.getElementById('kutProfileModal');
   if (modal) return modal;
@@ -886,9 +967,6 @@ function closeProfileModal() {
   document.body.style.overflow = '';
 }
 
-// =========================================================
-// СОХРАНЕНИЕ ПРОФИЛЯ
-// =========================================================
 async function saveProfile(event) {
   event.preventDefault();
   const modal = document.getElementById('kutProfileModal');
@@ -931,14 +1009,8 @@ async function saveProfile(event) {
 
   if (!ok) return;
 
-  const oldData = {
-    displayName: p.displayName || '',
-    phone: p.phone || '',
-  };
-  const newData = {
-    displayName: newName,
-    phone: newPhone,
-  };
+  const oldData = { displayName: p.displayName || '', phone: p.phone || '' };
+  const newData = { displayName: newName, phone: newPhone };
 
   if (oldData.displayName === newData.displayName && oldData.phone === newData.phone) {
     toast('Изменений нет');
@@ -965,18 +1037,10 @@ async function saveProfile(event) {
       toast('Профиль обновлён');
       closeProfileModal();
     } else {
-      if (!state.businessId) {
-        toast('Нет привязанного бизнеса', true);
-        return;
-      }
+      if (!state.businessId) { toast('Нет привязанного бизнеса', true); return; }
       await addDoc(collection(db, 'businesses', state.businessId, 'requests'), {
-        uid: p.uid,
-        role: p.role,
-        email: p.email || '',
-        oldData,
-        newData,
-        status: 'pending',
-        createdAt: serverTimestamp(),
+        uid: p.uid, role: p.role, email: p.email || '',
+        oldData, newData, status: 'pending', createdAt: serverTimestamp(),
       });
       if (infoEl) {
         infoEl.hidden = false;
@@ -1299,6 +1363,7 @@ async function boot() {
 
   setupBottomNavHighlight();
   setupBottomNavScan();
+  setupPeriodFilter();
   handleAutoScanParam();
 
   const yearEl = document.getElementById('year');
@@ -1348,7 +1413,7 @@ async function boot() {
     if (state.unsubRequests) state.unsubRequests();
   });
 
-  console.info('[KUT] Ядро готово · бизнес:', state.businessId, '· роль:', profile.role);
+  console.info('[KUT] Ядро готово · бизнес:', state.businessId, '· роль:', profile.role, '· период:', state.period);
 }
 
 if (document.readyState === 'loading') {
