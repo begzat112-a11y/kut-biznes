@@ -1,19 +1,7 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase + WhatsApp Green-API · v4.2 (боевая)
-   ---------------------------------------------------------
-   WhatsApp-шлюз: Green-API
-   Instance: 720122747171
-   Токен: вставлен
-
-   Что внутри:
-   • Firebase Auth (Email/Password) + Firestore
-   • sendWhatsAppOtp() — генерирует 4-значный код,
-     сохраняет в otp_sessions/{phone} и делает
-     РЕАЛЬНЫЙ POST-запрос к Green-API
-   • verifyWhatsAppOtp() — проверяет код и логинит в Firebase
-   • login / logout / resetPassword
-   • CRUD products/sales/debts внутри businesses/{bizId}
-   • Admin API: бизнесы + смена телефонов сотрудников
+   КУТ: БИЗНЕС — Firebase Configuration (v10 modular CDN)
+   Единая точка входа для всех модулей проекта.
+   Экспортирует window.FB — публичный API.
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -43,13 +31,12 @@ import {
   onSnapshot,
   writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js';
 
 // =========================================================
-// 1. FIREBASE CONFIG
+// FIREBASE CONFIG — точные ключи проекта
 // =========================================================
 const firebaseConfig = {
-  apiKey:            "AIzaSyAO1MniEwNBKhcEs64XMMPVN0GDEZFpxPg",
+  apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
   authDomain:        "kut-biznes.firebaseapp.com",
   projectId:         "kut-biznes",
   storageBucket:     "kut-biznes.firebasestorage.app",
@@ -59,43 +46,14 @@ const firebaseConfig = {
 };
 
 // =========================================================
-// 2. GREEN-API CONFIG — WhatsApp-шлюз
-// =========================================================
-const WA_CONFIG = {
-  idInstance: '720122747171',
-  apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
-
-  buildUrl() {
-    return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
-  },
-
-  buildBody(phoneDigits, message) {
-    return {
-      chatId:  `${phoneDigits}@c.us`,
-      message: message,
-    };
-  },
-};
-
-// Проверка, что токен реально вставлен
-const WA_TOKEN_IS_PLACEHOLDER =
-  !WA_CONFIG.apiToken ||
-  WA_CONFIG.apiToken.trim() === '' ||
-  WA_CONFIG.apiToken.length < 20;
-
-// =========================================================
-// 3. ИНИЦИАЛИЗАЦИЯ
+// ИНИЦИАЛИЗАЦИЯ
 // =========================================================
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-let analytics = null;
-try { analytics = getAnalytics(app); }
-catch (e) { console.warn('[KUT FB] Analytics не подключён:', e.message); }
-
 // =========================================================
-// 4. СОСТОЯНИЕ
+// СОСТОЯНИЕ
 // =========================================================
 let currentUser = null;
 let currentProfile = null;
@@ -104,7 +62,7 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 const KG_PHONE_CODE = '+996';
 
 // =========================================================
-// 5. УТИЛИТЫ
+// УТИЛИТЫ
 // =========================================================
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
@@ -133,7 +91,7 @@ function fakePasswordFromPhone(phone) {
 }
 
 // =========================================================
-// 6. AUTH — ПРОФИЛЬ
+// AUTH — ПРОФИЛЬ
 // =========================================================
 
 async function fetchProfile(uid) {
@@ -168,10 +126,10 @@ function redirectByRole(profile) {
     signOut(auth);
     return;
   }
-  if (profile.role === 'super_admin')  window.location.href = './admin.html';
-  else if (profile.role === 'owner')   window.location.href = './index.html';
-  else if (profile.role === 'cashier') window.location.href = './cash.html';
-  else                                 window.location.href = './index.html';
+  if (profile.role === 'super_admin')      window.location.href = './admin.html';
+  else if (profile.role === 'owner')       window.location.href = './index.html';
+  else if (profile.role === 'cashier')     window.location.href = './cash.html';
+  else                                     window.location.href = './index.html';
 }
 
 function makeBusinessId() {
@@ -179,7 +137,7 @@ function makeBusinessId() {
 }
 
 // =========================================================
-// 7. ВХОД ПО EMAIL + ПАРОЛЬ
+// ВХОД ПО EMAIL
 // =========================================================
 
 async function login(email, password) {
@@ -235,8 +193,16 @@ async function resetPassword(email) {
 }
 
 // =========================================================
-// 8. WHATSAPP OTP — РЕАЛЬНАЯ ОТПРАВКА ЧЕРЕЗ GREEN-API
+// WHATSAPP OTP — РЕАЛЬНАЯ ОТПРАВКА
 // =========================================================
+
+const WA_CONFIG = {
+  idInstance: '720122747171',
+  apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
+  buildUrl() {
+    return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
+  },
+};
 
 function generateOtpCode() {
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -252,12 +218,6 @@ async function sendWhatsAppOtp(rawPhone) {
     throw new Error('INVALID_PHONE');
   }
 
-  if (WA_TOKEN_IS_PLACEHOLDER) {
-    console.error('[KUT OTP] apiToken не задан или слишком короткий.');
-    throw new Error('WHATSAPP_NOT_CONFIGURED');
-  }
-
-  // ----- 1. Генерация и запись в Firestore -----
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
@@ -269,35 +229,28 @@ async function sendWhatsAppOtp(rawPhone) {
     attempts: 0,
   });
 
-  // ----- 2. Отправка через Green-API -----
-  const phoneDigits = phone.replace(/\D/g, ''); // 996XXXXXXXXX
+  const phoneDigits = phone.replace(/\D/g, '');
   const message =
     `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\n` +
     `Никому не сообщайте этот код. Действителен 5 минут.`;
 
-  const url = WA_CONFIG.buildUrl();
-  const body = WA_CONFIG.buildBody(phoneDigits, message);
-
-  let res;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (networkErr) {
-    console.error('[KUT OTP] Сеть недоступна:', networkErr);
-    throw new Error('WHATSAPP_NETWORK');
-  }
+  const res = await fetch(WA_CONFIG.buildUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chatId: `${phoneDigits}@c.us`,
+      message: message,
+    }),
+  });
 
   if (!res.ok) {
     let errText = '';
     try { errText = await res.text(); } catch (_) {}
-    console.error('[KUT OTP] Green-API ответил ошибкой:', res.status, errText);
+    console.error('[KUT OTP] Green-API ошибка:', res.status, errText);
     throw new Error('WHATSAPP_FAILED');
   }
 
-  console.info('[KUT OTP] Код', code, 'успешно отправлен на', phone);
+  console.info('[KUT OTP] Код', code, 'отправлен на', phone);
   return true;
 }
 
@@ -306,9 +259,7 @@ async function verifyWhatsAppOtp(rawPhone, code) {
   const ref = otpSessionDoc(phone);
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) {
-    throw new Error('OTP_NOT_FOUND');
-  }
+  if (!snap.exists()) throw new Error('OTP_NOT_FOUND');
 
   const data = snap.data();
   const expiresAt = toDate(data.expiresAt);
@@ -350,7 +301,7 @@ async function verifyWhatsAppOtp(rawPhone, code) {
       displayName: '',
       phone: phone,
       role: 'cashier',
-      businessId: null,
+      businessId: '',
       active: true,
       createdAt: serverTimestamp(),
     });
@@ -364,7 +315,7 @@ async function verifyWhatsAppOtp(rawPhone, code) {
 }
 
 // =========================================================
-// 9. FIRESTORE CRUD
+// FIRESTORE CRUD — МУЛЬТИТЕНАНТ
 // =========================================================
 
 function getBusinessId() {
@@ -420,7 +371,7 @@ async function deleteItem(name, id) {
 }
 
 // =========================================================
-// 10. SUPER ADMIN API
+// SUPER ADMIN API
 // =========================================================
 
 async function adminGetAllBusinesses() {
@@ -470,10 +421,10 @@ async function updateEmployeePhone(employeeUid, newPhone) {
 }
 
 // =========================================================
-// 11. ЭКСПОРТ
+// ЭКСПОРТ
 // =========================================================
 window.FB = {
-  app, auth, db, analytics,
+  app, auth, db,
   currentUser: () => currentUser,
   currentProfile: () => currentProfile,
   waitForAuth, fetchProfile, redirectByRole, makeBusinessId,
@@ -493,7 +444,7 @@ window.FB = {
 };
 
 export {
-  app, auth, db, analytics,
+  app, auth, db,
   waitForAuth, fetchProfile, redirectByRole, makeBusinessId,
   login, registerOwner, logout, resetPassword,
   sendWhatsAppOtp, verifyWhatsAppOtp,
@@ -506,6 +457,4 @@ export {
   query, where, orderBy, limit, serverTimestamp, onSnapshot, writeBatch,
 };
 
-console.info('[KUT FB] Firebase v10 инициализирован · проект:', firebaseConfig.projectId);
-console.info('[KUT WA] Green-API · instance:', WA_CONFIG.idInstance,
-  WA_TOKEN_IS_PLACEHOLDER ? '· ⚠️ ТОКЕН НЕ ЗАДАН' : '· ✓ токен установлен');
+console.info('[KUT FB] Firebase v10 · проект:', firebaseConfig.projectId);
