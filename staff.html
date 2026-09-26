@@ -123,4 +123,361 @@
     .toolbar { border-radius: 22px !important; padding: 12px !important; margin-bottom: 14px !important; display: flex !important; flex-wrap: wrap !important; gap: 12px !important; align-items: center !important; background: linear-gradient(150deg, rgba(255,255,255,.05), rgba(255,255,255,.015)) !important; border: 1px solid rgba(255,255,255,.09) !important; box-shadow: 0 4px 16px rgba(0,0,0,.32) !important; backdrop-filter: blur(18px) !important; }
     html[data-theme="light"] .toolbar { background: #FFFFFF !important; border-color: rgba(0,95,64,.10) !important; }
     .search { position: relative !important; flex: 1 !important; min-width: 200px !important; }
-    .search input { width:
+    .search input { width: 100% !important; padding: 13px 16px 13px 42px !important; border: 1px solid var(--v9-glass-border) !important; border-radius: 14px !important; font-size: 15px !important; font-family: inherit !important; outline: none !important; background: rgba(255,255,255,.04) !important; color: var(--v9-text-1) !important; }
+    html[data-theme="light"] .search input { background: #FFFFFF !important; color: #14211C !important; }
+    .search input::placeholder { color: var(--v9-text-3) !important; }
+    .search::before { content: "🔍" !important; position: absolute !important; left: 14px !important; top: 50% !important; transform: translateY(-50%) !important; font-size: 14px !important; opacity: .65 !important; pointer-events: none !important; }
+
+    .period-chips { display: flex !important; gap: 6px !important; flex-wrap: wrap !important; }
+    .period-chip { border: 1px solid var(--v9-glass-border) !important; background: rgba(255,255,255,.04) !important; padding: 9px 14px !important; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; color: var(--v9-text-2) !important; cursor: pointer !important; font-family: inherit !important; min-height: 40px !important; }
+    html[data-theme="light"] .period-chip { background: #FFFFFF !important; color: #4A5C54 !important; }
+    .period-chip.is-active { background: linear-gradient(135deg, #E7C14A, #B88F1D) !important; color: #06150F !important; border-color: transparent !important; }
+
+    .btn { display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; padding: 13px 18px !important; border-radius: 14px !important; font-family: inherit !important; font-size: 14px !important; font-weight: 700 !important; cursor: pointer !important; border: 1px solid transparent !important; min-height: 48px !important; transition: transform .12s ease !important; }
+    .btn:active { transform: scale(.98) !important; }
+    .btn--primary { background: linear-gradient(135deg, #E7C14A, #B88F1D) !important; color: #06150F !important; box-shadow: 0 10px 26px rgba(212,175,55,.35) !important; }
+    .btn--gold { background: linear-gradient(135deg, #E7C14A, #B88F1D) !important; color: #06150F !important; }
+    .btn--ghost { background: rgba(255,255,255,.04) !important; border-color: var(--v9-glass-border) !important; color: var(--v9-text-1) !important; }
+    .btn--danger { background: #FF5C5C !important; color: #fff !important; border-color: transparent !important; }
+    .btn:disabled { opacity: .55 !important; cursor: not-allowed !important; }
+
+    .staff-card { border-radius: 22px !important; overflow: hidden !important; background: linear-gradient(150deg, rgba(255,255,255,.05), rgba(255,255,255,.015)) !important; border: 1px solid rgba(255,255,255,.09) !important; box-shadow: 0 10px 34px rgba(0,0,0,.36) !important; backdrop-filter: blur(18px) !important; }
+    html[data-theme="light"] .staff-card { background: #FFFFFF !important; border-color: rgba(0,95,64,.10) !important; box-shadow: 0 6px 18px rgba(16,32,25,.08) !important; }
+    .staff-table { width: 100% !important; border-collapse: collapse !important; font-size: 14px !important; }
+    .staff-table thead th { text-align: left !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: .6px !important; font-weight: 700 !important; padding: 14px 16px !important; white-space: nowrap !important; background: rgba(255,255,255,.03) !important; color: var(--v9-text-3) !important; border-bottom: 1px solid rgba(255,255,255,.08) !important; }
+    html[data-theme="light"] .staff-table thead th { background: #FBFDFC !important; color: #4A5C54 !important; }
+    .staff-table tbody td { padding: 14px 16px !important; vertical-align: middle !important; border-bottom: 1px solid rgba(255,255,255,.05) !important; color: var(--v9-text-1) !important; }
+    .staff-table tbody tr:last-child td { border-bottom: none !important; }
+    html[data-theme="light"] .staff-table tbody td { border-bottom-color: rgba(0,95,64,.06) !important; color: #14211C !important; }
+    .staff-table tbody tr.is-total { background: rgba(212,175,55,.08) !important; font-weight: 700 !important; }
+    .staff-table tbody tr.is-total td { border-top: 2px solid #D4AF37 !important; }
+
+    .emp { display: flex !important; align-items: center !important; gap: 12px !important; min-width: 180px !important; }
+    .emp__avatar { width: 42px !important; height: 42px !important; display: grid !important; place-items: center !important; background: rgba(212,175,55,.14) !important; color: #F0D772 !important; border-radius: 50% !important; font-size: 15px !important; font-weight: 700 !important; flex-shrink: 0 !important; text-transform: uppercase !important; }
+    .emp__avatar--gold { background: rgba(212,175,55,.20) !important; color: #F0D772 !important; }
+    .emp__avatar--cashier { background: rgba(52,211,153,.14) !important; color: #34D399 !important; }
+    .emp__text { min-width: 0 !important; }
+    .emp__name { font-weight: 600 !important; font-size: 14px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 220px !important; color: var(--v9-text-1) !important; }
+    .emp__sub { font-size: 12px !important; color: var(--v9-text-3) !important; margin-top: 2px !important; }
+    .phone-link { display: inline-flex !important; align-items: center !important; gap: 6px !important; color: #F0D772 !important; text-decoration: none !important; font-weight: 600 !important; font-size: 13px !important; }
+
+    .role-badge { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 5px 11px !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 700 !important; white-space: nowrap !important; }
+    .role-badge--owner { background: rgba(212,175,55,.16) !important; color: #F0D772 !important; }
+    .role-badge--manager { background: rgba(224,138,30,.14) !important; color: #E5A23F !important; }
+    .role-badge--cashier { background: rgba(52,211,153,.14) !important; color: #34D399 !important; }
+
+    .badge { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 5px 11px !important; border-radius: 999px !important; font-size: 12px !important; font-weight: 700 !important; white-space: nowrap !important; }
+    .badge--active { background: rgba(52,211,153,.14) !important; color: #34D399 !important; }
+    .badge--pending { background: rgba(224,138,30,.14) !important; color: #E5A23F !important; }
+    .badge--blocked { background: rgba(255,92,92,.14) !important; color: #FF5C5C !important; }
+    .badge__dot { width: 7px !important; height: 7px !important; border-radius: 50% !important; background: currentColor !important; }
+
+    .num { font-variant-numeric: tabular-nums !important; font-weight: 700 !important; color: var(--v9-text-1) !important; }
+    .num--money { color: #34D399 !important; }
+    .num--muted { color: var(--v9-text-3) !important; font-weight: 500 !important; }
+
+    .row-actions { display: inline-flex !important; gap: 6px !important; flex-wrap: wrap !important; justify-content: flex-end !important; }
+    .icon-btn { width: 40px !important; height: 40px !important; display: grid !important; place-items: center !important; border: 1px solid var(--v9-glass-border) !important; background: rgba(255,255,255,.04) !important; color: var(--v9-text-2) !important; border-radius: 10px !important; cursor: pointer !important; font-size: 16px !important; }
+    html[data-theme="light"] .icon-btn { background: #FFFFFF !important; color: #4A5C54 !important; }
+    .icon-btn--danger:hover { color: #FF5C5C !important; border-color: #FF5C5C !important; }
+    .icon-btn--warn:hover { color: #E5A23F !important; border-color: #E5A23F !important; }
+    .icon-btn--ok:hover { color: #34D399 !important; border-color: #34D399 !important; }
+
+    .empty { padding: 60px 20px !important; text-align: center !important; color: var(--v9-text-3) !important; }
+    .empty__icon { font-size: 42px !important; margin-bottom: 12px !important; opacity: .85 !important; }
+    .empty h3 { margin: 0 0 6px !important; color: var(--v9-text-1) !important; font-size: 17px !important; }
+    .empty p { margin: 0 0 18px !important; font-size: 14px !important; }
+
+    @media (max-width: 860px) {
+      .staff-table thead { display: none !important; }
+      .staff-table, .staff-table tbody, .staff-table tr, .staff-table td { display: block !important; width: 100% !important; }
+      .staff-table tr { border-bottom: 1px solid var(--v9-glass-border) !important; padding: 14px !important; }
+      .staff-table tbody td { border: none !important; padding: 5px 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; }
+      .staff-table td::before { content: attr(data-label) !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: .5px !important; font-weight: 700 !important; color: var(--v9-text-3) !important; flex-shrink: 0 !important; }
+      .staff-table td[data-label="Сотрудник"] { display: block !important; padding-bottom: 8px !important; }
+      .staff-table td[data-label="Сотрудник"]::before,
+      .staff-table td[data-label="Кассир"]::before { display: none !important; }
+      .staff-table td[data-label="Кассир"] { display: block !important; padding-bottom: 8px !important; }
+      .emp__name { max-width: none !important; white-space: normal !important; }
+      .row-actions { justify-content: flex-start !important; padding-top: 6px !important; }
+    }
+
+    .modal[hidden] { display: none !important; }
+    .modal { position: fixed !important; inset: 0 !important; z-index: 100 !important; display: grid !important; place-items: center !important; padding: 16px !important; }
+    .modal__backdrop { position: absolute !important; inset: 0 !important; background: rgba(4,12,9,.72) !important; backdrop-filter: blur(8px) !important; }
+    .modal__dialog { position: relative !important; width: 100% !important; max-width: 500px !important; border-radius: 22px !important; padding: 22px !important; max-height: 92dvh !important; overflow-y: auto !important; background: linear-gradient(150deg, #0E2A21 0%, #081A14 100%) !important; border: 1px solid rgba(255,255,255,.10) !important; box-shadow: 0 24px 60px rgba(0,0,0,.6) !important; color: var(--v9-text-1) !important; }
+    html[data-theme="light"] .modal__dialog { background: #FFFFFF !important; border-color: rgba(0,95,64,.10) !important; color: #14211C !important; }
+    .modal__dialog h3 { margin: 0 0 4px !important; font-size: 19px !important; font-weight: 700 !important; color: var(--v9-text-1) !important; }
+    .modal__subtitle { margin: 0 0 18px !important; color: var(--v9-text-3) !important; font-size: 13px !important; line-height: 1.4 !important; }
+
+    .form-grid { display: grid !important; grid-template-columns: 1fr !important; gap: 12px !important; }
+    .field { display: flex !important; flex-direction: column !important; gap: 6px !important; }
+    .field label { font-size: 13px !important; font-weight: 600 !important; color: var(--v9-text-1) !important; }
+    .field label .req { color: #FF5C5C !important; margin-left: 2px !important; }
+    .field input, .field select { width: 100% !important; padding: 13px 14px !important; border-radius: 10px !important; border: 1.5px solid var(--v9-glass-border) !important; background: rgba(255,255,255,.04) !important; font-family: inherit !important; font-size: 15px !important; color: var(--v9-text-1) !important; outline: none !important; }
+    html[data-theme="light"] .field input, html[data-theme="light"] .field select { background: #FFFFFF !important; color: #14211C !important; border-color: rgba(0,95,64,.14) !important; }
+    .field input:focus, .field select:focus { border-color: #D4AF37 !important; box-shadow: 0 0 0 4px rgba(212,175,55,.18) !important; }
+    .field input.is-invalid, .field select.is-invalid { border-color: #FF5C5C !important; box-shadow: 0 0 0 4px rgba(255,92,92,.15) !important; }
+    .field__hint { font-size: 12px !important; color: var(--v9-text-3) !important; min-height: 14px !important; }
+    .field__hint.is-error { color: #FF5C5C !important; font-weight: 500 !important; }
+
+    .phone-group { display: grid !important; grid-template-columns: 130px 1fr !important; gap: 8px !important; align-items: stretch !important; }
+    @media (max-width: 420px) { .phone-group { grid-template-columns: 108px 1fr !important; gap: 6px !important; } }
+    .country-select { width: 100% !important; padding: 13px 8px !important; font-family: inherit !important; font-size: 14px !important; font-weight: 600 !important; color: var(--v9-text-1) !important; border: 1.5px solid var(--v9-glass-border) !important; border-radius: 10px !important; background: rgba(255,255,255,.04) !important; text-align: center !important; cursor: pointer !important; appearance: none !important; -webkit-appearance: none !important; }
+    html[data-theme="light"] .country-select { background: #FFFFFF !important; color: #14211C !important; }
+
+    .role-options { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+    .role-option { display: flex !important; flex-direction: column !important; gap: 4px !important; padding: 14px !important; border: 1.5px solid var(--v9-glass-border) !important; background: rgba(255,255,255,.04) !important; border-radius: 14px !important; font-family: inherit !important; cursor: pointer !important; text-align: left !important; min-height: 60px !important; }
+    html[data-theme="light"] .role-option { background: #FFFFFF !important; border-color: rgba(0,95,64,.14) !important; }
+    .role-option.is-active { border-color: #D4AF37 !important; background: rgba(212,175,55,.14) !important; box-shadow: 0 0 0 3px rgba(212,175,55,.18) !important; }
+    .role-option__title { font-size: 14px !important; font-weight: 700 !important; color: var(--v9-text-1) !important; }
+    .role-option__desc { font-size: 12px !important; color: var(--v9-text-3) !important; line-height: 1.3 !important; }
+
+    .modal__actions { display: flex !important; gap: 10px !important; margin-top: 20px !important; }
+    .modal__actions .btn { flex: 1 !important; }
+
+    .permission-warn { max-width: 480px !important; margin: 60px auto !important; padding: 30px !important; border-radius: 22px !important; text-align: center !important; background: linear-gradient(150deg, rgba(255,255,255,.05), rgba(255,255,255,.015)) !important; border: 1px solid rgba(255,255,255,.09) !important; }
+    html[data-theme="light"] .permission-warn { background: #FFFFFF !important; border-color: rgba(0,95,64,.10) !important; }
+    .permission-warn__icon { font-size: 46px !important; margin-bottom: 14px !important; opacity: .85 !important; }
+    .permission-warn h2 { margin: 0 0 8px !important; font-size: 20px !important; font-weight: 800 !important; color: var(--v9-text-1) !important; }
+    .permission-warn p { margin: 0 0 20px !important; color: var(--v9-text-3) !important; font-size: 14px !important; line-height: 1.5 !important; }
+    .permission-warn a { display: inline-block !important; padding: 12px 22px !important; background: linear-gradient(135deg, #E7C14A, #B88F1D) !important; color: #06150F !important; text-decoration: none !important; border-radius: 12px !important; font-weight: 700 !important; font-size: 14px !important; }
+
+    button { -webkit-tap-highlight-color: transparent !important; }
+  </style>
+</head>
+<body class="page-staff">
+
+  <script>
+    (function () {
+      var BUILD = 'v9.4.2-STAFF';
+      var saved = null;
+      try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
+      if (saved === BUILD) return;
+      try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
+      var todo = [];
+      if ('serviceWorker' in navigator) {
+        todo.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }).catch(function () {}));
+      }
+      if ('caches' in window) {
+        todo.push(caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }).catch(function () {}));
+      }
+      Promise.all(todo).then(function () {
+        setTimeout(function () {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.set('_cb', Date.now().toString(36));
+            window.location.replace(url.toString());
+          } catch (e) { window.location.reload(); }
+        }, 200);
+      });
+    })();
+  </script>
+
+  <div class="overlay" id="overlay" aria-hidden="true"></div>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Основное меню">
+      <div id="sidebar-profile-slot"></div>
+
+      <div class="sidebar__brand-row">
+        <a href="./index.html" class="sidebar__brand">
+          <span class="brand__mark" aria-hidden="true">К</span>
+          <span class="brand__text">
+            <strong>КУТ: БИЗНЕС</strong>
+            <small>Учёт для малого бизнеса</small>
+          </span>
+        </a>
+        <div id="sidebar-theme-slot"></div>
+      </div>
+
+      <nav class="sidebar__nav" aria-label="Навигация">
+        <a href="./index.html" class="nav-link"><span class="nav-link__icon">🏠</span><span>Главная</span></a>
+        <a href="./cash.html" class="nav-link"><span class="nav-link__icon">🧾</span><span>Касса</span></a>
+        <a href="./stock.html" class="nav-link"><span class="nav-link__icon">📦</span><span>Склад</span></a>
+        <a href="./debts.html" class="nav-link"><span class="nav-link__icon">📒</span><span>Несие (долги)</span><span class="nav-link__badge" id="nav-debts-count" hidden>0</span></a>
+        <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden><span class="nav-link__icon">👥</span><span>Сотрудники</span><span class="nav-link__badge" id="nav-staff-count" hidden>0</span></a>
+      </nav>
+
+      <a href="./cash.html" class="sidebar__cta" aria-label="Открыть кассу">
+        <span class="sidebar__cta__icon" aria-hidden="true">＋</span>
+        <span class="sidebar__cta__text">
+          <strong>Открыть кассу</strong>
+          <small>Новая продажа</small>
+        </span>
+      </a>
+
+      <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
+
+      <div id="sidebar-logout-slot"></div>
+    </aside>
+
+    <div>
+      <header class="mobile-bar">
+        <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
+        <span class="mobile-bar__title">КУТ: БИЗНЕС · <span id="page-title">Сотрудники</span></span>
+        <div data-kut-lang></div>
+      </header>
+
+      <main class="wrap" id="mainWrap" hidden>
+        <div class="page-head">
+          <div>
+            <h1>Сотрудники и продажи</h1>
+            <p>Управление командой и контроль кто сколько пробил</p>
+          </div>
+          <button class="btn btn--primary" id="openAddBtn" type="button"><span aria-hidden="true">＋</span> Пригласить сотрудника</button>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button class="tab is-active" type="button" role="tab" data-tab="staff">👥 Сотрудники <span class="tab__badge" id="tabStaffCount">0</span></button>
+          <button class="tab" type="button" role="tab" data-tab="sales">💰 Продажи <span class="tab__badge" id="tabSalesCount">0</span></button>
+        </div>
+
+        <div class="pane is-active" id="paneStaff">
+          <section class="stats">
+            <div class="stat"><div class="stat__icon">👥</div><div><div class="stat__label">Всего сотрудников</div><div class="stat__value" id="statTotal">0<small>чел.</small></div></div></div>
+            <div class="stat stat--green"><div class="stat__icon">✅</div><div><div class="stat__label">Активных</div><div class="stat__value" id="statActive">0<small>чел.</small></div></div></div>
+            <div class="stat stat--warn"><div class="stat__icon">⏳</div><div><div class="stat__label">Ожидают входа</div><div class="stat__value" id="statPending">0<small>чел.</small></div></div></div>
+          </section>
+
+          <section class="toolbar">
+            <div class="search"><input type="search" id="searchStaffInput" placeholder="Поиск по имени или телефону..." autocomplete="off"></div>
+          </section>
+
+          <section class="staff-card">
+            <table class="staff-table" id="staffTable">
+              <thead>
+                <tr><th>Сотрудник</th><th>Телефон</th><th>Роль</th><th>Статус</th><th>Дата</th><th aria-label="Действия"></th></tr>
+              </thead>
+              <tbody id="staffBody"></tbody>
+            </table>
+            <div id="staffEmpty" class="empty" hidden>
+              <div class="empty__icon">👤</div>
+              <h3>Пока нет сотрудников</h3>
+              <p>Пригласите первого кассира — он войдёт по номеру телефона через WhatsApp.</p>
+              <button class="btn btn--gold" type="button" id="emptyAddBtn">＋ Пригласить сотрудника</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="pane" id="paneSales">
+          <section class="stats">
+            <div class="stat"><div class="stat__icon">💰</div><div><div class="stat__label">Общая выручка</div><div class="stat__value" id="salesTotalRevenue">0<small>KGS</small></div></div></div>
+            <div class="stat stat--gold"><div class="stat__icon">🧾</div><div><div class="stat__label">Чеков</div><div class="stat__value" id="salesTotalChecks">0<small>шт.</small></div></div></div>
+            <div class="stat stat--green"><div class="stat__icon">📊</div><div><div class="stat__label">Средний чек</div><div class="stat__value" id="salesAvgCheck">0<small>KGS</small></div></div></div>
+          </section>
+
+          <section class="toolbar">
+            <div class="search"><input type="search" id="searchSalesInput" placeholder="Поиск по имени кассира..." autocomplete="off"></div>
+            <div class="period-chips" id="periodChips">
+              <button class="period-chip is-active" type="button" data-period="today">Сегодня</button>
+              <button class="period-chip" type="button" data-period="week">7 дней</button>
+              <button class="period-chip" type="button" data-period="month">30 дней</button>
+              <button class="period-chip" type="button" data-period="all">Всё время</button>
+            </div>
+          </section>
+
+          <section class="staff-card">
+            <table class="staff-table" id="salesTable">
+              <thead>
+                <tr><th>Кассир</th><th>Роль</th><th>Чеков</th><th>Сумма</th><th>Средний чек</th><th>Последняя продажа</th></tr>
+              </thead>
+              <tbody id="salesBody"></tbody>
+            </table>
+            <div id="salesEmpty" class="empty" hidden>
+              <div class="empty__icon">💰</div>
+              <h3>Продаж пока нет</h3>
+              <p>Как только кассиры начнут пробивать чеки, они появятся здесь.</p>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <div class="permission-warn" id="permWarn" hidden>
+        <div class="permission-warn__icon">🔒</div>
+        <h2>Доступ только для владельца и менеджера</h2>
+        <p>Эта страница доступна владельцу бизнеса и менеджеру. Кассир не может управлять сотрудниками.</p>
+        <a href="./index.html">← Вернуться на главную</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="staffModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3 id="staffModalTitle">Пригласить сотрудника</h3>
+      <p class="modal__subtitle" id="staffModalSub">Сотрудник войдёт на странице входа по своему номеру телефона — код придёт в WhatsApp.</p>
+      <form id="staffForm" novalidate>
+        <input type="hidden" id="staffId">
+        <div class="form-grid">
+          <div class="field">
+            <label for="fName">Имя сотрудника <span class="req">*</span></label>
+            <input type="text" id="fName" placeholder="Например: Азамат" maxlength="60" autocomplete="off" required>
+            <div class="field__hint" data-for="fName"></div>
+          </div>
+          <div class="field">
+            <label for="fPhone">Номер телефона (WhatsApp) <span class="req">*</span></label>
+            <div class="phone-group">
+              <select id="countrySelect" class="country-select" aria-label="Код страны">
+                <option value="kg" data-code="+996" data-digits="9"  data-pattern="XXX XXX XXX">🇰🇬 +996</option>
+                <option value="ru" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇷🇺 +7</option>
+                <option value="kz" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇰🇿 +7</option>
+                <option value="uz" data-code="+998" data-digits="9"  data-pattern="XX XXX XX XX">🇺🇿 +998</option>
+                <option value="tj" data-code="+992" data-digits="9"  data-pattern="XX XXX XX XX">🇹🇯 +992</option>
+                <option value="tm" data-code="+993" data-digits="8"  data-pattern="XX XXXXXX">🇹🇲 +993</option>
+                <option value="az" data-code="+994" data-digits="9"  data-pattern="XX XXX XX XX">🇦🇿 +994</option>
+                <option value="am" data-code="+374" data-digits="8"  data-pattern="XX XXX XXX">🇦🇲 +374</option>
+                <option value="by" data-code="+375" data-digits="9"  data-pattern="XX XXX XX XX">🇧🇾 +375</option>
+                <option value="md" data-code="+373" data-digits="8"  data-pattern="XX XXX XXX">🇲🇩 +373</option>
+              </select>
+              <input type="tel" id="fPhone" class="phone-input" placeholder="700 123 456" inputmode="tel" autocomplete="off" required>
+            </div>
+            <div class="field__hint" data-for="fPhone">На этот номер сотрудник получит код в WhatsApp.</div>
+          </div>
+          <div class="field">
+            <label>Роль <span class="req">*</span></label>
+            <div class="role-options" id="roleOptions" role="radiogroup">
+              <button class="role-option is-active" type="button" role="radio" aria-checked="true" data-role="cashier">
+                <span class="role-option__title">🧑‍💼 Кассир</span>
+                <span class="role-option__desc">Только касса. Пробивает чеки, не меняет склад и не управляет сотрудниками.</span>
+              </button>
+              <button class="role-option" type="button" role="radio" aria-checked="false" data-role="manager">
+                <span class="role-option__title">👔 Менеджер</span>
+                <span class="role-option__desc">Касса, склад, долги и просмотр продаж. Без управления сотрудниками.</span>
+              </button>
+            </div>
+            <input type="hidden" id="fRole" value="cashier">
+            <div class="field__hint" data-for="fRole"></div>
+          </div>
+        </div>
+        <div class="modal__actions">
+          <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+          <button class="btn btn--primary" type="submit" id="saveBtn">Пригласить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="deleteModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Удалить сотрудника?</h3>
+      <p class="modal__subtitle" id="deleteName"></p>
+      <p style="color:var(--v9-text-3); font-size:13px; margin:0 0 4px;">Сотрудник потеряет доступ к бизнесу. Его Firebase-аккаунт останется, но без привязки.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+        <button class="btn btn--danger" type="button" id="confirmDeleteBtn">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/theme.js"></script>
+  <script src="./js/ui-chrome.js"></script>
+  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/staff.js"></script>
+</body>
+</html>
