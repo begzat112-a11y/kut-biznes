@@ -14,9 +14,6 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 
   <style>
-    /* =========================================================
-       v9.4.2 — INLINE OVERRIDES stock.html
-       ========================================================= */
     :root { --sidebar-w: 260px; }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; overflow-x: hidden; max-width: 100%; width: 100%; }
@@ -238,7 +235,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v9.5-STOCK-WH-LOG';
+      var BUILD = 'v9.5-STOCK-WH-LOG-V4';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -345,14 +342,12 @@
           </div>
         </section>
 
-        <!-- =========================================================
-             СКЛАДСКОЙ ЖУРНАЛ
-             ========================================================= -->
+        <!-- СКЛАДСКОЙ ЖУРНАЛ -->
         <section class="wh-section" id="whLogSection" aria-label="Складской журнал">
           <header class="wh-head">
             <div class="wh-head__left">
               <h2 class="wh-head__title">📓 Складской журнал</h2>
-              <div class="wh-head__sub">Realtime — обновляется автоматически</div>
+              <div class="wh-head__sub">Realtime · бессрочное хранение</div>
             </div>
             <span class="wh-live" id="whLive">⏳ Подключение…</span>
           </header>
@@ -361,9 +356,7 @@
             <button class="wh-chip is-active" type="button" role="tab" data-filter="all">Все</button>
             <button class="wh-chip" type="button" role="tab" data-filter="in">Приходы</button>
             <button class="wh-chip" type="button" role="tab" data-filter="out">Списания</button>
-            <button class="wh-test-btn" type="button" id="whTestBtn" title="Создать тестовую запись">
-              🧪 Тест
-            </button>
+            <button class="wh-test-btn" type="button" id="whTestBtn" title="Создать тестовую запись">🧪 Тест</button>
           </div>
 
           <div class="wh-list" id="whLogList"></div>
@@ -371,6 +364,10 @@
             <span class="wh-empty__icon" aria-hidden="true">📭</span>
             Журнал пуст. Операции появятся здесь автоматически.
             <span class="wh-empty__hint">Нажми «🧪 Тест» чтобы проверить.</span>
+          </div>
+
+          <div class="wh-load-more" id="whLoadMoreWrap" hidden>
+            <button class="wh-load-more__btn" type="button" id="whLoadMoreBtn">📜 Загрузить ещё</button>
           </div>
         </section>
       </main>
