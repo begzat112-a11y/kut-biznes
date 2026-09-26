@@ -1,8 +1,6 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v3
-   Работает поверх window.FB из firebase-config.js.
-   Отдаёт window.KUT для cash.js / stock.js / debts.js / staff.js.
-   Включает авто-привязку кассира к бизнесу по номеру телефона.
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v4
+   + секция «Сотрудники» в дашборде владельца
    ========================================================= */
 
 import './firebase-config.js';
@@ -96,6 +94,7 @@ const state = {
   products: [],
   sales: [],
   debts: [],
+  staff: [],
 };
 
 // =========================================================
@@ -130,6 +129,14 @@ function aggregateDebts() {
   return { count: active.length, sum };
 }
 
+function aggregateStaff() {
+  const staff = state.staff || [];
+  const total = staff.length;
+  const active = staff.filter((s) => s.active !== false && s.uid).length;
+  const pending = staff.filter((s) => !s.uid).length;
+  return { total, active, pending };
+}
+
 // =========================================================
 // РЕНДЕР ДАШБОРДА
 // =========================================================
@@ -160,6 +167,7 @@ function renderDashboard() {
   const revenue = aggregateRevenue();
   const stock = aggregateStock();
   const debts = aggregateDebts();
+  const staff = aggregateStaff();
 
   setNum('revenue-total', Math.round(revenue.total), ['dashboard-total-sales']);
   setNum('stock-value', Math.round(stock.costValue), ['dashboard-stock-value']);
@@ -183,6 +191,7 @@ function renderDashboard() {
       : 'Активных должников нет',
     ['debts-sub']);
 
+  // Бейдж долгов в сайдбаре
   const badge = document.getElementById('nav-debts-count');
   if (badge) {
     if (debts.count > 0) {
@@ -190,6 +199,30 @@ function renderDashboard() {
       badge.hidden = false;
     } else {
       badge.hidden = true;
+    }
+  }
+
+  // Секция и бейдж сотрудников (только для владельца)
+  const isOwner = state.profile?.role === 'owner';
+  if (isOwner) {
+    const sec = document.getElementById('staff-section');
+    if (sec) sec.hidden = false;
+
+    const st = document.getElementById('staff-total');
+    const sa = document.getElementById('staff-active');
+    const sp = document.getElementById('staff-pending');
+    if (st) st.textContent = String(staff.total);
+    if (sa) sa.textContent = String(staff.active);
+    if (sp) sp.textContent = String(staff.pending);
+
+    const navBadge = document.getElementById('nav-staff-count');
+    if (navBadge) {
+      if (staff.pending > 0) {
+        navBadge.textContent = String(staff.pending);
+        navBadge.hidden = false;
+      } else {
+        navBadge.hidden = true;
+      }
     }
   }
 
@@ -312,13 +345,9 @@ function setupSidebar() {
 }
 
 // =========================================================
-// АВТО-ПРИВЯЗКА КАССИРА К БИЗНЕСУ
+// АВТО-ПРИВЯЗКА КАССИРА
 // =========================================================
 
-/**
- * Если у кассира пустой businessId — ищем его телефон в коллекции staff.
- * Если нашли — привязываем к бизнесу.
- */
 async function tryClaimStaffInvite(profile, user) {
   const phone = profile.phone;
   if (!phone || !/^\+\d{8,15}$/.test(phone)) return null;
@@ -335,13 +364,11 @@ async function tryClaimStaffInvite(profile, user) {
     if (!staff.businessId) return null;
     if (staff.active === false) return null;
 
-    // Привязываем кассира к бизнесу
     await updateDoc(doc(db, 'users', user.uid), {
       businessId: staff.businessId,
       updatedAt: serverTimestamp(),
     });
 
-    // Отмечаем, что приглашение активировано
     await updateDoc(staffRef, {
       uid: user.uid,
       claimedAt: serverTimestamp(),
@@ -356,7 +383,7 @@ async function tryClaimStaffInvite(profile, user) {
 }
 
 // =========================================================
-// ПУБЛИЧНЫЙ API window.KUT
+// PUBLIC API
 // =========================================================
 
 const KEYS = {
@@ -383,9 +410,7 @@ async function reloadAll() {
 }
 
 async function registerSale({ cart, total, paymentMethod, customer, customerPhone }) {
-  if (!state.businessId) {
-    return { ok: false, error: 'no_business' };
-  }
+  if (!state.businessId) return { ok: false, error: 'no_business' };
 
   for (const item of cart) {
     const p = state.products.find((x) => x.id === item.id);
@@ -461,7 +486,7 @@ window.KUT = {
   getProducts, getSales, getDebts,
   registerSale,
   reloadAll,
-  aggregateRevenue, aggregateStock, aggregateDebts,
+  aggregateRevenue, aggregateStock, aggregateDebts, aggregateStaff,
   renderDashboard,
   getState: () => state,
   read: () => null,
@@ -495,9 +520,9 @@ async function boot() {
   state.profile = profile;
   state.businessId = profile.businessId;
 
-  // ---- Попытка привязки кассира через приглашение ----
+  // Авто-привязка кассира через приглашение
   if (!state.businessId && profile.role === 'cashier') {
-    console.info('[KUT] У кассира нет businessId — ищем приглашение по телефону');
+    console.info('[KUT] У кассира нет businessId — ищем приглашение');
     const claimed = await tryClaimStaffInvite(profile, user);
     if (claimed) {
       state.profile = claimed;
@@ -505,10 +530,19 @@ async function boot() {
     }
   }
 
-  // Приветствие в шапке
+  // Приветствие
   const who = document.getElementById('user-name');
   if (who) {
     who.textContent = profile.displayName || profile.email || 'Пользователь';
+  }
+
+  // Ссылка «Сотрудники» в сайдбаре и быстрых действиях — только для owner
+  const isOwner = profile.role === 'owner' || profile.role === 'super_admin';
+  if (isOwner) {
+    const navStaff = document.getElementById('nav-staff-link');
+    const quickStaff = document.getElementById('quick-staff');
+    if (navStaff) navStaff.hidden = false;
+    if (quickStaff) quickStaff.hidden = false;
   }
 
   if (!state.businessId) {
@@ -535,16 +569,35 @@ async function boot() {
 
     window.FB.subscribeCollection('products', (items) => {
       state.products = items;
-      if (hasDashboard) renderDashboard();
+      renderDashboard();
     });
     window.FB.subscribeCollection('sales', (items) => {
       state.sales = items;
-      if (hasDashboard) renderDashboard();
+      renderDashboard();
     });
     window.FB.subscribeCollection('debts', (items) => {
       state.debts = items;
-      if (hasDashboard) renderDashboard();
+      renderDashboard();
     });
+
+    // Подписка на сотрудников (только для владельца)
+    if (isOwner) {
+      try {
+        const { db, collection, query, where, onSnapshot } = window.FB;
+        const q = query(
+          collection(db, 'staff'),
+          where('businessId', '==', state.businessId)
+        );
+        onSnapshot(q, (snap) => {
+          state.staff = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          renderDashboard();
+        }, (err) => {
+          console.warn('[KUT] staff subscribe error:', err);
+        });
+      } catch (err) {
+        console.warn('[KUT] staff subscribe init:', err);
+      }
+    }
   }
 
   setupSidebar();
@@ -558,7 +611,7 @@ async function boot() {
     if (hasDashboard) renderDashboard();
   });
 
-  console.info('[KUT] Дашборд загружен · бизнес:', state.businessId);
+  console.info('[KUT] Дашборд загружен · бизнес:', state.businessId, '· роль:', profile.role);
 }
 
 if (document.readyState === 'loading') {
