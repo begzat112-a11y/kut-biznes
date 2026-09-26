@@ -1,6 +1,6 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v3
-   При продаже сохраняет ФИО кассира, его UID и роль.
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v4
+   Фиксирует себестоимость costPrice в каждом item продажи.
    ========================================================= */
 
 (function () {
@@ -207,9 +207,7 @@
       readerEl.innerHTML = '';
       modal.hidden = false;
       document.body.style.overflow = 'hidden';
-
       scannerInstance = new Html5Qrcode('cashScannerReader');
-
       const config = {
         fps: 10,
         qrbox: { width: 280, height: 180 },
@@ -225,7 +223,6 @@
           Html5QrcodeSupportedFormats.QR_CODE,
         ],
       };
-
       await scannerInstance.start(
         { facingMode: 'environment' },
         config,
@@ -285,7 +282,11 @@
     }
 
     if (existing) existing.qty += 1;
-    else state.cart.push({ id: product.id, name: product.name, price: product.price, unit: product.unit, qty: 1 });
+    else state.cart.push({
+      id: product.id, name: product.name, price: product.price,
+      costPrice: product.costPrice,   // ← фиксируем себестоимость
+      unit: product.unit, qty: 1,
+    });
 
     if (fromCamera) {
       if (navigator.vibrate) navigator.vibrate(80);
@@ -370,7 +371,11 @@
       return;
     }
     if (existing) existing.qty += 1;
-    else state.cart.push({ id: product.id, name: product.name, price: product.price, unit, qty: 1 });
+    else state.cart.push({
+      id: product.id, name: product.name, price: product.price,
+      costPrice: product.costPrice,
+      unit, qty: 1,
+    });
     renderCart();
     pulseCartBadge();
   }
@@ -545,10 +550,10 @@
     const currentState = window.KUT.getState ? window.KUT.getState() : null;
     const profile = currentState?.profile || null;
     const cashier = profile ? {
-      uid:        profile.uid || '',
-      name:       profile.displayName || profile.email || '',
-      email:      profile.email || '',
-      role:       profile.role || 'cashier',
+      uid:   profile.uid || '',
+      name:  profile.displayName || profile.email || '',
+      email: profile.email || '',
+      role:  profile.role || 'cashier',
     } : null;
 
     const total = getCartTotal();
@@ -558,10 +563,17 @@
       el.confirmPayBtn.textContent = 'Сохраняем...';
     }
 
+    // ⬇️ В каждый item кладём costPrice
     const result = await window.KUT.registerSale({
       cart: state.cart.map((i) => ({
-        id: i.id, name: i.name, price: i.price,
-        unit: i.unit || 'шт', qty: i.qty,
+        productId: i.id,
+        id: i.id,
+        name: i.name,
+        price: i.price,
+        costPrice: i.costPrice,
+        unit: i.unit || 'шт',
+        quantity: i.qty,
+        qty: i.qty,
       })),
       total,
       paymentMethod: state.paymentMethod,
@@ -583,7 +595,7 @@
           : `Недостаточно товара «${it.name}»: осталось ${fmt(it.available)} ${it.unit}.`;
         notify(msg, true);
       } else {
-        notify('Не удалось сохранить продажу. Проверьте интернет.', true);
+        notify('Ошибка: ' + (result.error || '') + ' ' + (result.message || ''), true);
       }
       return;
     }
@@ -663,14 +675,12 @@
     });
     if (el.confirmPayBtn) el.confirmPayBtn.addEventListener('click', confirmPayment);
     if (el.scanBtn) el.scanBtn.addEventListener('click', openScanner);
-
     document.addEventListener('click', (e) => {
       if (e.target.matches('[data-close]')) {
         const modal = e.target.closest('.modal');
         if (modal) closeModal(modal);
       }
     });
-
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (el.paymentModal && !el.paymentModal.hidden) closeModal(el.paymentModal);
@@ -678,7 +688,6 @@
       else if (scannerModal && !scannerModal.hidden) stopScanner();
       else if (el.cart) el.cart.classList.remove('is-open');
     });
-
     if (el.cartToggle) el.cartToggle.addEventListener('click', () => {
       el.cart.classList.toggle('is-open');
       if (el.cart.classList.contains('is-open')) {
@@ -694,7 +703,6 @@
         }
       }
     });
-
     window.addEventListener('beforeunload', () => {
       if (state.unsubProducts) state.unsubProducts();
     });
@@ -703,19 +711,16 @@
   async function init() {
     const st = await waitForReady();
     if (!st) { console.warn('[cash] Не дождались businessId'); return; }
-
     state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
       state.products = items.map(stockToCashProduct);
       renderCategories();
       renderProducts();
     });
-
     renderCategories();
     renderProducts();
     renderCart();
     setupManualBarcode();
     bindEvents();
-
     console.info('[cash] Касса подключена · бизнес:', st.businessId);
   }
 
