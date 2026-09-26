@@ -95,15 +95,15 @@
     .overlay.is-open { opacity: 1; pointer-events: auto; }
     @media (min-width: 1000px) { .overlay { display: none; } }
 
-    /* ===== Мобильная шапка ===== */
+    /* ===== Верхняя полоса (только имя + язык) ===== */
     .mobile-bar {
       display: flex; align-items: center; justify-content: space-between;
       gap: 8px; padding: 10px 12px;
       background: var(--kut-green); color: #fff;
       position: sticky; top: 0; z-index: 40;
       width: 100%; max-width: 100%;
+      box-shadow: var(--shadow-sm);
     }
-    @media (min-width: 1000px) { .mobile-bar { display: none; } }
     .burger {
       width: 40px; height: 40px; display: grid; place-items: center;
       background: rgba(255,255,255,.10); border: none; border-radius: 12px;
@@ -112,13 +112,12 @@
     .mobile-bar__title {
       font-weight: 700; font-size: 15px;
       overflow: hidden; text-overflow: ellipsis;
-      white-space: nowrap; min-width: 0; flex: 1; text-align: center;
+      white-space: nowrap; min-width: 0; flex: 1;
+      text-align: left; margin-left: 4px;
     }
-    .mobile-bar__badge {
-      font-size: 10px; padding: 4px 8px;
-      background: rgba(212,175,55,.22); color: var(--kut-gold);
-      border-radius: 999px; font-weight: 800;
-      letter-spacing: .5px; flex-shrink: 0; text-transform: uppercase;
+    @media (min-width: 1000px) {
+      .mobile-bar .burger { display: none; }
+      .mobile-bar__title { margin-left: 0; }
     }
 
     /* ===== Основной контент ===== */
@@ -127,7 +126,7 @@
       padding: 16px; display: flex; flex-direction: column; gap: 16px;
     }
     @media (min-width: 1000px) {
-      .main-content { padding: 28px 32px 32px; gap: 22px; }
+      .main-content { padding: 24px 32px 32px; gap: 22px; }
     }
     @media (max-width: 999px) {
       body.page-home .main-content {
@@ -393,7 +392,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v7.1-BOTTOM-NAV';
+      var BUILD = 'v8.0-CLEAN-TOPBAR';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -474,10 +473,11 @@
     </aside>
 
     <div>
+      <!-- Верхняя полоса: только бренд + переключатель языка -->
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
         <span class="mobile-bar__title">КУТ: БИЗНЕС</span>
-        <span class="mobile-bar__badge" id="mobile-role-badge">—</span>
+        <div data-kut-lang></div>
       </header>
 
       <main class="main-content">
@@ -555,7 +555,7 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · версия: v7.1</div>
+        <div class="footer">КУТ: БИЗНЕС · версия: v8.0</div>
       </main>
     </div>
   </div>
