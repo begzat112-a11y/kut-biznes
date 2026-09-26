@@ -1,8 +1,67 @@
 /* =========================================================
+   16. ШАПКА ШТОРКИ + КОМПАКТНАЯ ИКОНКА ТЕМЫ (v9.4.1)
+   ========================================================= */
+
+/* Обёртка «бренд + иконка темы» */
+.sidebar__brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;          /* запрещаем перенос — иконка всегда справа */
+  gap: 8px;
+  padding: 6px 6px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  min-width: 0;
+}
+.sidebar__brand-row .sidebar__brand {
+  padding: 0;
+  border-bottom: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.sidebar__brand-row .brand__text {
+  min-width: 0;
+  overflow: hidden;
+}
+.sidebar__brand-row .brand__text strong,
+.sidebar__brand-row .brand__text small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Компактная иконочная кнопка темы */
+.sidebar-theme {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background: rgba(212, 175, 55, 0.10);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: #F0D772;
+  border-radius: 12px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: background .18s ease, border-color .18s ease, transform .12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.sidebar-theme:hover { background: rgba(212, 175, 55, 0.20); border-color: rgba(212, 175, 55, 0.45); }
+.sidebar-theme:active { transform: scale(.94); }
+
+/* Оптимизация нижней части шторки */
+.sidebar .sidebar-logout { margin-top: 0 !important; }
+#sidebar-logout-slot { margin-top: -6px; }
+
+/* =========================================================
    17. ДАШБОРД v9.4 — Периоды, критический сток, касса-сплит
    ========================================================= */
 
-/* ─── Фильтр периодов (чипсы) ─── */
 .period-chips {
   display: flex;
   gap: 8px;
@@ -32,11 +91,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 [data-theme="light"] .period-chip { background: #FFFFFF; }
-.period-chip:hover {
-  border-color: rgba(212, 175, 55, 0.45);
-  color: var(--gold-soft);
-  background: rgba(212, 175, 55, 0.08);
-}
+.period-chip:hover { border-color: rgba(212, 175, 55, 0.45); color: var(--gold-soft); background: rgba(212, 175, 55, 0.08); }
 .period-chip:active { transform: scale(.96); }
 .period-chip.is-active {
   background: linear-gradient(135deg, #E7C14A, #B88F1D);
@@ -45,16 +100,63 @@
   box-shadow: 0 6px 18px rgba(212, 175, 55, 0.32);
 }
 
-/* ─── Детализация кассы внутри карточки «Выручка» ─── */
+/* ─── КРИТИЧНО: аналитика всегда тёмно-зелёная (в обеих темах) ─── */
+.analytics,
+[data-theme="light"] .analytics,
+[data-theme="dark"] .analytics {
+  background:
+    radial-gradient(600px 260px at 15% 0%, rgba(212, 175, 55, 0.12), transparent 60%),
+    linear-gradient(150deg, #0F2C22 0%, #071410 100%) !important;
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: var(--glass-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Стеклянные карточки внутри аналитики — на тёмном фоне читаются */
+.analytics__card,
+[data-theme="light"] .analytics__card,
+[data-theme="dark"] .analytics__card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Тексты в аналитике — всегда светлые (фон тёмный) */
+.analytics__title,
+[data-theme="light"] .analytics__title { color: #F0D772 !important; }
+
+.analytics__period,
+[data-theme="light"] .analytics__period { color: rgba(255, 255, 255, 0.72) !important; }
+
+.analytics__label,
+[data-theme="light"] .analytics__label { color: rgba(255, 255, 255, 0.72) !important; font-weight: 700; letter-spacing: .5px; }
+
+.analytics__value,
+[data-theme="light"] .analytics__value { color: #FFFFFF !important; font-weight: 800; }
+
+.analytics__value small,
+[data-theme="light"] .analytics__value small { color: rgba(255, 255, 255, 0.65) !important; }
+
+.analytics__card--revenue .analytics__value,
+[data-theme="light"] .analytics__card--revenue .analytics__value { color: #FFD86B !important; text-shadow: 0 0 22px rgba(212, 175, 55, 0.28); }
+
+.analytics__card--profit .analytics__value,
+[data-theme="light"] .analytics__card--profit .analytics__value { color: #7FE4A5 !important; text-shadow: 0 0 22px rgba(52, 211, 153, 0.24); }
+
+.analytics__card--stock .analytics__value,
+[data-theme="light"] .analytics__card--stock .analytics__value { color: #FFFFFF !important; }
+
+/* ─── Детализация кассы ─── */
 .cash-split {
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.10);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
-[data-theme="light"] .analytics .cash-split { border-top-color: rgba(255, 255, 255, 0.14); }
 
 .cash-split__row {
   display: flex;
@@ -63,33 +165,45 @@
   font-size: 12px;
   line-height: 1.2;
 }
+
 .cash-split__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
-.cash-split__dot--cash {
-  background: #34D399;
-  box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
-}
-.cash-split__dot--card {
-  background: #7DD3FC;
-  box-shadow: 0 0 10px rgba(125, 211, 252, 0.6);
-}
-.cash-split__label {
-  color: rgba(255, 255, 255, 0.7);
+.cash-split__dot--cash { background: #34D399; box-shadow: 0 0 10px rgba(52, 211, 153, 0.6); }
+.cash-split__dot--card { background: #7DD3FC; box-shadow: 0 0 10px rgba(125, 211, 252, 0.6); }
+
+.cash-split__label,
+[data-theme="light"] .cash-split__label,
+[data-theme="dark"] .cash-split__label {
+  color: rgba(255, 255, 255, 0.78) !important;   /* всегда светлый — фон тёмный */
   font-weight: 600;
   flex: 1;
   min-width: 0;
 }
-.cash-split__value {
-  color: #fff;
+
+.cash-split__value,
+[data-theme="light"] .cash-split__value,
+[data-theme="dark"] .cash-split__value {
+  color: #FFFFFF !important;                      /* всегда белый — фон тёмный */
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   letter-spacing: -0.2px;
 }
+
+/* ─── График недели — читаемые цвета на тёмной аналитике ─── */
+.chart-wrap,
+[data-theme="light"] .chart-wrap {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 18px;
+}
+.chart-wrap__title,
+[data-theme="light"] .chart-wrap__title { color: rgba(255, 255, 255, 0.72) !important; }
+.chart-wrap__total,
+[data-theme="light"] .chart-wrap__total { color: #FFD86B !important; }
+.chart__label,
+[data-theme="light"] .chart__label { color: rgba(255, 255, 255, 0.72) !important; }
 
 /* ─── Критические остатки ─── */
 .critical-stock {
@@ -111,19 +225,10 @@
   box-shadow: 0 4px 14px rgba(16, 32, 25, 0.06), inset 0 1px 0 rgba(255, 255, 255, 1);
 }
 
-.critical-stock__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
+.critical-stock__head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .critical-stock__icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  font-size: 18px;
+  width: 38px; height: 38px; border-radius: 12px;
+  display: grid; place-items: center; font-size: 18px;
   background: rgba(255, 92, 92, 0.16);
   border: 1px solid rgba(255, 92, 92, 0.28);
   flex-shrink: 0;
@@ -134,105 +239,81 @@
 }
 .critical-stock__title { flex: 1; min-width: 0; }
 .critical-stock__title strong {
-  display: block;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--coral);
-  letter-spacing: -0.2px;
+  display: block; font-size: 14px; font-weight: 800;
+  color: var(--coral); letter-spacing: -0.2px;
 }
 .critical-stock__title small {
-  display: block;
-  font-size: 11px;
-  color: var(--text-3);
-  margin-top: 2px;
+  display: block; font-size: 11px; color: var(--text-3); margin-top: 2px;
 }
 .critical-stock__link {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--coral);
-  text-decoration: none;
-  white-space: nowrap;
-  padding: 6px 10px;
+  font-size: 12px; font-weight: 700;
+  color: var(--coral); text-decoration: none;
+  white-space: nowrap; padding: 6px 10px;
   border-radius: 10px;
   background: rgba(255, 92, 92, 0.10);
   border: 1px solid rgba(255, 92, 92, 0.20);
   transition: background .16s ease, color .16s ease;
   flex-shrink: 0;
 }
-.critical-stock__link:hover {
-  background: rgba(255, 92, 92, 0.20);
-  color: var(--coral);
-}
+.critical-stock__link:hover { background: rgba(255, 92, 92, 0.20); color: var(--coral); }
 
-.critical-stock__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+.critical-stock__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .critical-stock__item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 8px;
-  border-radius: 12px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 8px; border-radius: 12px;
   transition: background .14s ease;
 }
 .critical-stock__item:hover { background: rgba(255, 92, 92, 0.06); }
 .critical-stock__item + .critical-stock__item { border-top: 1px dashed rgba(255, 92, 92, 0.14); }
+
 .critical-stock__name {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 600;
+  flex: 1; min-width: 0; font-size: 14px; font-weight: 600;
   color: var(--text-1);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+[data-theme="light"] .critical-stock__name { color: #14211C !important; }
+
 .critical-stock__qty {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  display: inline-flex; align-items: baseline; gap: 3px;
+  padding: 4px 10px; border-radius: 999px;
   background: rgba(255, 92, 92, 0.14);
   border: 1px solid rgba(255, 92, 92, 0.24);
   color: var(--coral);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  flex-shrink: 0;
+  white-space: nowrap; flex-shrink: 0;
 }
 .critical-stock__qty strong { font-size: 13px; font-weight: 800; letter-spacing: -0.2px; }
-.critical-stock__qty small {
-  font-size: 10px;
-  font-weight: 700;
-  opacity: 0.75;
-  text-transform: lowercase;
-}
+.critical-stock__qty small { font-size: 10px; font-weight: 700; opacity: 0.75; text-transform: lowercase; }
+
 .critical-stock__item.is-zero .critical-stock__qty {
   background: rgba(255, 92, 92, 0.28);
   border-color: rgba(255, 92, 92, 0.5);
   color: #fff;
   animation: criticalPulse 2s ease-in-out infinite;
 }
-[data-theme="light"] .critical-stock__item.is-zero .critical-stock__qty {
-  color: #fff;
-  background: #C0392B;
-}
+[data-theme="light"] .critical-stock__item.is-zero .critical-stock__qty { color: #fff; background: #C0392B; }
 
 .critical-stock__more {
   padding: 8px 8px 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-3);
-  text-align: center;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-3); text-align: center;
   list-style: none;
 }
 
 @keyframes criticalPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 92, 92, 0.5); }
   50%      { box-shadow: 0 0 0 6px rgba(255, 92, 92, 0); }
+}
+
+/* =========================================================
+   18. ФИКС НАЛОЖЕНИЯ ГРАФИКА И BOTTOM-NAV (v9.4.1)
+   ========================================================= */
+@media (max-width: 999px) {
+  body.page-home .main-content,
+  body.page-cash .pos,
+  body.page-stock .wrap,
+  body.page-debts .wrap,
+  body.page-staff .wrap {
+    padding-bottom: calc(170px + env(safe-area-inset-bottom)) !important;
+  }
 }
