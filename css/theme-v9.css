@@ -652,5 +652,51 @@ input:focus-visible {
    16. ПЛАНШЕТ / ПК
    ========================================================= */
 @media (min-width: 1000px) {
+  /* =========================================================
+   17. КНОПКА «СМЕНИТЬ ТЕМУ» В ШТОРКЕ (v9.2)
+   ========================================================= */
+.sidebar-theme {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 14px;
+  margin-top: 8px;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  color: #F0D772;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background .18s ease, color .18s ease, border-color .18s ease, transform .12s ease;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+.sidebar-theme:hover {
+  background: rgba(212, 175, 55, 0.16);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #FFD86B;
+}
+.sidebar-theme:active {
+  transform: scale(.98);
+}
+.sidebar-theme__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.sidebar-theme__text {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-theme__chevron {
+  font-size: 18px;
+  opacity: .55;
+  flex-shrink: 0;
+  line-height: 1;
+} 
   .bottom-nav { display: none !important; }
 }
