@@ -1,14 +1,16 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v4
-   Себестоимость costPrice — обязательное число.
+   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v5
+   + своя категория через «Другое»
+   + категории подтягиваются из существующих товаров
    ========================================================= */
 
 (function () {
   'use strict';
 
   const LOW_STOCK_THRESHOLD = 5;
-  const CATEGORIES = ['Одежда', 'Продукты', 'Напитки', 'Выпечка', 'Услуги', 'Хозтовары', 'Другое'];
-  const CHIP_CATEGORIES = ['Все', ...CATEGORIES];
+  const BASE_CATEGORIES = ['Одежда', 'Продукты', 'Напитки', 'Выпечка', 'Услуги', 'Хозтовары'];
+  const OTHER_LABEL = 'Другое';
+  const CHIP_OTHER = 'Все';
 
   const state = {
     products: [],
@@ -39,6 +41,8 @@
     productId:         $('#productId'),
     fName:             $('#fName'),
     fCategory:         $('#fCategory'),
+    customCategoryWrap:$('#customCategoryWrap'),
+    fCustomCategory:   $('#fCustomCategory'),
     fUnit:             $('#fUnit'),
     fQty:              $('#fQty'),
     fCost:             $('#fCost'),
@@ -97,7 +101,77 @@
     }
   }
 
-  // ===== Сканер =====
+  // =========================================================
+  // КАТЕГОРИИ
+  // =========================================================
+
+  /** Собираем полный список категорий = базовые + уникальные из товаров */
+  function getAllCategories() {
+    const set = new Set(BASE_CATEGORIES);
+    (state.products || []).forEach((p) => {
+      const cat = String(p.category || '').trim();
+      if (cat && cat !== OTHER_LABEL) set.add(cat);
+    });
+    return Array.from(set);
+  }
+
+  function getChipCategories() {
+    const set = new Set([CHIP_OTHER, ...getAllCategories()]);
+    return Array.from(set);
+  }
+
+  function isBaseCategory(cat) {
+    return BASE_CATEGORIES.indexOf(cat) !== -1;
+  }
+
+  /** Отрисовываем select с категориями + «Другое» в конце */
+  function renderCategoryOptions(selected) {
+    if (!el.fCategory) return;
+    const cats = getAllCategories();
+    const options = cats
+      .map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`)
+      .join('');
+    const otherSelected = selected && !cats.includes(selected) ? ' selected' : '';
+    el.fCategory.innerHTML = options +
+      `<option value="${OTHER_LABEL}"${otherSelected}>${OTHER_LABEL}</option>`;
+
+    if (selected && cats.includes(selected)) {
+      el.fCategory.value = selected;
+    } else if (selected && !cats.includes(selected)) {
+      el.fCategory.value = OTHER_LABEL;
+    }
+  }
+
+  function toggleCustomCategory(show) {
+    if (!el.customCategoryWrap) return;
+    el.customCategoryWrap.classList.toggle('is-visible', Boolean(show));
+    if (show) {
+      requestAnimationFrame(() => el.fCustomCategory && el.fCustomCategory.focus());
+    } else if (el.fCustomCategory) {
+      el.fCustomCategory.value = '';
+      el.fCustomCategory.classList.remove('is-invalid');
+    }
+  }
+
+  function syncCustomCategoryVisibility() {
+    const isOther = el.fCategory.value === OTHER_LABEL;
+    toggleCustomCategory(isOther);
+    setFieldError('fCategory', '');
+  }
+
+  /** Возвращает финальную категорию для сохранения */
+  function resolveCategory() {
+    const sel = el.fCategory.value;
+    if (sel === OTHER_LABEL) {
+      const custom = (el.fCustomCategory.value || '').trim();
+      return custom;
+    }
+    return sel;
+  }
+
+  // =========================================================
+  // Сканер штрихкода
+  // =========================================================
   let scannerModal = null;
   let scannerInstance = null;
 
@@ -190,7 +264,9 @@
     document.body.style.overflow = '';
   }
 
-  // ===== Рендер =====
+  // =========================================================
+  // Рендер
+  // =========================================================
   function renderStats() {
     const list = state.products;
     const totalItems = list.length;
@@ -205,12 +281,12 @@
 
   function renderChips() {
     if (!el.chips) return;
-    el.chips.innerHTML = CHIP_CATEGORIES.map((cat) => {
+    const cats = getChipCategories();
+    el.chips.innerHTML = cats.map((cat) => {
       const active = cat === state.category ? ' is-active' : '';
-      const label = window.KUT_LANG?.tCategory(cat) || cat;
       return `<button class="chip${active}" type="button" role="tab"
               aria-selected="${cat === state.category}"
-              data-cat="${escapeHtml(cat)}">${escapeHtml(label)}</button>`;
+              data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
     }).join('');
   }
 
@@ -264,6 +340,9 @@
       const qtyBtns2 = state.canEdit
         ? `<button class="qty-btn" type="button" data-act="inc">+</button>` : '';
 
+      const isCustom = !isBaseCategory(p.category);
+      const badgeCls = isCustom ? 'badge badge--custom' : 'badge';
+
       return `
         <tr data-id="${escapeHtml(p.id)}">
           <td data-label="Товар">
@@ -275,7 +354,7 @@
               </div>
             </div>
           </td>
-          <td data-label="Категория"><span class="badge">${escapeHtml(p.category)}</span></td>
+          <td data-label="Категория"><span class="${badgeCls}">${escapeHtml(p.category)}</span></td>
           <td data-label="Остаток">
             <div class="qty-cell">
               ${qtyBtns}
@@ -305,7 +384,9 @@
     }).join('');
   }
 
-  // ===== Операции =====
+  // =========================================================
+  // Операции
+  // =========================================================
   async function changeQty(productId, delta) {
     if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
@@ -329,12 +410,16 @@
     el.productForm.reset();
     el.productId.value = '';
     el.fName.value = '';
-    el.fCategory.value = CATEGORIES[0];
+    renderCategoryOptions(BASE_CATEGORIES[0]);
     el.fUnit.value = 'шт';
     el.fQty.value = '';
     el.fCost.value = '';
     el.fSale.value = '';
     el.fBarcode.value = '';
+    if (el.fCustomCategory) el.fCustomCategory.value = '';
+
+    // спрятать поле «своя категория»
+    el.customCategoryWrap.classList.remove('is-visible');
 
     clearFieldErrors();
     updateMarginPreview();
@@ -353,7 +438,22 @@
 
     el.productId.value = p.id;
     el.fName.value = p.name || '';
-    el.fCategory.value = CATEGORIES.includes(p.category) ? p.category : 'Другое';
+
+    // Определяем, базовая ли категория
+    const cat = String(p.category || '').trim();
+    const isCustom = cat && !isBaseCategory(cat);
+
+    if (isCustom) {
+      renderCategoryOptions(OTHER_LABEL);
+      el.fCategory.value = OTHER_LABEL;
+      el.customCategoryWrap.classList.add('is-visible');
+      if (el.fCustomCategory) el.fCustomCategory.value = cat;
+    } else {
+      renderCategoryOptions(cat);
+      el.customCategoryWrap.classList.remove('is-visible');
+      if (el.fCustomCategory) el.fCustomCategory.value = '';
+    }
+
     el.fUnit.value = p.unit || 'шт';
     el.fQty.value = p.qty ?? '';
     el.fCost.value = p.costPrice ?? '';
@@ -412,10 +512,9 @@
       }
     }
 
-    // ⬇️ Себестоимость и цена продажи сохраняются КАК ЧИСЛА (Number)
     const data = {
       name: el.fName.value.trim(),
-      category: el.fCategory.value,
+      category: resolveCategory(),  // либо базовая, либо пользовательская
       unit: el.fUnit.value,
       qty: Number(el.fQty.value) || 0,
       costPrice: Number(el.fCost.value) || 0,
@@ -447,7 +546,9 @@
     }
   }
 
-  // ===== Валидация =====
+  // =========================================================
+  // Валидация
+  // =========================================================
   function setFieldError(fieldId, message) {
     const input = document.getElementById(fieldId);
     const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
@@ -468,14 +569,42 @@
   function validateForm() {
     clearFieldErrors();
     let ok = true;
-    if (el.fName.value.trim().length < 2) { setFieldError('fName', 'Название минимум 2 символа'); ok = false; }
+
+    if (el.fName.value.trim().length < 2) {
+      setFieldError('fName', 'Название минимум 2 символа');
+      ok = false;
+    }
+
+    // Категория
+    const finalCat = resolveCategory();
+    if (el.fCategory.value === OTHER_LABEL) {
+      if (!finalCat || finalCat.length < 2) {
+        setFieldError('fCategory', 'Введите название категории (мин. 2 символа)');
+        if (el.fCustomCategory) el.fCustomCategory.classList.add('is-invalid');
+        ok = false;
+      } else if (finalCat === OTHER_LABEL) {
+        setFieldError('fCategory', 'Введите название своей категории');
+        ok = false;
+      }
+    } else if (!finalCat) {
+      setFieldError('fCategory', 'Выберите категорию');
+      ok = false;
+    }
+
     const qty = Number(el.fQty.value);
-    if (el.fQty.value === '' || Number.isNaN(qty) || qty < 0) { setFieldError('fQty', 'Введите количество'); ok = false; }
+    if (el.fQty.value === '' || Number.isNaN(qty) || qty < 0) {
+      setFieldError('fQty', 'Введите количество'); ok = false;
+    }
     const cost = Number(el.fCost.value);
-    if (el.fCost.value === '' || Number.isNaN(cost) || cost < 0) { setFieldError('fCost', 'Введите себестоимость (0 или больше)'); ok = false; }
+    if (el.fCost.value === '' || Number.isNaN(cost) || cost < 0) {
+      setFieldError('fCost', 'Введите себестоимость (0 или больше)'); ok = false;
+    }
     const sale = Number(el.fSale.value);
-    if (el.fSale.value === '' || Number.isNaN(sale) || sale < 0) { setFieldError('fSale', 'Введите цену продажи'); ok = false; }
+    if (el.fSale.value === '' || Number.isNaN(sale) || sale < 0) {
+      setFieldError('fSale', 'Введите цену продажи'); ok = false;
+    }
     if (ok && sale < cost) setFieldError('fSale', 'Цена продажи ниже себестоимости — проверьте');
+
     return ok;
   }
   function updateMarginPreview() {
@@ -499,6 +628,9 @@
     }
   }
 
+  // =========================================================
+  // Модалки
+  // =========================================================
   let lastFocused = null;
   function openModal(modal) {
     lastFocused = document.activeElement;
@@ -511,9 +643,13 @@
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
+  // =========================================================
+  // События
+  // =========================================================
   function bindEvents() {
     if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
     if (el.emptyAddBtn) el.emptyAddBtn.addEventListener('click', openAddModal);
+
     if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
       state.search = e.target.value; renderTable();
     });
@@ -536,6 +672,22 @@
       else if (act === 'edit') openEditModal(id);
       else if (act === 'delete') openDeleteModal(id);
     });
+
+    // Select категории — показываем/прячем поле «своя категория»
+    if (el.fCategory) {
+      el.fCategory.addEventListener('change', syncCustomCategoryVisibility);
+    }
+    // Автоочистка ошибки при вводе своей категории
+    if (el.fCustomCategory) {
+      el.fCustomCategory.addEventListener('input', () => {
+        if (el.fCustomCategory.classList.contains('is-invalid')) {
+          el.fCustomCategory.classList.remove('is-invalid');
+          const hint = document.querySelector('.field__hint[data-for="fCategory"]');
+          if (hint) { hint.textContent = ''; hint.classList.remove('is-error'); }
+        }
+      });
+    }
+
     if (el.productForm) el.productForm.addEventListener('submit', saveProduct);
     ['input', 'change'].forEach((ev) => {
       if (el.fCost) el.fCost.addEventListener(ev, updateMarginPreview);
@@ -544,6 +696,7 @@
     });
     if (el.barcodeScanBtn) el.barcodeScanBtn.addEventListener('click', openScanner);
     if (el.confirmDeleteBtn) el.confirmDeleteBtn.addEventListener('click', confirmDelete);
+
     document.addEventListener('click', (e) => {
       if (e.target.matches('[data-close]')) {
         const modal = e.target.closest('.modal');
@@ -564,30 +717,37 @@
     });
   }
 
-  function renderCategoryOptions() {
-    if (!el.fCategory) return;
-    el.fCategory.innerHTML = CATEGORIES
-      .map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`)
-      .join('');
-  }
-
+  // =========================================================
+  // Инициализация
+  // =========================================================
   async function init() {
     const st = await waitForReady();
     if (!st) { console.warn('[stock] Не дождались businessId'); return; }
+
     const role = st.profile?.role;
     state.canEdit = role === 'owner' || role === 'manager' || role === 'super_admin';
     if (!state.canEdit) {
       if (el.openAddBtn) el.openAddBtn.style.display = 'none';
       if (el.emptyAddBtn) el.emptyAddBtn.style.display = 'none';
     }
-    renderCategoryOptions();
+
+    renderCategoryOptions(BASE_CATEGORIES[0]);
     renderChips();
     renderStats();
+
     state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
       state.products = items;
       renderStats();
       renderTable();
+      renderChips();
+
+      // Обновляем select, если модалка закрыта — чтобы новые категории появлялись
+      // при следующем открытии. Если открыта — оставляем как есть, чтобы не сбить ввод.
+      if (!el.productModal || el.productModal.hidden) {
+        renderCategoryOptions(el.fCategory.value || BASE_CATEGORIES[0]);
+      }
     });
+
     bindEvents();
     console.info('[stock] Подключено · роль:', role, '· canEdit:', state.canEdit);
   }
