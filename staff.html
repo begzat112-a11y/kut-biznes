@@ -25,7 +25,7 @@
     .sidebar { padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; position: fixed; top: 0; left: 0; bottom: 0; width: 82%; max-width: 320px; z-index: 90; transform: translateX(-105%); transition: transform .28s cubic-bezier(.2,.8,.2,1); overflow-y: auto; }
     .sidebar.is-open { transform: translateX(0); }
     @media (min-width: 1000px) { .sidebar { transform: none; width: var(--sidebar-w); max-width: none; position: sticky; top: 0; height: 100dvh; } }
-    .sidebar__brand { display: flex; align-items: center; gap: 10px; padding: 6px 6px 14px; border-bottom: 1px solid rgba(255,255,255,.10); text-decoration: none; }
+    .sidebar__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
     .brand__mark { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex-shrink: 0; box-shadow: 0 6px 16px rgba(212,175,55,.35); }
     .brand__text strong { display: block; font-size: 15px; }
     .brand__text small { display: block; font-size: 11px; color: rgba(237,245,241,.5); margin-top: 2px; }
@@ -205,7 +205,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v9.2-GLOBAL-HEADER-STAFF';
+      var BUILD = 'v9.3-THEME-TOP-STAFF';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -238,10 +238,15 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
       <div id="sidebar-profile-slot"></div>
-      <a href="./index.html" class="sidebar__brand">
-        <span class="brand__mark" aria-hidden="true">К</span>
-        <span class="brand__text"><strong>КУТ: БИЗНЕС</strong><small>Учёт для малого бизнеса</small></span>
-      </a>
+
+      <div class="sidebar__brand-row">
+        <a href="./index.html" class="sidebar__brand">
+          <span class="brand__mark" aria-hidden="true">К</span>
+          <span class="brand__text"><strong>КУТ: БИЗНЕС</strong><small>Учёт для малого бизнеса</small></span>
+        </a>
+        <div id="sidebar-theme-slot"></div>
+      </div>
+
       <nav class="sidebar__nav" aria-label="Навигация">
         <a href="./index.html" class="nav-link"><span class="nav-link__icon">🏠</span><span>Главная</span></a>
         <a href="./cash.html" class="nav-link"><span class="nav-link__icon">🧾</span><span>Касса</span></a>
@@ -249,12 +254,14 @@
         <a href="./debts.html" class="nav-link"><span class="nav-link__icon">📒</span><span>Несие (долги)</span><span class="nav-link__badge" id="nav-debts-count" hidden>0</span></a>
         <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden><span class="nav-link__icon">👥</span><span>Сотрудники</span><span class="nav-link__badge" id="nav-staff-count" hidden>0</span></a>
       </nav>
+
       <a href="./cash.html" class="sidebar__cta" aria-label="Открыть кассу">
         <span class="sidebar__cta__icon" aria-hidden="true">＋</span>
         <span class="sidebar__cta__text"><strong>Открыть кассу</strong><small>Новая продажа</small></span>
       </a>
+
       <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
-      <div id="sidebar-theme-slot"></div>
+
       <div id="sidebar-logout-slot"></div>
     </aside>
 
@@ -421,32 +428,6 @@
       </div>
     </div>
   </div>
-
-  <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация" style="display:none;">
-    <a href="./index.html" class="bottom-nav__item" data-page="index"><span class="bottom-nav__icon">🏠</span><span>Главная</span></a>
-    <a href="./stock.html" class="bottom-nav__item" data-page="stock"><span class="bottom-nav__icon">📦</span><span>Склад</span></a>
-    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать"><span aria-hidden="true">📷</span></button>
-    <a href="./cash.html" class="bottom-nav__item" data-page="cash"><span class="bottom-nav__icon">⚡</span><span>Касса</span></a>
-    <a href="./debts.html" class="bottom-nav__item" data-page="debts"><span class="bottom-nav__icon">📒</span><span>Несие</span><span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span></a>
-  </nav>
-
-  <script>
-    (function () {
-      function sync() {
-        var src = document.getElementById('nav-debts-count');
-        var dst = document.getElementById('nav-debts-count-bottom');
-        if (!src || !dst) return;
-        var has = !src.hidden && src.textContent && src.textContent !== '0';
-        if (has) { dst.textContent = src.textContent; dst.hidden = false; }
-        else { dst.hidden = true; }
-      }
-      setTimeout(sync, 500); setTimeout(sync, 1500); setTimeout(sync, 3000);
-      var src = document.getElementById('nav-debts-count');
-      if (src && 'MutationObserver' in window) {
-        new MutationObserver(sync).observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
-      }
-    })();
-  </script>
 
   <script src="./js/theme.js"></script>
   <script src="./js/ui-chrome.js"></script>
