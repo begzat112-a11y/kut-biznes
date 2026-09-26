@@ -386,4 +386,57 @@
       <p class="modal__subtitle" id="waClientInfo"></p>
       <div class="lang-options">
         <button class="lang-option" type="button" data-lang="ru"><span class="lang-option__flag">🇷🇺</span><span><span>По-русски</span><span class="lang-option__preview" id="previewRu"></span></span></button>
-        <button class="lang-option" type="button" data-lang="kg"><span class="lang-option__flag">🇰🇬</span><span><span>Кыргызча</span><span class="lang-option__preview" id="previewKg"></span></span></button
+        <button class="lang-option" type="button" data-lang="kg"><span class="lang-option__flag">🇰🇬</span><span><span>Кыргызча</span><span class="lang-option__preview" id="previewKg"></span></span></button>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn--ghost btn--block" type="button" data-close>Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="deleteModal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+      <h3>Удалить запись о долге?</h3>
+      <p class="modal__subtitle" id="deleteName"></p>
+      <p style="color:var(--text-3); font-size:13px; margin:0 0 4px;">Действие нельзя отменить.</p>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" type="button" data-close>Отмена</button>
+        <button class="btn btn--danger" type="button" id="confirmDeleteBtn">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
+    <a href="./index.html" class="bottom-nav__item" data-page="index"><span class="bottom-nav__icon" aria-hidden="true">🏠</span><span>Главная</span></a>
+    <a href="./stock.html" class="bottom-nav__item" data-page="stock"><span class="bottom-nav__icon" aria-hidden="true">📦</span><span>Склад</span></a>
+    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать штрихкод"><span aria-hidden="true">📷</span></button>
+    <a href="./cash.html" class="bottom-nav__item" data-page="cash"><span class="bottom-nav__icon" aria-hidden="true">⚡</span><span>Касса</span></a>
+    <a href="./debts.html" class="bottom-nav__item" data-page="debts"><span class="bottom-nav__icon" aria-hidden="true">📒</span><span>Несие</span><span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span></a>
+  </nav>
+
+  <script>
+    (function () {
+      function sync() {
+        var src = document.getElementById('nav-debts-count');
+        var dst = document.getElementById('nav-debts-count-bottom');
+        if (!src || !dst) return;
+        var has = !src.hidden && src.textContent && src.textContent !== '0';
+        if (has) { dst.textContent = src.textContent; dst.hidden = false; }
+        else { dst.hidden = true; }
+      }
+      setTimeout(sync, 500); setTimeout(sync, 1500); setTimeout(sync, 3000);
+      var src = document.getElementById('nav-debts-count');
+      if (src && 'MutationObserver' in window) {
+        new MutationObserver(sync).observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
+      }
+    })();
+  </script>
+
+  <script src="./js/theme.js"></script>
+  <script src="./js/ui-chrome.js"></script>
+  <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/debts.js"></script>
+  <script src="./js/lang.js"></script>
+</body>
+</html>
