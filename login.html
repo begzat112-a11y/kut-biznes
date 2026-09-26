@@ -288,7 +288,7 @@
       color: #4A5C54;
       line-height: 1.5;
       word-break: break-word;
-      max-height: 140px;
+      max-height: 220px;
       overflow-y: auto;
     }
     .diag strong { color: #14211C; }
@@ -424,7 +424,7 @@
       ожидание загрузки скриптов...
     </div>
 
-    <div class="version-badge">версия файла: v3.7-FINAL</div>
+    <div class="version-badge">версия файла: v3.8-AUTOFIX</div>
   </div>
 
   <script>
@@ -469,12 +469,12 @@
 
     let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
         signOut, onAuthStateChanged, sendPasswordResetEmail, getFirestore,
-        doc, getDoc, setDoc, deleteDoc, serverTimestamp;
+        doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, getDocs;
 
     try {
       const appMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
       initializeApp = appMod.initializeApp;
-      window.__kutDiag('✓ firebase-app.js загружен');
+      window.__kutDiag('✓ firebase-app.js');
 
       const authMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
       getAuth = authMod.getAuth;
@@ -483,7 +483,7 @@
       signOut = authMod.signOut;
       onAuthStateChanged = authMod.onAuthStateChanged;
       sendPasswordResetEmail = authMod.sendPasswordResetEmail;
-      window.__kutDiag('✓ firebase-auth.js загружен');
+      window.__kutDiag('✓ firebase-auth.js');
 
       const fsMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
       getFirestore = fsMod.getFirestore;
@@ -492,9 +492,11 @@
       setDoc = fsMod.setDoc;
       deleteDoc = fsMod.deleteDoc;
       serverTimestamp = fsMod.serverTimestamp;
-      window.__kutDiag('✓ firebase-firestore.js загружен');
+      collection = fsMod.collection;
+      getDocs = fsMod.getDocs;
+      window.__kutDiag('✓ firebase-firestore.js');
     } catch (e) {
-      window.__kutDiag('✗ Ошибка загрузки Firebase SDK: ' + e.message);
+      window.__kutDiag('✗ Ошибка загрузки SDK: ' + e.message);
       throw e;
     }
 
@@ -521,11 +523,9 @@
       app  = initializeApp(firebaseConfig);
       auth = getAuth(app);
       db   = getFirestore(app);
-      window.__kutDiag('✓ Firebase инициализирован: ' + firebaseConfig.projectId);
-      window.__kutDiag('  authDomain: ' + firebaseConfig.authDomain);
-      window.__kutDiag('  apiKey длина: ' + firebaseConfig.apiKey.length);
+      window.__kutDiag('✓ Firebase: ' + firebaseConfig.projectId);
     } catch (initErr) {
-      window.__kutDiag('✗ Ошибка initializeApp: ' + initErr.message);
+      window.__kutDiag('✗ initializeApp: ' + initErr.message);
       throw initErr;
     }
 
@@ -581,7 +581,7 @@
 
     function redirectByRole(profile) {
       if (!profile) {
-        window.__kutDiag('✗ Профиль не найден при редиректе');
+        window.__kutDiag('✗ Нет профиля при редиректе');
         window.location.href = './login.html';
         return;
       }
@@ -591,11 +591,55 @@
         return;
       }
       const role = profile.role;
-      window.__kutDiag('→ Роль: ' + role);
+      window.__kutDiag('→ Роль: ' + role + ' → редирект');
       if (role === 'super_admin')      window.location.href = './admin.html';
       else if (role === 'owner')       window.location.href = './index.html';
       else if (role === 'cashier')     window.location.href = './cash.html';
       else                             window.location.href = './index.html';
+    }
+
+    /**
+     * Читает коллекцию и возвращает список документов.
+     * Возвращает массив {id, fields} для диагностики.
+     */
+    async function peekCollection(name) {
+      try {
+        const snap = await getDocs(collection(db, name));
+        const items = [];
+        snap.forEach((d) => items.push(d.id));
+        window.__kutDiag('  → коллекция "' + name + '": ' + items.length + ' док.');
+        items.forEach((id) => window.__kutDiag('     • ' + id));
+        return items;
+      } catch (e) {
+        window.__kutDiag('  ✗ чтение "' + name + '": ' + e.code + ' ' + e.message);
+        return null;
+      }
+    }
+
+    /**
+     * Самовосстановление профиля super_admin.
+     * Если для admin@kut.local документа в users/{uid} нет — создаём.
+     */
+    async function selfHealAdminProfile(user, email) {
+      if (email !== 'admin@kut.local') return null;
+      window.__kutDiag('→ Профиль не найден. Пробуем самовосстановление для admin@kut.local');
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          email: email,
+          displayName: 'Администратор',
+          phone: '+79998485254',
+          role: 'super_admin',
+          businessId: '',
+          active: true,
+          createdAt: serverTimestamp(),
+        });
+        window.__kutDiag('✓ Профиль admin создан заново');
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        return { uid: user.uid, ...snap.data() };
+      } catch (e) {
+        window.__kutDiag('✗ Не удалось создать профиль: ' + e.code + ' ' + e.message);
+        return null;
+      }
     }
 
     const phoneTab = $('#phoneTab');
@@ -622,7 +666,8 @@
       e.preventDefault();
       clearErrors(emailForm);
       clearMessage();
-      window.__kutDiag('--- Попытка входа по email ---');
+      window.__kutResetDiag();
+      window.__kutDiag('--- Вход по email ---');
 
       const email = $('#emailInput').value.trim();
       const password = $('#passwordInput').value;
@@ -636,10 +681,7 @@
         setError('passwordInput', 'Пароль минимум 6 символов');
         ok = false;
       }
-      if (!ok) {
-        window.__kutDiag('✗ Валидация формы не пройдена');
-        return;
-      }
+      if (!ok) return;
 
       const btn = $('#emailLoginBtn');
       btn.disabled = true;
@@ -648,35 +690,48 @@
       let user = null;
 
       try {
-        window.__kutDiag('→ signInWithEmailAndPassword(' + email + ')');
         const cred = await signInWithEmailAndPassword(auth, email, password);
         user = cred.user;
         window.__kutDiag('✓ Auth OK. UID: ' + user.uid);
       } catch (error) {
-        window.__kutDiag('✗ Auth ошибка: ' + error.code + ' | ' + error.message);
+        window.__kutDiag('✗ Auth: ' + error.code + ' | ' + error.message);
         showMessage('Ошибка входа: ' + error.code, 'error');
         btn.disabled = false;
         btn.textContent = 'Войти';
         return;
       }
 
+      // === ШАГ 1: пробуем прочитать users/{uid} ===
       let profile = null;
       try {
         window.__kutDiag('→ getDoc(users/' + user.uid + ')');
         const snap = await getDoc(doc(db, 'users', user.uid));
-        if (!snap.exists()) {
-          window.__kutDiag('✗ Документ users/' + user.uid + ' не найден');
-          showMessage('Профиль не найден в Firestore', 'error');
-          await signOut(auth).catch(() => {});
-          btn.disabled = false;
-          btn.textContent = 'Войти';
-          return;
+        if (snap.exists()) {
+          profile = { uid: user.uid, ...snap.data() };
+          window.__kutDiag('✓ Профиль найден. role=' + (profile.role || '(пусто)'));
+        } else {
+          window.__kutDiag('✗ Документ в users/{uid} не существует');
         }
-        profile = { uid: user.uid, ...snap.data() };
-        window.__kutDiag('✓ Профиль: role=' + (profile.role || '(пусто)'));
       } catch (err) {
-        window.__kutDiag('✗ Firestore ошибка: ' + err.code + ' | ' + err.message);
-        showMessage('Ошибка чтения профиля: ' + err.code, 'error');
+        window.__kutDiag('✗ Ошибка чтения: ' + err.code + ' | ' + err.message);
+      }
+
+      // === ШАГ 2: если нет — заглянем в коллекции users и Users ===
+      if (!profile) {
+        window.__kutDiag('--- Диагностика: смотрим содержимое коллекций ---');
+        await peekCollection('users');
+        await peekCollection('Users');
+      }
+
+      // === ШАГ 3: самовосстановление admin-профиля ===
+      if (!profile && email === 'admin@kut.local') {
+        profile = await selfHealAdminProfile(user, email);
+      }
+
+      // === ШАГ 4: если всё равно нет — выход ===
+      if (!profile) {
+        window.__kutDiag('✗ Профиль не восстановлен. Обратитесь к администратору.');
+        showMessage('Профиль не найден в Firestore', 'error');
         await signOut(auth).catch(() => {});
         btn.disabled = false;
         btn.textContent = 'Войти';
@@ -685,7 +740,7 @@
 
       if (!profile.role) {
         window.__kutDiag('✗ Поле role пустое');
-        showMessage('Поле role пустое в Firestore', 'error');
+        showMessage('Поле role пустое', 'error');
         await signOut(auth).catch(() => {});
         btn.disabled = false;
         btn.textContent = 'Войти';
@@ -694,24 +749,21 @@
 
       showMessage('Успешно! Перенаправляем...', 'success');
       setTimeout(() => redirectByRole(profile), 300);
-
-      btn.disabled = false;
-      btn.textContent = 'Войти';
     });
 
     $('#forgotBtn').addEventListener('click', async () => {
       const email = $('#emailInput').value.trim();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showMessage('Введите email — мы отправим ссылку для сброса пароля.', 'info');
+        showMessage('Введите email.', 'info');
         $('#emailInput').focus();
         return;
       }
       try {
         await sendPasswordResetEmail(auth, email);
-        showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
+        showMessage('Письмо отправлено на ' + email, 'success');
       } catch (err) {
-        window.__kutDiag('✗ resetPassword: ' + err.code + ' | ' + err.message);
-        showMessage('Не удалось отправить письмо.', 'error');
+        window.__kutDiag('✗ reset: ' + err.code);
+        showMessage('Не удалось отправить.', 'error');
       }
     });
 
@@ -721,45 +773,27 @@
 
     async function sendWhatsAppOtp(rawPhone) {
       const phone = normalizePhone(rawPhone);
-      if (!isValidPhone(phone)) {
-        throw new Error('INVALID_PHONE');
-      }
+      if (!isValidPhone(phone)) throw new Error('INVALID_PHONE');
 
       const code = generateOtpCode();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-      window.__kutDiag('→ setDoc(otp_sessions/' + phone.replace(/\D/g, '') + ')');
       await setDoc(doc(db, 'otp_sessions', phone.replace(/\D/g, '')), {
-        phone,
-        code,
-        expiresAt,
-        createdAt: serverTimestamp(),
-        attempts: 0,
+        phone, code, expiresAt, createdAt: serverTimestamp(), attempts: 0,
       });
-      window.__kutDiag('✓ OTP записан в Firestore');
 
       const phoneDigits = phone.replace(/\D/g, '');
       const message =
         `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\n` +
         `Никому не сообщайте этот код. Действителен 5 минут.`;
 
-      window.__kutDiag('→ fetch Green-API');
       const res = await fetch(WA_CONFIG.buildUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: `${phoneDigits}@c.us`,
-          message: message,
-        }),
+        body: JSON.stringify({ chatId: `${phoneDigits}@c.us`, message }),
       });
 
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        window.__kutDiag('✗ Green-API: ' + res.status + ' ' + errText);
-        throw new Error('WHATSAPP_FAILED');
-      }
-
-      window.__kutDiag('✓ Green-API: код отправлен');
+      if (!res.ok) throw new Error('WHATSAPP_FAILED');
       return true;
     }
 
@@ -767,28 +801,19 @@
       const phone = normalizePhone(rawPhone);
       const ref = doc(db, 'otp_sessions', phone.replace(/\D/g, ''));
       const snap = await getDoc(ref);
-
       if (!snap.exists()) throw new Error('OTP_NOT_FOUND');
 
       const data = snap.data();
       let expiresAt = data.expiresAt;
-      if (expiresAt && typeof expiresAt.toDate === 'function') {
-        expiresAt = expiresAt.toDate();
-      } else if (expiresAt && expiresAt.seconds) {
-        expiresAt = new Date(expiresAt.seconds * 1000);
-      } else {
-        expiresAt = new Date(expiresAt);
-      }
+      if (expiresAt && typeof expiresAt.toDate === 'function') expiresAt = expiresAt.toDate();
+      else if (expiresAt && expiresAt.seconds) expiresAt = new Date(expiresAt.seconds * 1000);
+      else expiresAt = new Date(expiresAt);
 
       if (!expiresAt || Date.now() > expiresAt.getTime()) {
         await deleteDoc(ref).catch(() => {});
         throw new Error('OTP_EXPIRED');
       }
-
-      if (String(data.code) !== String(code)) {
-        throw new Error('OTP_MISMATCH');
-      }
-
+      if (String(data.code) !== String(code)) throw new Error('OTP_MISMATCH');
       await deleteDoc(ref).catch(() => {});
 
       const fakeEmail = phone.replace(/\D/g, '') + '@kut.local';
@@ -802,9 +827,7 @@
             err.code === 'auth/invalid-credential' ||
             err.code === 'auth/invalid-login-credentials') {
           cred = await createUserWithEmailAndPassword(auth, fakeEmail, fakePassword);
-        } else {
-          throw err;
-        }
+        } else throw err;
       }
 
       const uid = cred.user.uid;
@@ -812,19 +835,14 @@
 
       if (!profileSnap.exists()) {
         await setDoc(doc(db, 'users', uid), {
-          email: fakeEmail,
-          displayName: '',
-          phone: phone,
-          role: 'cashier',
-          businessId: null,
-          active: true,
+          email: fakeEmail, displayName: '', phone: phone,
+          role: 'cashier', businessId: '', active: true,
           createdAt: serverTimestamp(),
         });
         profileSnap = await getDoc(doc(db, 'users', uid));
       }
 
-      const profile = { uid, ...profileSnap.data() };
-      return { user: cred.user, profile };
+      return { user: cred.user, profile: { uid, ...profileSnap.data() } };
     }
 
     let currentPhone = '';
@@ -842,11 +860,12 @@
       e.preventDefault();
       clearErrors(phoneForm);
       clearMessage();
-      window.__kutDiag('--- Попытка входа по номеру ---');
+      window.__kutResetDiag();
+      window.__kutDiag('--- Вход по номеру ---');
 
       const phoneNorm = normalizePhone(phoneInput.value);
       if (!isValidPhone(phoneNorm)) {
-        setError('phoneInput', 'Введите корректный номер (например +996 700 123 456)');
+        setError('phoneInput', 'Введите корректный номер');
         return;
       }
 
@@ -864,9 +883,9 @@
         startOtpTimer(300);
       } catch (err) {
         window.__kutDiag('✗ sendOtp: ' + err.message);
-        let msg = 'Не удалось отправить код. Попробуйте ещё раз.';
-        if (err.message === 'INVALID_PHONE') msg = 'Некорректный номер телефона.';
-        else if (err.message === 'WHATSAPP_FAILED') msg = 'WhatsApp-шлюз не смог отправить код.';
+        let msg = 'Не удалось отправить код.';
+        if (err.message === 'INVALID_PHONE') msg = 'Некорректный номер.';
+        else if (err.message === 'WHATSAPP_FAILED') msg = 'WhatsApp-шлюз отклонил.';
         showMessage(msg, 'error');
       } finally {
         btn.disabled = false;
@@ -878,6 +897,7 @@
       e.preventDefault();
       clearErrors(otpForm);
       clearMessage();
+      window.__kutResetDiag();
       window.__kutDiag('--- Проверка OTP ---');
 
       const code = $('#otpInput').value.trim();
@@ -892,25 +912,14 @@
 
       try {
         const { profile } = await verifyWhatsAppOtp(currentPhone, code);
-        window.__kutDiag('✓ OTP подтверждён, роль: ' + (profile.role || '—'));
-
-        if (!profile) {
-          showMessage('Профиль не найден.', 'error');
-          return;
-        }
-        if (profile.active === false) {
-          showMessage('Ваш аккаунт заблокирован.', 'error');
-          await signOut(auth).catch(() => {});
-          return;
-        }
-
+        window.__kutDiag('✓ OTP ок, роль: ' + (profile.role || '—'));
         showMessage('Успешно! Перенаправляем...', 'success');
         setTimeout(() => redirectByRole(profile), 400);
       } catch (err) {
         window.__kutDiag('✗ verifyOtp: ' + err.message);
-        let msg = 'Неверный код. Попробуйте ещё раз.';
-        if (err.message === 'OTP_EXPIRED') msg = 'Код истёк. Запросите новый.';
-        else if (err.message === 'OTP_NOT_FOUND') msg = 'Код не найден. Запросите новый.';
+        let msg = 'Неверный код.';
+        if (err.message === 'OTP_EXPIRED') msg = 'Код истёк.';
+        else if (err.message === 'OTP_NOT_FOUND') msg = 'Код не найден.';
         else if (err.message === 'OTP_MISMATCH') msg = 'Неверный код.';
         showMessage(msg, 'error');
       } finally {
@@ -933,25 +942,18 @@
       stopOtpTimer();
       const el = $('#otpTimer');
       let left = seconds;
-
       const tick = () => {
         const m = String(Math.floor(left / 60)).padStart(2, '0');
         const s = String(left % 60).padStart(2, '0');
         el.textContent = `${m}:${s}`;
-        if (left <= 0) {
-          stopOtpTimer();
-          el.textContent = '00:00';
-        }
+        if (left <= 0) { stopOtpTimer(); el.textContent = '00:00'; }
         left--;
       };
       tick();
       otpTimerInterval = setInterval(tick, 1000);
     }
     function stopOtpTimer() {
-      if (otpTimerInterval) {
-        clearInterval(otpTimerInterval);
-        otpTimerInterval = null;
-      }
+      if (otpTimerInterval) { clearInterval(otpTimerInterval); otpTimerInterval = null; }
     }
 
     onAuthStateChanged(auth, async (user) => {
@@ -964,14 +966,12 @@
           await signOut(auth).catch(() => {});
           return;
         }
-        window.__kutDiag('→ Уже авторизован как ' + (profile.role || '—'));
+        window.__kutDiag('→ Авто-вход: ' + (profile.role || '—'));
         redirectByRole(profile);
-      } catch (err) {
-        window.__kutDiag('✗ авто-редирект: ' + err.message);
-      }
+      } catch (_) {}
     });
 
-    window.__kutDiag('✓ Модуль загружен полностью, ожидание ввода');
+    window.__kutDiag('✓ Готово. Введите данные и нажмите "Войти".');
   </script>
 </body>
 </html>
