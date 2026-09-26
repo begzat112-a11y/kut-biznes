@@ -1,9 +1,9 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Service Worker v4.5.0
+   КУТ: БИЗНЕС — Service Worker v4.6.0
    HTML — всегда из сети. Кэш только для CSS/иконок.
    ========================================================= */
 
-const CACHE_NAME = 'kut-biznes-v4.5.0';
+const CACHE_NAME = 'kut-biznes-v4.6.0';
 
 const ASSETS = [
   './css/style.css',
