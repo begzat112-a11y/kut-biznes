@@ -1,8 +1,15 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Configuration v8.1
+   КУТ: БИЗНЕС — Firebase Configuration v8.2
    Единая точка подключения Auth + Firestore ко всем модулям.
    Импортируется из js/app.js и используется всеми страницами.
-   + enablePersistence() — офлайн-очередь продаж (IndexedDB)
+
+   ⚠️ v8.2 — HOTFIX
+   В v8.1 был добавлен import enableIndexedDbPersistence,
+   но в Firebase JS SDK v10.12.0 эта функция УДАЛЕНА.
+   ES-модуль падал → window.FB не создавался → app.js не грузился
+   → вся интерактивность на всех страницах умирала.
+   Возвращаем безопасную заглушку enablePersistence() без реального
+   вызова удалённого API. Офлайн-очередь пока отключена.
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -31,7 +38,6 @@ import {
   serverTimestamp,
   onSnapshot,
   writeBatch,
-  enableIndexedDbPersistence,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // =========================================================
@@ -94,25 +100,15 @@ function fakePasswordFromPhone(phone) {
 }
 
 // =========================================================
-// OFFLINE PERSISTENCE — офлайн-очередь продаж
+// OFFLINE PERSISTENCE — безопасная заглушка
 // =========================================================
+// В Firebase JS SDK v10.12.0 enableIndexedDbPersistence УДАЛЕНА.
+// Новый API: initializeFirestore(app, { localCache: persistentLocalCache() }).
+// Пока включать не будем, чтобы не рисковать стабильностью на мобильных.
+// app.js v8.1 вызывает эту функцию — она должна существовать и не падать.
 async function enablePersistence() {
-  try {
-    await enableIndexedDbPersistence(db);
-    return { ok: true, mode: 'enabled' };
-  } catch (err) {
-    if (err && err.code === 'failed-precondition') {
-      // Несколько вкладок открыто одновременно — persistence включится в первой из них.
-      console.info('[KUT FB] Persistence уже активна в другой вкладке');
-      return { ok: true, mode: 'multi-tab' };
-    }
-    if (err && err.code === 'unimplemented') {
-      console.warn('[KUT FB] Браузер не поддерживает IndexedDB persistence');
-      return { ok: false, mode: 'unsupported' };
-    }
-    console.warn('[KUT FB] enablePersistence error:', err && err.message);
-    return { ok: false, mode: 'error', error: err };
-  }
+  console.info('[KUT FB] Persistence: offline-очередь отключена (Firebase v10 API not wired)');
+  return { ok: false, mode: 'disabled' };
 }
 
 // =========================================================
@@ -436,4 +432,4 @@ export {
   query, where, orderBy, limit, serverTimestamp, onSnapshot, writeBatch,
 };
 
-console.info('[KUT FB] Firebase v10 · проект:', firebaseConfig.projectId, '· persistence ready');
+console.info('[KUT FB] Firebase v10 · проект:', firebaseConfig.projectId, '· готов');
