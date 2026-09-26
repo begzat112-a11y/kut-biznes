@@ -1,7 +1,8 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v2
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v3
    Работает поверх window.FB из firebase-config.js.
-   Отдаёт window.KUT для cash.js / stock.js / debts.js.
+   Отдаёт window.KUT для cash.js / stock.js / debts.js / staff.js.
+   Включает авто-привязку кассира к бизнесу по номеру телефона.
    ========================================================= */
 
 import './firebase-config.js';
@@ -262,10 +263,8 @@ function methodTitle(m, customer) {
 function formatSaleDate(ts) {
   const d = toDate(ts);
   if (!d) return '—';
-
   const now = new Date();
   const z = (n) => String(n).padStart(2, '0');
-
   if (d.toDateString() === now.toDateString()) {
     return `сегодня, ${z(d.getHours())}:${z(d.getMinutes())}`;
   }
@@ -310,6 +309,50 @@ function setupSidebar() {
   window.addEventListener('resize', () => {
     if (window.innerWidth >= 1000) close();
   });
+}
+
+// =========================================================
+// АВТО-ПРИВЯЗКА КАССИРА К БИЗНЕСУ
+// =========================================================
+
+/**
+ * Если у кассира пустой businessId — ищем его телефон в коллекции staff.
+ * Если нашли — привязываем к бизнесу.
+ */
+async function tryClaimStaffInvite(profile, user) {
+  const phone = profile.phone;
+  if (!phone || !/^\+\d{8,15}$/.test(phone)) return null;
+
+  const phoneKey = phone.replace(/\D/g, '');
+  const { db, doc, getDoc, updateDoc, serverTimestamp } = window.FB;
+
+  try {
+    const staffRef = doc(db, 'staff', phoneKey);
+    const snap = await getDoc(staffRef);
+    if (!snap.exists()) return null;
+
+    const staff = snap.data();
+    if (!staff.businessId) return null;
+    if (staff.active === false) return null;
+
+    // Привязываем кассира к бизнесу
+    await updateDoc(doc(db, 'users', user.uid), {
+      businessId: staff.businessId,
+      updatedAt: serverTimestamp(),
+    });
+
+    // Отмечаем, что приглашение активировано
+    await updateDoc(staffRef, {
+      uid: user.uid,
+      claimedAt: serverTimestamp(),
+    });
+
+    console.info('[KUT] Кассир привязан к бизнесу:', staff.businessId);
+    return { ...profile, businessId: staff.businessId };
+  } catch (err) {
+    console.error('[KUT] tryClaimStaffInvite failed:', err);
+    return null;
+  }
 }
 
 // =========================================================
@@ -452,19 +495,28 @@ async function boot() {
   state.profile = profile;
   state.businessId = profile.businessId;
 
+  // ---- Попытка привязки кассира через приглашение ----
+  if (!state.businessId && profile.role === 'cashier') {
+    console.info('[KUT] У кассира нет businessId — ищем приглашение по телефону');
+    const claimed = await tryClaimStaffInvite(profile, user);
+    if (claimed) {
+      state.profile = claimed;
+      state.businessId = claimed.businessId;
+    }
+  }
+
   // Приветствие в шапке
   const who = document.getElementById('user-name');
   if (who) {
     who.textContent = profile.displayName || profile.email || 'Пользователь';
   }
 
-  // Если бизнеса нет — покажем сообщение, но не выкинем
   if (!state.businessId) {
     const box = document.querySelector('.main-content');
     if (box) {
       box.insertAdjacentHTML('afterbegin',
         '<div style="padding:14px 16px;background:#FFF8E1;border:1px solid #E3C97A;border-radius:14px;color:#7A5E00;font-size:13px;margin-bottom:16px;">' +
-        '⚠️ У вашего аккаунта пока нет привязанного бизнеса. Обратитесь к супер-администратору.' +
+        '⚠️ У вашего аккаунта пока нет привязанного бизнеса. Попросите владельца пригласить вас в разделе «Сотрудники».' +
         '</div>');
     }
     return;
