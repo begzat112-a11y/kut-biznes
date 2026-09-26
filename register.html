@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#005F40">
+  <meta name="description" content="КУТ: БИЗНЕС — регистрация бизнеса.">
+  <title>Регистрация — КУТ: БИЗНЕС</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --kut-green: #005F40;
+      --kut-green-dark: #003F2A;
+      --kut-green-soft: #E6F1ED;
+      --kut-gold: #D4AF37;
+      --kut-gold-dark: #B8952A;
+      --kut-border: #E3EAE6;
+      --kut-text: #14211C;
+      --kut-muted: #64776E;
+      --kut-danger: #C0392B;
+      --kut-success: #1EBE5A;
+      --kut-shadow-lg: 0 18px 48px rgba(16,32,25,.20);
+      --kut-shadow-sm: 0 1px 2px rgba(16,32,25,.04), 0 1px 3px rgba(16,32,25,.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(160deg, #005F40 0%, #003F2A 100%);
+      color: var(--kut-text);
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .register-wrap { width: 100%; max-width: 520px; }
+
+    .register-card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 30px 26px;
+      box-shadow: var(--kut-shadow-lg);
+      animation: cardIn .35s cubic-bezier(.2,.9,.3,1.1);
+      border: none;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .register-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+      justify-content: center;
+    }
+
+    .register-brand__mark {
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      background: var(--kut-green);
+      color: var(--kut-gold);
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      font-weight: 800;
+      box-shadow: 0 8px 20px rgba(0,95,64,.30);
+      flex-shrink: 0;
+    }
+
+    .register-brand__text { line-height: 1.15; }
+
+    .register-brand__text strong {
+      display: block;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--kut-green);
+      letter-spacing: -.3px;
+    }
+
+    .register-brand__text small {
+      display: block;
+      font-size: 12px;
+      color: var(--kut-muted);
+      margin-top: 2px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--kut-text);
+      margin-bottom: 6px;
+    }
+
+    .form-label .req { color: var(--kut-danger); margin-left: 2px; }
+
+    .form-control,
+    .form-select,
+    .input-group-text {
+      border-radius: 12px;
+      border: 1.5px solid var(--kut-border);
+      padding: 12px 15px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--kut-text);
+      background: #fff;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--kut-green);
+      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+      background: #fff;
+      color: var(--kut-text);
+    }
+
+    .form-control.is-invalid,
+    .form-select.is-invalid {
+      border-color: var(--kut-danger);
+      box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+
+    .form-control::placeholder { color: #A4B1AA; }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--kut-muted);
+      margin-top: 6px;
+      min-height: 14px;
+    }
+
+    .form-hint.is-error {
+      color: var(--kut-danger);
+      font-weight: 500;
+    }
+
+    /* ============ Phone group ============ */
+    .phone-group {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 420px) {
+      .phone-group {
+        grid-template-columns: 118px 1fr;
+        gap: 6px;
+      }
+    }
+
+    .country-select {
+      width: 100%;
+      padding: 12px 10px;
+      font-weight: 600;
+      cursor: pointer;
+      background-image: none;
+      appearance: none;
+      -webkit-appearance: none;
+      text-align: center;
+      padding-right: 10px;
+      font-size: 14px;
+    }
+
+    .country-select:focus { background-image: none; }
+
+    .phone-input {
+      min-width: 0;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .3px;
+    }
+
+    .btn-kut {
+      width: 100%;
+      padding: 15px 18px;
+      border: none;
+      border-radius: 14px;
+      background: var(--kut-green);
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,95,64,.28);
+      transition: background .18s ease, transform .12s ease, opacity .18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-kut:hover { background: var(--kut-green-dark); color: #fff; }
+    .btn-kut:active { transform: translateY(1px); }
+    .btn-kut:disabled {
+      opacity: .75;
+      cursor: not-allowed;
+      background: #6B8578;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--kut-green);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin: 8px 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--kut-border);
+    }
+
+    .register-footer {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--kut-muted);
+    }
+
+    .register-footer a {
+      color: var(--kut-green);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .register-footer a:hover { text-decoration: underline; }
+
+    /* Custom alert */
+    .kut-alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.4;
+      margin-bottom: 18px;
+      animation: alertIn .25s ease;
+    }
+
+    @keyframes alertIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .kut-alert__icon {
+      font-size: 20px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .kut-alert--error {
+      background: rgba(192,57,43,.08);
+      color: #7A2418;
+      border: 1px solid rgba(192,57,43,.22);
+    }
+
+    .kut-alert--error .kut-alert__icon { color: var(--kut-danger); }
+
+    .kut-alert--success {
+      background: rgba(30,190,90,.08);
+      color: #0B5E2C;
+      border: 1px solid rgba(30,190,90,.22);
+    }
+
+    .kut-alert--success .kut-alert__icon { color: var(--kut-success); }
+
+    .kut-alert--info {
+      background: var(--kut-green-soft);
+      color: var(--kut-green);
+      border: 1px solid rgba(0,95,64,.22);
+    }
+
+    .kut-alert--info .kut-alert__icon { color: var(--kut-green); }
+
+    .kut-hidden { display: none !important; }
+
+    .password-wrapper { position: relative; }
+
+    .password-toggle {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      color: var(--kut-muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    .password-toggle:hover { color: var(--kut-green); }
+
+    .btn-kut .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Success overlay */
+    .success-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(160deg, #005F40 0%, #003F2A 100%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      color: #fff;
+      animation: fadeIn .3s ease;
+      padding: 30px;
+      text-align: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .success-overlay__check {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: rgba(212,175,55,.18);
+      display: grid;
+      place-items: center;
+      color: var(--kut-gold);
+      font-size: 52px;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,.15);
+      animation: popCheck .5s cubic-bezier(.2,.9,.3,1.4);
+    }
+
+    @keyframes popCheck {
+      0%   { transform: scale(.4); opacity: 0; }
+      60%  { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    .success-overlay h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+    }
+
+    .success-overlay p {
+      margin: 0;
+      font-size: 15px;
+      opacity: .85;
+      max-width: 320px;
+      line-height: 1.5;
+    }
+
+    .success-overlay__progress {
+      width: 220px;
+      height: 4px;
+      background: rgba(255,255,255,.15);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .success-overlay__progress-bar {
+      height: 100%;
+      background: var(--kut-gold);
+      width: 0;
+      animation: progressFill 2s ease forwards;
+    }
+
+    @keyframes progressFill {
+      from { width: 0; }
+      to   { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="register-wrap">
+    <div class="register-card">
+
+      <div class="register-brand">
+        <div class="register-brand__mark">К</div>
+        <div class="register-brand__text">
+          <strong>КУТ: БИЗНЕС</strong>
+          <small>Регистрация бизнеса</small>
+        </div>
+      </div>
+
+      <div id="alertBox" class="kut-alert kut-hidden"></div>
+
+      <form id="registerForm" novalidate>
+
+        <div class="section-title">
+          <i class="bi bi-building"></i> Данные компании
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="companyName">
+            Название компании <span class="req">*</span>
+          </label>
+          <input
+            type="text"
+            class="form-control"
+            id="companyName"
+            placeholder="Например: Магазин «Береке»"
+            maxlength="80"
+            autocomplete="organization"
+            required>
+          <div class="form-hint" data-for="companyName"></div>
+        </div>
+
+        <div class="section-title">
+          <i class="bi bi-person"></i> Данные владельца
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="email">
+            Email <span class="req">*</span>
+          </label>
+          <input
+            type="email"
+            class="form-control"
+            id="email"
+            placeholder="owner@shop.kg"
+            autocomplete="email"
+            required>
+          <div class="form-hint" data-for="email"></div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="phone">
+            Номер телефона (WhatsApp) <span class="req">*</span>
+          </label>
+          <div class="phone-group">
+            <select id="countrySelect" class="form-select country-select" aria-label="Код страны">
+              <option value="kg" data-code="+996" data-digits="9"  data-pattern="XXX XXX XXX">🇰🇬 +996</option>
+              <option value="ru" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇷🇺 +7</option>
+              <option value="kz" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇰🇿 +7</option>
+              <option value="uz" data-code="+998" data-digits="9"  data-pattern="XX XXX XX XX">🇺🇿 +998</option>
+              <option value="tj" data-code="+992" data-digits="9"  data-pattern="XX XXX XX XX">🇹🇯 +992</option>
+              <option value="tm" data-code="+993" data-digits="8"  data-pattern="XX XXXXXX">🇹🇲 +993</option>
+              <option value="az" data-code="+994" data-digits="9"  data-pattern="XX XXX XX XX">🇦🇿 +994</option>
+              <option value="am" data-code="+374" data-digits="8"  data-pattern="XX XXX XXX">🇦🇲 +374</option>
+              <option value="by" data-code="+375" data-digits="9"  data-pattern="XX XXX XX XX">🇧🇾 +375</option>
+              <option value="md" data-code="+373" data-digits="8"  data-pattern="XX XXX XXX">🇲🇩 +373</option>
+            </select>
+            <input
+              type="tel"
+              class="form-control phone-input"
+              id="phone"
+              placeholder="700 123 456"
+              inputmode="tel"
+              autocomplete="tel"
+              required>
+          </div>
+          <div class="form-hint" data-for="phone">
+            По этому номеру вы сможете входить через WhatsApp-код.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="password">
+            Пароль <span class="req">*</span>
+          </label>
+          <div class="password-wrapper">
+            <input
+              type="password"
+              class="form-control"
+              id="password"
+              placeholder="Минимум 6 символов"
+              autocomplete="new-password"
+              required>
+            <button type="button" class="password-toggle" id="togglePassword" aria-label="Показать пароль">
+              <i class="bi bi-eye" id="toggleIcon"></i>
+            </button>
+          </div>
+          <div class="form-hint" data-for="password"></div>
+        </div>
+
+        <button type="submit" class="btn-kut" id="submitBtn">
+          <i class="bi bi-check-circle"></i>
+          <span>Создать аккаунт бизнеса</span>
+        </button>
+
+        <div class="register-footer">
+          Уже есть аккаунт?
+          <a href="./login.html">Войти</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      updateProfile,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      getFirestore,
+      collection,
+      doc,
+      addDoc,
+      setDoc,
+      serverTimestamp,
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    // =========================================================
+    // FIREBASE CONFIG
+    // =========================================================
+    const firebaseConfig = {
+      apiKey:            "AIzaSyA0iMhIewN8KhcEs64XMNPVN0GDEZFpxPg",
+      authDomain:        "kut-biznes.firebaseapp.com",
+      projectId:         "kut-biznes",
+      storageBucket:     "kut-biznes.firebasestorage.app",
+      messagingSenderId: "699153181693",
+      appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
+      measurementId:     "G-VTZ49G265B"
+    };
+
+    // =========================================================
+    // ИНИЦИАЛИЗАЦИЯ
+    // =========================================================
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // =========================================================
+    // DOM
+    // =========================================================
+    const $ = (sel) => document.querySelector(sel);
+
+    const form          = $('#registerForm');
+    const alertBox      = $('#alertBox');
+    const companyInput  = $('#companyName');
+    const emailInput    = $('#email');
+    const countrySelect = $('#countrySelect');
+    const phoneInput    = $('#phone');
+    const passwordInput = $('#password');
+    const submitBtn     = $('#submitBtn');
+    const toggleBtn     = $('#togglePassword');
+    const toggleIcon    = $('#toggleIcon');
+
+    // =========================================================
+    // УТИЛИТЫ
+    // =========================================================
+
+    function showAlert(message, kind) {
+      kind = kind || 'info';
+      const iconMap = {
+        error:   'bi-exclamation-triangle-fill',
+        success: 'bi-check-circle-fill',
+        info:    'bi-info-circle-fill',
+      };
+      const icon = iconMap[kind] || iconMap.info;
+      alertBox.className = 'kut-alert kut-alert--' + kind;
+      alertBox.innerHTML = `
+        <i class="bi ${icon} kut-alert__icon"></i>
+        <div>${escapeHtml(message)}</div>
+      `;
+      alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideAlert() {
+      alertBox.className = 'kut-alert kut-hidden';
+      alertBox.innerHTML = '';
+    }
+
+    function setFieldError(fieldId, message) {
+      const input = document.getElementById(fieldId);
+      const hint  = document.querySelector(`.form-hint[data-for="${fieldId}"]`);
+      if (input) input.classList.toggle('is-invalid', Boolean(message));
+      if (hint) {
+        if (message) {
+          hint.textContent = message;
+          hint.classList.add('is-error');
+        } else {
+          hint.classList.remove('is-error');
+          if (fieldId === 'phone') {
+            hint.textContent = 'По этому номеру вы сможете входить через WhatsApp-код.';
+          } else {
+            hint.textContent = '';
+          }
+        }
+      }
+    }
+
+    function clearErrors() {
+      ['companyName','email','phone','password'].forEach((id) => setFieldError(id, ''));
+      countrySelect.classList.remove('is-invalid');
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[ch]));
+    }
+
+    // =========================================================
+    // СТРАНЫ И МАСКИ ТЕЛЕФОНА
+    // =========================================================
+
+    function getSelectedCountry() {
+      const opt = countrySelect.options[countrySelect.selectedIndex];
+      return {
+        code:    opt.dataset.code,     // "+996"
+        digits:  Number(opt.dataset.digits),
+        pattern: opt.dataset.pattern,  // "XXX XXX XXX"
+      };
+    }
+
+    /** Убирает всё лишнее и обрезает до нужного количества цифр */
+    function digitsOnly(raw, maxDigits) {
+      let d = String(raw || '').replace(/\D/g, '');
+      // Срезаем ведущий 0 (российская/кыргызская привычка)
+      if (d.startsWith('0')) d = d.slice(1);
+      return d.slice(0, maxDigits);
+    }
+
+    /** Применяет маску к строке цифр согласно pattern ("XXX XXX XX XX") */
+    function applyMask(digits, pattern) {
+      let out = '';
+      let di = 0;
+      for (let i = 0; i < pattern.length; i++) {
+        const p = pattern[i];
+        if (p === 'X') {
+          if (di >= digits.length) break;
+          out += digits[di++];
+        } else {
+          if (di >= digits.length) break;
+          out += p;
+        }
+      }
+      return out;
+    }
+
+    function updatePhonePlaceholder() {
+      const c = getSelectedCountry();
+      phoneInput.placeholder = c.pattern;
+    }
+
+    function formatPhoneInput(raw) {
+      const c = getSelectedCountry();
+      const d = digitsOnly(raw, c.digits);
+      return applyMask(d, c.pattern);
+    }
+
+    function normalizePhone() {
+      const c = getSelectedCountry();
+      const d = digitsOnly(phoneInput.value, c.digits);
+      return c.code + d;
+    }
+
+    function isValidPhoneValue() {
+      const c = getSelectedCountry();
+      const d = digitsOnly(phoneInput.value, c.digits);
+      return d.length === c.digits;
+    }
+
+    // Обновление при вводе
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = formatPhoneInput(e.target.value);
+    });
+
+    // При смене страны — перемаскируем текущее значение
+    countrySelect.addEventListener('change', () => {
+      updatePhonePlaceholder();
+      phoneInput.value = formatPhoneInput(phoneInput.value);
+      setFieldError('phone', '');
+    });
+
+    // =========================================================
+    // ПОКАЗАТЬ/СКРЫТЬ ПАРОЛЬ
+    // =========================================================
+    toggleBtn.addEventListener('click', () => {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      toggleIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+    });
+
+    // =========================================================
+    // ВАЛИДАЦИЯ
+    // =========================================================
+
+    function validateForm() {
+      clearErrors();
+      let ok = true;
+
+      const companyName = companyInput.value.trim();
+      if (companyName.length < 2) {
+        setFieldError('companyName', 'Название компании минимум 2 символа');
+        ok = false;
+      }
+
+      const email = emailInput.value.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setFieldError('email', 'Введите корректный email');
+        ok = false;
+      }
+
+      if (!isValidPhoneValue()) {
+        const c = getSelectedCountry();
+        setFieldError('phone', `Введите ${c.digits} цифр номера`);
+        ok = false;
+      }
+
+      const password = passwordInput.value;
+      if (password.length < 6) {
+        setFieldError('password', 'Пароль минимум 6 символов');
+        ok = false;
+      }
+
+      return ok;
+    }
+
+    // =========================================================
+    // ПЕРЕВОД ОШИБОК FIREBASE
+    // =========================================================
+
+    function translateAuthError(code) {
+      const map = {
+        'auth/email-already-in-use':     'Этот email уже зарегистрирован. Войдите или используйте другой email.',
+        'auth/invalid-email':            'Некорректный email. Проверьте адрес.',
+        'auth/weak-password':            'Пароль слишком простой. Минимум 6 символов.',
+        'auth/operation-not-allowed':    'Регистрация по email отключена. Обратитесь к администратору.',
+        'auth/network-request-failed':   'Проблемы с сетью. Проверьте интернет и попробуйте снова.',
+        'auth/too-many-requests':        'Слишком много попыток. Подождите несколько минут.',
+        'auth/api-key-not-valid':        'Ошибка конфигурации Firebase (apiKey). Обратитесь к администратору.',
+        'auth/invalid-api-key':          'Ошибка конфигурации Firebase (apiKey). Обратитесь к администратору.',
+        'auth/configuration-not-found':  'Firebase Auth не настроен. Включите Email/Password в Console.',
+      };
+      return map[code] || ('Ошибка регистрации: ' + (code || 'неизвестная'));
+    }
+
+    function translateFirestoreError(code) {
+      const map = {
+        'permission-denied':    'Нет прав на запись в базу. Проверьте Firestore Rules.',
+        'unavailable':          'База данных недоступна. Проверьте интернет.',
+        'failed-precondition':  'База данных ещё не готова. Подождите пару минут.',
+        'resource-exhausted':   'Превышен лимит бесплатного тарифа.',
+        'unauthenticated':      'Сессия истекла. Попробуйте снова.',
+      };
+      return map[code] || ('Ошибка записи в базу: ' + (code || 'неизвестная'));
+    }
+
+    // =========================================================
+    // ОСНОВНАЯ ЛОГИКА
+    // =========================================================
+
+    async function registerOwner(event) {
+      event.preventDefault();
+      hideAlert();
+
+      if (!validateForm()) {
+        showAlert('Проверьте выделенные поля — там есть ошибки.', 'error');
+        return;
+      }
+
+      const companyName = companyInput.value.trim();
+      const email       = emailInput.value.trim().toLowerCase();
+      const phoneNorm   = normalizePhone();
+      const password    = passwordInput.value;
+
+      setLoading(true, 'Создаём аккаунт...');
+
+      let uid = null;
+      let businessId = null;
+      let authUser = null;
+
+      // ---------- 1. Firebase Auth ----------
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        authUser = cred.user;
+        uid = authUser.uid;
+      } catch (err) {
+        console.error('[register] Auth error:', err.code, err.message);
+        showAlert(translateAuthError(err.code), 'error');
+        setLoading(false);
+        return;
+      }
+
+      // ---------- 2. displayName ----------
+      try {
+        await updateProfile(authUser, { displayName: companyName });
+      } catch (err) {
+        console.warn('[register] updateProfile warning:', err.message);
+      }
+
+      // ---------- 3. Бизнес ----------
+      setLoading(true, 'Создаём бизнес...');
+      try {
+        const bizRef = await addDoc(collection(db, 'businesses'), {
+          name: companyName,
+          ownerUid: uid,
+          ownerEmail: email,
+          ownerPhone: phoneNorm,
+          status: 'active',
+          createdAt: serverTimestamp(),
+        });
+        businessId = bizRef.id;
+      } catch (err) {
+        console.error('[register] businesses write error:', err.code, err.message);
+        showAlert(translateFirestoreError(err.code) +
+          ' Аккаунт Auth создан, но бизнес не сохранён. Напишите администратору.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // ---------- 4. Профиль ----------
+      setLoading(true, 'Сохраняем профиль...');
+      try {
+        await setDoc(doc(db, 'users', uid), {
+          uid: uid,
+          email: email,
+          phone: phoneNorm,
+          displayName: companyName,
+          role: 'owner',
+          businessId: businessId,
+          active: true,
+          createdAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error('[register] users write error:', err.code, err.message);
+        showAlert(translateFirestoreError(err.code) +
+          ' Бизнес создан, но профиль не сохранён.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // ---------- 5. Успех ----------
+      setLoading(false);
+      showSuccessOverlay(companyName);
+
+      setTimeout(() => {
+        window.location.href = './login.html';
+      }, 2000);
+    }
+
+    // =========================================================
+    // ЗАГРУЗКА КНОПКИ
+    // =========================================================
+
+    function setLoading(isLoading, text) {
+      submitBtn.disabled = isLoading;
+      if (isLoading) {
+        submitBtn.innerHTML = `
+          <span class="spinner"></span>
+          <span>${escapeHtml(text || 'Загрузка...')}</span>
+        `;
+      } else {
+        submitBtn.innerHTML = `
+          <i class="bi bi-check-circle"></i>
+          <span>Создать аккаунт бизнеса</span>
+        `;
+      }
+    }
+
+    // =========================================================
+    // ОВЕРЛЕЙ УСПЕХА
+    // =========================================================
+
+    function showSuccessOverlay(companyName) {
+      const overlay = document.createElement('div');
+      overlay.className = 'success-overlay';
+      overlay.innerHTML = `
+        <div class="success-overlay__check">
+          <i class="bi bi-check-lg"></i>
+        </div>
+        <h2>Аккаунт создан!</h2>
+        <p>Бизнес «${escapeHtml(companyName)}» успешно зарегистрирован.<br>Перенаправляем на страницу входа...</p>
+        <div class="success-overlay__progress">
+          <div class="success-overlay__progress-bar"></div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    // =========================================================
+    // СБРОС ОШИБОК ПРИ ВВОДЕ
+    // =========================================================
+
+    [companyInput, emailInput, phoneInput, passwordInput].forEach((input) => {
+      input.addEventListener('input', () => {
+        if (input.classList.contains('is-invalid')) {
+          setFieldError(input.id, '');
+        }
+      });
+    });
+
+    form.addEventListener('submit', registerOwner);
+
+    // =========================================================
+    // СТАРТОВЫЕ ЗНАЧЕНИЯ
+    // =========================================================
+    updatePhonePlaceholder();
+
+    console.info('[KUT register] Готово · проект:', firebaseConfig.projectId);
+    console.info('[KUT register] apiKey длина:', firebaseConfig.apiKey.length);
+    console.info('[KUT register] authDomain:', firebaseConfig.authDomain);
+  </script>
+
+</body>
+</html>
