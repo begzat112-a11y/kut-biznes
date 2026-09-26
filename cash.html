@@ -23,15 +23,10 @@
       display: flex; flex-direction: column; min-height: 100dvh;
       -webkit-font-smoothing: antialiased;
     }
-
-    /* Глобальный layout (sidebar + content) */
     .layout { display: grid; grid-template-columns: 1fr; min-height: 100dvh; width: 100%; max-width: 100%; }
     .layout > div { min-width: 0; max-width: 100%; overflow-x: hidden; }
-    @media (min-width: 1000px) {
-      .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
-    }
+    @media (min-width: 1000px) { .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); } }
 
-    /* Sidebar (каркас, детали — в theme-v9.css) */
     .sidebar {
       padding: 16px 14px;
       display: flex; flex-direction: column; gap: 14px;
@@ -42,90 +37,39 @@
       overflow-y: auto;
     }
     .sidebar.is-open { transform: translateX(0); }
-    @media (min-width: 1000px) {
-      .sidebar { transform: none; width: var(--sidebar-w); max-width: none;
-        position: sticky; top: 0; height: 100dvh; }
-    }
-    .sidebar__brand {
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 6px 14px;
-      border-bottom: 1px solid rgba(255,255,255,.10);
-      text-decoration: none;
-    }
+    @media (min-width: 1000px) { .sidebar { transform: none; width: var(--sidebar-w); max-width: none; position: sticky; top: 0; height: 100dvh; } }
+    .sidebar__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
     .brand__mark {
       width: 38px; height: 38px; border-radius: 10px;
       background: linear-gradient(135deg, #E7C14A, #B88F1D);
       color: #06150F;
       display: grid; place-items: center; font-weight: 800; font-size: 18px;
-      flex-shrink: 0;
-      box-shadow: 0 6px 16px rgba(212,175,55,.35);
+      flex-shrink: 0; box-shadow: 0 6px 16px rgba(212,175,55,.35);
     }
     .brand__text strong { display: block; font-size: 15px; }
     .brand__text small { display: block; font-size: 11px; color: rgba(237,245,241,.5); margin-top: 2px; }
     .sidebar__nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-    .nav-link {
-      display: flex; align-items: center; gap: 12px;
-      padding: 12px 14px; border-radius: 12px;
-      text-decoration: none; font-size: 15px; font-weight: 500;
-    }
+    .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; text-decoration: none; font-size: 15px; font-weight: 500; }
     .nav-link__icon { width: 26px; display: grid; place-items: center; font-size: 18px; }
     .nav-link__badge { margin-left: auto; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
-    .sidebar__cta {
-      margin-top: auto; padding: 14px 16px; border-radius: 16px;
-      text-decoration: none; font-weight: 700;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .sidebar__cta__icon {
-      width: 40px; height: 40px; display: grid; place-items: center;
-      background: rgba(0,0,0,.12); border-radius: 12px; font-size: 20px; flex-shrink: 0;
-    }
+    .sidebar__cta { margin-top: auto; padding: 14px 16px; border-radius: 16px; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    .sidebar__cta__icon { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(0,0,0,.12); border-radius: 12px; font-size: 20px; flex-shrink: 0; }
     .sidebar__cta__text strong { display: block; font-size: 14px; }
     .sidebar__cta__text small { display: block; font-size: 11px; opacity: .75; margin-top: 2px; }
-    .sidebar__footer {
-      color: rgba(237,245,241,.35); font-size: 11px; text-align: center;
-      padding-top: 10px; border-top: 1px solid rgba(255,255,255,.06);
-    }
+    .sidebar__footer { color: rgba(237,245,241,.35); font-size: 11px; text-align: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.06); }
     #sidebar-profile-slot, #sidebar-logout-slot, #sidebar-theme-slot { display: block; }
 
-    /* Overlay */
-    .overlay {
-      position: fixed; inset: 0;
-      background: rgba(4, 12, 9, 0.65);
-      backdrop-filter: blur(6px);
-      z-index: 80; opacity: 0; pointer-events: none;
-      transition: opacity .22s ease;
-    }
+    .overlay { position: fixed; inset: 0; background: rgba(4,12,9,.65); backdrop-filter: blur(6px); z-index: 80; opacity: 0; pointer-events: none; transition: opacity .22s ease; }
     .overlay.is-open { opacity: 1; pointer-events: auto; }
     @media (min-width: 1000px) { .overlay { display: none; } }
 
-    /* Шапка */
-    .mobile-bar {
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 12px;
-      position: sticky; top: 0; z-index: 40;
-      width: 100%; max-width: 100%;
-    }
-    .burger {
-      display: grid; place-items: center;
-      font-size: 20px; cursor: pointer; flex-shrink: 0;
-    }
-    .mobile-bar__title {
-      font-weight: 700; font-size: 15px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      min-width: 0; flex: 1; margin-left: 2px;
-    }
+    .mobile-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; position: sticky; top: 0; z-index: 40; width: 100%; max-width: 100%; }
+    .burger { display: grid; place-items: center; font-size: 20px; cursor: pointer; flex-shrink: 0; }
+    .mobile-bar__title { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; margin-left: 2px; }
 
-    /* POS */
-    .pos {
-      flex: 1; width: 100%; max-width: 1400px; margin: 0 auto;
-      padding: 16px; display: grid; grid-template-columns: 1fr; gap: 16px;
-    }
-    @media (min-width: 980px) {
-      .pos { grid-template-columns: minmax(0, 1fr) 400px; padding: 20px; gap: 20px; }
-    }
-    @media (max-width: 999px) {
-      body.page-cash .pos { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
-    }
+    .pos { flex: 1; width: 100%; max-width: 1400px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 980px) { .pos { grid-template-columns: minmax(0,1fr) 400px; padding: 20px; gap: 20px; } }
+    @media (max-width: 999px) { body.page-cash .pos { padding-bottom: calc(110px + env(safe-area-inset-bottom)); } }
     .pos__catalog { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
     .search { position: relative; }
@@ -140,14 +84,11 @@
     .products { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
     @media (min-width: 560px) { .products { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; } }
     @media (min-width: 1280px) { .products { grid-template-columns: repeat(4, minmax(0,1fr)); } }
-
     .product {
       appearance: none; border: 1px solid var(--glass-border);
       background: linear-gradient(150deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-      backdrop-filter: blur(16px) saturate(140%);
-      -webkit-backdrop-filter: blur(16px) saturate(140%);
-      border-radius: 16px; padding: 14px 12px; text-align: left;
-      cursor: pointer; font-family: inherit; color: inherit;
+      backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+      border-radius: 16px; padding: 14px 12px; text-align: left; cursor: pointer; font-family: inherit; color: inherit;
       display: flex; flex-direction: column; gap: 6px; min-height: 126px;
       transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
       box-shadow: 0 4px 14px rgba(0,0,0,.18);
@@ -279,7 +220,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v9.2-GLOBAL-HEADER-CASH';
+      var BUILD = 'v9.3-THEME-TOP-CASH';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -312,13 +253,15 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
       <div id="sidebar-profile-slot"></div>
-      <a href="./index.html" class="sidebar__brand">
-        <span class="brand__mark" aria-hidden="true">К</span>
-        <span class="brand__text">
-          <strong>КУТ: БИЗНЕС</strong>
-          <small>Учёт для малого бизнеса</small>
-        </span>
-      </a>
+
+      <div class="sidebar__brand-row">
+        <a href="./index.html" class="sidebar__brand">
+          <span class="brand__mark" aria-hidden="true">К</span>
+          <span class="brand__text"><strong>КУТ: БИЗНЕС</strong><small>Учёт для малого бизнеса</small></span>
+        </a>
+        <div id="sidebar-theme-slot"></div>
+      </div>
+
       <nav class="sidebar__nav" aria-label="Навигация">
         <a href="./index.html" class="nav-link"><span class="nav-link__icon">🏠</span><span>Главная</span></a>
         <a href="./cash.html" class="nav-link active" aria-current="page"><span class="nav-link__icon">🧾</span><span>Касса</span></a>
@@ -326,12 +269,14 @@
         <a href="./debts.html" class="nav-link"><span class="nav-link__icon">📒</span><span>Несие (долги)</span><span class="nav-link__badge" id="nav-debts-count" hidden>0</span></a>
         <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden><span class="nav-link__icon">👥</span><span>Сотрудники</span><span class="nav-link__badge" id="nav-staff-count" hidden>0</span></a>
       </nav>
+
       <a href="./cash.html" class="sidebar__cta" aria-label="Открыть кассу">
         <span class="sidebar__cta__icon" aria-hidden="true">＋</span>
         <span class="sidebar__cta__text"><strong>Открыть кассу</strong><small>Новая продажа</small></span>
       </a>
+
       <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
-      <div id="sidebar-theme-slot"></div>
+
       <div id="sidebar-logout-slot"></div>
     </aside>
 
