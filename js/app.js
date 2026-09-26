@@ -1,9 +1,10 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v8
-   + Нижняя панель навигации с подсветкой активной кнопки
-   + Бейдж роли сверху и в мобильной шапке
-   + Профиль и кнопка «Выйти» в сайдбаре (из v7)
-   + Модалка «Мой профиль» с системой заявок (из v7)
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v9
+   + Единая нижняя навигация на 5 слотов с центральной кнопкой сканера
+   + Подсветка активной вкладки по URL
+   + Контекстный сканер: касса/склад/редирект
+   + Профиль и кнопка «Выйти» в сайдбаре
+   + Модалка «Мой профиль» с системой заявок
    ========================================================= */
 
 import './firebase-config.js';
@@ -74,6 +75,19 @@ function roleClass(role) {
   }
 }
 
+function getCurrentPage() {
+  let file = (window.location.pathname || '').split('/').pop().toLowerCase();
+  if (!file || file === '') file = 'index.html';
+  const map = {
+    'index.html': 'index',
+    '':           'index',
+    'cash.html':  'cash',
+    'stock.html': 'stock',
+    'debts.html': 'debts',
+  };
+  return map[file] || null;
+}
+
 // =========================================================
 // ТОСТ
 // =========================================================
@@ -85,7 +99,7 @@ function toast(message, isError) {
     el.setAttribute('role', 'status');
     el.setAttribute('aria-live', 'polite');
     el.style.cssText =
-      'position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));' +
+      'position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));' +
       'transform:translate(-50%,120%);background:#005F40;color:#fff;' +
       'padding:12px 18px;border-radius:12px;font-family:Inter,sans-serif;' +
       'font-size:14px;font-weight:500;box-shadow:0 18px 48px rgba(16,32,25,.20);' +
@@ -382,14 +396,11 @@ function renderRoleBadge(profile) {
   const label = roleLabel(role);
   const cls = 'role-badge--' + roleClass(role);
 
-  // Большой бейдж на главной
   const big = document.getElementById('role-badge');
   if (big) {
     big.textContent = label;
     big.className = 'role-badge ' + cls;
   }
-
-  // Маленький бейдж в мобильной шапке
   const small = document.getElementById('mobile-role-badge');
   if (small) {
     small.textContent = label;
@@ -398,29 +409,15 @@ function renderRoleBadge(profile) {
 }
 
 // =========================================================
-// НИЖНЯЯ ПАНЕЛЬ — ПОДСВЕТКА АКТИВНОЙ КНОПКИ
+// НИЖНЯЯ ПАНЕЛЬ — ПОДСВЕТКА
 // =========================================================
 function setupBottomNavHighlight() {
   const nav = document.getElementById('bottomNav') || document.querySelector('.bottom-nav');
   if (!nav) return;
-
-  // Определяем текущую страницу по имени файла
-  let file = (window.location.pathname || '').split('/').pop().toLowerCase();
-  if (!file || file === '') file = 'index.html';
-
-  // Достаём data-page из URL (иногда главная = '' или '/')
-  const map = {
-    'index.html': 'index',
-    '':           'index',
-    'cash.html':  'cash',
-    'stock.html': 'stock',
-    'debts.html': 'debts',
-  };
-  const current = map[file] || null;
-
+  const current = getCurrentPage();
   nav.querySelectorAll('.bottom-nav__item').forEach((a) => {
-    const page = a.dataset.page;
-    const isActive = page === current;
+    const isActive = a.dataset.page === current;
+    a.classList.toggle('active', isActive);
     a.classList.toggle('is-active', isActive);
     if (isActive) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
@@ -428,7 +425,73 @@ function setupBottomNavHighlight() {
 }
 
 // =========================================================
-// САЙДБАР (бургер)
+// ЦЕНТРАЛЬНАЯ КНОПКА СКАНЕРА — КОНТЕКСТНАЯ
+// =========================================================
+function setupBottomNavScan() {
+  const btn = document.getElementById('bottomNavScan');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    const page = getCurrentPage();
+
+    // На КАССЕ — просто клик по скрытой кнопке cash.js
+    if (page === 'cash') {
+      const cashScan = document.getElementById('cashScanBtn');
+      if (cashScan) { cashScan.click(); return; }
+      // fallback — открыть кассу с флагом
+      window.location.href = './cash.html?scan=1';
+      return;
+    }
+
+    // На СКЛАДЕ — сначала открыть модалку добавления, потом кликнуть сканер
+    if (page === 'stock') {
+      const modal = document.getElementById('productModal');
+      const isOpen = modal && !modal.hidden;
+
+      if (!isOpen) {
+        const addBtn = document.getElementById('openAddBtn');
+        if (addBtn) addBtn.click();
+      }
+      setTimeout(() => {
+        const scanBtn = document.getElementById('barcodeScanBtn');
+        if (scanBtn) scanBtn.click();
+      }, 250);
+      return;
+    }
+
+    // На ГЛАВНОЙ / ДОЛГАХ — редирект в кассу со стартом сканера
+    window.location.href = './cash.html?scan=1';
+  });
+}
+
+/** Автостарт сканера, если URL = cash.html?scan=1 */
+function handleAutoScanParam() {
+  if (getCurrentPage() !== 'cash') return;
+  let params;
+  try { params = new URLSearchParams(window.location.search); }
+  catch (_) { return; }
+
+  if (params.get('scan') !== '1') return;
+
+  // Чистим URL
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('scan');
+    history.replaceState({}, '', url.toString());
+  } catch (_) {}
+
+  // Кликаем скрытую кнопку cash.js через паузу, чтобы модуль успел подняться
+  let tries = 0;
+  const tick = () => {
+    const cashScan = document.getElementById('cashScanBtn');
+    if (cashScan) { cashScan.click(); return; }
+    if (tries++ < 20) setTimeout(tick, 150);
+  };
+  setTimeout(tick, 800);
+}
+
+// =========================================================
+// САЙДБАР
 // =========================================================
 function setupSidebar() {
   const sidebar = document.getElementById('sidebar');
@@ -457,9 +520,8 @@ function setupSidebar() {
 }
 
 // =========================================================
-// ПРОФИЛЬ + КНОПКА ВЫХОДА В САЙДБАРЕ
+// ПРОФИЛЬ + КНОПКА ВЫХОДА
 // =========================================================
-
 function mountProfileBlock() {
   const slot = document.getElementById('sidebar-profile-slot');
   if (!slot) return;
@@ -479,7 +541,6 @@ function mountProfileBlock() {
       <span class="sidebar-profile__chevron" aria-hidden="true">›</span>
     </button>
   `;
-
   const btn = document.getElementById('sidebarProfileBtn');
   if (btn) btn.addEventListener('click', openProfileModal);
 }
@@ -503,10 +564,9 @@ function mountLogoutBlock() {
 function injectProfileStyles() {
   if (document.getElementById('kut-profile-styles')) return;
   const css = `
-    /* Профиль в сайдбаре */
     .sidebar-profile {
       display: flex; align-items: center; gap: 10px;
-      width: 100%; padding: 10px 10px;
+      width: 100%; padding: 10px;
       background: rgba(255,255,255,.08);
       border: 1px solid rgba(255,255,255,.12);
       border-radius: 14px; cursor: pointer;
@@ -521,11 +581,9 @@ function injectProfileStyles() {
     .sidebar-profile__avatar {
       width: 42px; height: 42px; border-radius: 50%;
       display: grid; place-items: center;
-      font-size: 15px; font-weight: 800;
-      letter-spacing: .5px;
+      font-size: 15px; font-weight: 800; letter-spacing: .5px;
       background: linear-gradient(135deg, #D4AF37, #B8952A);
-      color: #003F2A;
-      flex-shrink: 0;
+      color: #003F2A; flex-shrink: 0;
       box-shadow: 0 4px 12px rgba(0,0,0,.20);
       text-transform: uppercase;
     }
@@ -533,10 +591,7 @@ function injectProfileStyles() {
     .sidebar-profile__avatar--manager { background: linear-gradient(135deg, #F0B458, #B87117); color: #3F2400; }
     .sidebar-profile__avatar--cashier { background: linear-gradient(135deg, #7FE4A5, #1EBE5A); color: #003F2A; }
     .sidebar-profile__avatar--admin   { background: linear-gradient(135deg, #E0F0FF, #7FB8E0); color: #003F5C; }
-    .sidebar-profile__info {
-      flex: 1; min-width: 0;
-      display: flex; flex-direction: column; gap: 2px;
-    }
+    .sidebar-profile__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .sidebar-profile__name {
       font-size: 14px; font-weight: 700; color: #fff;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -550,29 +605,24 @@ function injectProfileStyles() {
       font-size: 20px; color: rgba(255,255,255,.5);
       flex-shrink: 0; line-height: 1;
     }
-
-    /* Кнопка «Выйти» внизу сайдбара */
     .sidebar-logout {
       display: flex; align-items: center; gap: 10px;
       width: 100%; padding: 12px 14px;
       background: rgba(192,57,43,.14);
       border: 1px solid rgba(192,57,43,.30);
-      color: #FFD0C8;
-      border-radius: 12px;
+      color: #FFD0C8; border-radius: 12px;
       font-family: inherit; font-size: 14px; font-weight: 600;
       cursor: pointer; text-align: left;
       transition: background .18s ease, color .18s ease, border-color .18s ease;
       margin-top: 8px;
     }
     .sidebar-logout:hover {
-      background: rgba(192,57,43,.24);
-      color: #fff;
+      background: rgba(192,57,43,.24); color: #fff;
       border-color: rgba(192,57,43,.50);
     }
     .sidebar-logout__icon { font-size: 16px; flex-shrink: 0; }
     .sidebar-logout__text { flex: 1; }
 
-    /* Модалка профиля */
     .kut-modal[hidden] { display: none; }
     .kut-modal {
       position: fixed; inset: 0; z-index: 110;
@@ -585,35 +635,21 @@ function injectProfileStyles() {
       animation: kutFadeIn .2s ease;
     }
     .kut-modal__dialog {
-      position: relative;
-      width: 100%; max-width: 500px;
-      background: #fff; border-radius: 22px;
-      padding: 22px;
+      position: relative; width: 100%; max-width: 500px;
+      background: #fff; border-radius: 22px; padding: 22px;
       box-shadow: 0 18px 48px rgba(16,32,25,.28);
       max-height: 92dvh; overflow-y: auto;
       animation: kutPopIn .22s cubic-bezier(.2,.9,.3,1.2);
     }
-    .kut-modal__dialog h3 {
-      margin: 0 0 4px; font-size: 19px; font-weight: 800;
-      color: #14211C;
-    }
-    .kut-modal__subtitle {
-      margin: 0 0 18px; color: #64776E;
-      font-size: 13px; line-height: 1.4;
-    }
+    .kut-modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: #14211C; }
+    .kut-modal__subtitle { margin: 0 0 18px; color: #64776E; font-size: 13px; line-height: 1.4; }
     @keyframes kutFadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes kutPopIn {
       from { opacity: 0; transform: translateY(12px) scale(.96); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
-
-    .kut-field {
-      display: flex; flex-direction: column; gap: 6px;
-      margin-bottom: 14px;
-    }
-    .kut-field label {
-      font-size: 13px; font-weight: 600; color: #14211C;
-    }
+    .kut-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .kut-field label { font-size: 13px; font-weight: 600; color: #14211C; }
     .kut-field label .kut-req { color: #C0392B; margin-left: 2px; }
     .kut-field input {
       width: 100%; padding: 12px 14px;
@@ -622,28 +658,14 @@ function injectProfileStyles() {
       color: #14211C; outline: none;
       transition: border-color .18s ease, box-shadow .18s ease;
     }
-    .kut-field input:focus {
-      border-color: #005F40;
-      box-shadow: 0 0 0 4px rgba(0,95,64,.12);
-    }
-    .kut-field input.is-invalid {
-      border-color: #C0392B;
-      box-shadow: 0 0 0 4px rgba(192,57,43,.12);
-    }
-    .kut-field__hint {
-      font-size: 12px; color: #64776E; min-height: 14px;
-    }
+    .kut-field input:focus { border-color: #005F40; box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
+    .kut-field input.is-invalid { border-color: #C0392B; box-shadow: 0 0 0 4px rgba(192,57,43,.12); }
+    .kut-field__hint { font-size: 12px; color: #64776E; min-height: 14px; }
     .kut-field__hint.is-error { color: #C0392B; font-weight: 500; }
-
-    /* Заявки для владельца */
-    .kut-requests {
-      margin-top: 20px; padding-top: 16px;
-      border-top: 1px solid #E3EAE6;
-    }
+    .kut-requests { margin-top: 20px; padding-top: 16px; border-top: 1px solid #E3EAE6; }
     .kut-requests h4 {
       margin: 0 0 10px; font-size: 13px; font-weight: 800;
-      text-transform: uppercase; letter-spacing: .5px;
-      color: #005F40;
+      text-transform: uppercase; letter-spacing: .5px; color: #005F40;
       display: flex; align-items: center; gap: 8px;
     }
     .kut-requests__badge {
@@ -653,66 +675,38 @@ function injectProfileStyles() {
       border-radius: 999px; font-size: 11px; font-weight: 800;
     }
     .kut-request {
-      background: #FBFDFC;
-      border: 1px solid #E3EAE6;
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin-bottom: 10px;
+      background: #FBFDFC; border: 1px solid #E3EAE6;
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
     }
     .kut-request:last-child { margin-bottom: 0; }
     .kut-request__head {
       display: flex; align-items: center; justify-content: space-between;
       gap: 8px; margin-bottom: 8px;
     }
-    .kut-request__name {
-      font-weight: 700; font-size: 14px; color: #14211C;
-    }
-    .kut-request__date {
-      font-size: 11px; color: #64776E;
-      font-variant-numeric: tabular-nums;
-    }
-    .kut-request__diff {
-      font-size: 12px; color: #64776E; line-height: 1.6;
-      margin-bottom: 10px;
-    }
+    .kut-request__name { font-weight: 700; font-size: 14px; color: #14211C; }
+    .kut-request__date { font-size: 11px; color: #64776E; font-variant-numeric: tabular-nums; }
+    .kut-request__diff { font-size: 12px; color: #64776E; line-height: 1.6; margin-bottom: 10px; }
     .kut-request__diff b { color: #14211C; }
-    .kut-request__arrow {
-      color: #005F40; font-weight: 700; margin: 0 6px;
-    }
-    .kut-request__actions {
-      display: flex; gap: 8px;
-    }
+    .kut-request__arrow { color: #005F40; font-weight: 700; margin: 0 6px; }
+    .kut-request__actions { display: flex; gap: 8px; }
     .kut-request__actions button {
-      flex: 1; padding: 9px 12px;
-      border-radius: 10px; border: 1px solid transparent;
-      font-family: inherit; font-size: 13px; font-weight: 700;
-      cursor: pointer;
+      flex: 1; padding: 9px 12px; border-radius: 10px;
+      border: 1px solid transparent;
+      font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
     }
-    .kut-btn-approve {
-      background: #005F40; color: #fff;
-    }
+    .kut-btn-approve { background: #005F40; color: #fff; }
     .kut-btn-approve:hover { background: #003F2A; }
     .kut-btn-reject {
       background: transparent; color: #C0392B;
       border-color: rgba(192,57,43,.30) !important;
     }
-    .kut-btn-reject:hover {
-      background: rgba(192,57,43,.08);
-      border-color: #C0392B !important;
-    }
-    .kut-requests__empty {
-      font-size: 13px; color: #64776E;
-      padding: 10px 0; text-align: center;
-    }
-
-    .kut-actions {
-      display: flex; gap: 10px; margin-top: 20px;
-    }
+    .kut-btn-reject:hover { background: rgba(192,57,43,.08); border-color: #C0392B !important; }
+    .kut-requests__empty { font-size: 13px; color: #64776E; padding: 10px 0; text-align: center; }
+    .kut-actions { display: flex; gap: 10px; margin-top: 20px; }
     .kut-actions button {
       flex: 1; padding: 13px 16px;
       border-radius: 12px; border: 1px solid transparent;
-      font-family: inherit; font-size: 14px; font-weight: 700;
-      cursor: pointer;
+      font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
     }
     .kut-btn-primary { background: #005F40; color: #fff; }
     .kut-btn-primary:hover { background: #003F2A; }
@@ -721,16 +715,11 @@ function injectProfileStyles() {
       background: transparent; color: #14211C;
       border-color: #E3EAE6 !important;
     }
-    .kut-btn-ghost:hover {
-      background: #E6F1ED;
-      border-color: #005F40 !important;
-      color: #005F40;
-    }
+    .kut-btn-ghost:hover { background: #E6F1ED; border-color: #005F40 !important; color: #005F40; }
     .kut-info-box {
       padding: 10px 12px; background: #FFF8E1;
       border: 1px solid #E3C97A; border-radius: 10px;
-      color: #7A5E00; font-size: 12px; line-height: 1.5;
-      margin-bottom: 14px;
+      color: #7A5E00; font-size: 12px; line-height: 1.5; margin-bottom: 14px;
     }
   `;
   const style = document.createElement('style');
@@ -928,8 +917,6 @@ async function saveProfile(event) {
       state.profile = { ...p, displayName: newData.displayName, phone: newData.phone };
       mountProfileBlock();
       renderRoleBadge(state.profile);
-      const who = document.getElementById('user-name');
-      if (who) who.textContent = newData.displayName || p.email || '—';
       toast('Профиль обновлён');
       closeProfileModal();
     } else {
@@ -1248,33 +1235,28 @@ async function boot() {
     if (claimed) { state.profile = claimed; state.businessId = claimed.businessId; }
   }
 
-  // Бейдж роли
   renderRoleBadge(state.profile);
 
-  // Видимость пунктов меню в сайдбаре
   const isManager = profile.role === 'owner' || profile.role === 'manager';
   if (isManager) {
     const navStaff = document.getElementById('nav-staff-link');
     if (navStaff) navStaff.hidden = false;
   }
 
-  // Сайдбар, бургер, оверлей
   setupSidebar();
-
-  // Профиль и выход
   injectProfileStyles();
   mountProfileBlock();
   mountLogoutBlock();
   ensureProfileModal();
 
-  // Подсветка нижней панели
+  // Нижняя панель: подсветка + центральная кнопка + автостарт сканера
   setupBottomNavHighlight();
+  setupBottomNavScan();
+  handleAutoScanParam();
 
-  // Год
   const yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  // Кнопка «Выйти» в шапке контента (если осталась в каком-то шаблоне)
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) logoutBtn.addEventListener('click', () => {
     if (!confirm('Выйти из аккаунта?')) return;
@@ -1282,7 +1264,7 @@ async function boot() {
   });
 
   if (!state.businessId) {
-    const box = document.querySelector('.main-content');
+    const box = document.querySelector('.main-content') || document.querySelector('.wrap') || document.querySelector('.pos');
     if (box) {
       box.insertAdjacentHTML('afterbegin',
         '<div style="padding:14px 16px;background:#FFF8E1;border:1px solid #E3C97A;border-radius:14px;color:#7A5E00;font-size:13px;margin-bottom:16px;">' +
@@ -1319,7 +1301,7 @@ async function boot() {
     if (state.unsubRequests) state.unsubRequests();
   });
 
-  console.info('[KUT] Дашборд загружен · бизнес:', state.businessId, '· роль:', profile.role);
+  console.info('[KUT] Ядро готово · бизнес:', state.businessId, '· роль:', profile.role);
 }
 
 if (document.readyState === 'loading') {
