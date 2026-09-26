@@ -4,15 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — склад и товары.">
   <title>Склад — КУТ: БИЗНЕС</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="./css/style.css">
-
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script>
 
   <style>
@@ -28,54 +25,39 @@
     }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; }
-
     body.page-stock {
-      margin: 0;
-      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0; font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: var(--kut-bg); color: var(--kut-text);
       display: flex; flex-direction: column; min-height: 100dvh;
       -webkit-font-smoothing: antialiased;
     }
-
-    .topbar {
-      background: var(--kut-green); color: #fff;
-      box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 40;
-    }
+    .topbar { background: var(--kut-green); color: #fff; box-shadow: var(--shadow-sm); position: sticky; top: 0; z-index: 40; }
     .topbar__inner {
       max-width: 1400px; margin: 0 auto; padding: 12px 16px;
-      display: flex; align-items: center; gap: 16px; justify-content: space-between;
-      flex-wrap: wrap;
+      display: flex; align-items: center; gap: 16px;
+      justify-content: space-between; flex-wrap: wrap;
     }
-    .topbar__brand {
-      display: inline-flex; align-items: center; gap: 10px;
-      color: #fff; text-decoration: none; font-weight: 700;
-    }
+    .topbar__brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 700; }
     .brand__mark {
       width: 34px; height: 34px; border-radius: 10px;
       background: var(--kut-gold); color: var(--kut-green-dark);
       display: grid; place-items: center; font-weight: 800;
     }
     .brand__name { font-size: 15px; }
-    .topbar__nav {
-      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
-    }
+    .topbar__nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
     .topbar__nav::-webkit-scrollbar { display: none; }
     .topbar__nav a {
       color: rgba(255,255,255,.85); text-decoration: none;
-      padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: 500;
-      white-space: nowrap;
+      padding: 8px 12px; border-radius: 10px; font-size: 14px;
+      font-weight: 500; white-space: nowrap;
     }
     .topbar__nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
-    .topbar__nav a.active {
-      background: var(--kut-gold); color: var(--kut-green-dark); font-weight: 600;
-    }
+    .topbar__nav a.active { background: var(--kut-gold); color: var(--kut-green-dark); font-weight: 600; }
 
     .wrap { width: 100%; max-width: 1400px; margin: 0 auto; padding: 16px; }
     @media (min-width: 980px) { .wrap { padding: 20px; } }
 
-    .page-head {
-      display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;
-    }
+    .page-head { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
     @media (min-width: 720px) {
       .page-head { flex-direction: row; align-items: center; justify-content: space-between; }
     }
@@ -84,34 +66,21 @@
 
     .stats { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px; }
     @media (min-width: 640px) { .stats { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
-
     .stat {
       background: var(--kut-surface); border: 1px solid var(--kut-border);
       border-radius: var(--radius-lg); padding: 16px;
       display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-sm);
-      position: relative; overflow: hidden;
     }
     .stat__icon {
       width: 46px; height: 46px; border-radius: 12px;
       display: grid; place-items: center; font-size: 22px;
-      background: var(--kut-green-soft); color: var(--kut-green);
-      flex-shrink: 0;
+      background: var(--kut-green-soft); color: var(--kut-green); flex-shrink: 0;
     }
     .stat--warn .stat__icon { background: #FFF2DE; color: var(--kut-warn); }
     .stat--money .stat__icon { background: #FFF8E1; color: var(--kut-gold-dark); }
-    .stat__label {
-      font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
-      font-weight: 600; color: var(--kut-muted); margin-bottom: 4px;
-    }
-    .stat__value {
-      font-size: 22px; font-weight: 800; line-height: 1.1;
-      color: var(--kut-text); letter-spacing: -.4px;
-      font-variant-numeric: tabular-nums;
-    }
-    .stat__value small {
-      font-size: 12px; font-weight: 600; color: var(--kut-muted);
-      margin-left: 4px; letter-spacing: 0;
-    }
+    .stat__label { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; font-weight: 600; color: var(--kut-muted); margin-bottom: 4px; }
+    .stat__value { font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .stat__value small { font-size: 12px; font-weight: 600; color: var(--kut-muted); margin-left: 4px; }
 
     .toolbar {
       background: var(--kut-surface); border: 1px solid var(--kut-border);
@@ -119,10 +88,7 @@
       display: flex; flex-direction: column; gap: 10px;
       margin-bottom: 14px; box-shadow: var(--shadow-sm);
     }
-    @media (min-width: 720px) {
-      .toolbar { flex-direction: row; align-items: center; gap: 12px; }
-    }
-
+    @media (min-width: 720px) { .toolbar { flex-direction: row; align-items: center; gap: 12px; } }
     .search { position: relative; flex: 1; min-width: 200px; }
     .search input {
       width: 100%; padding: 12px 16px 12px 42px;
@@ -136,26 +102,19 @@
     }
     .search::before {
       content: "🔍"; position: absolute; left: 14px; top: 50%;
-      transform: translateY(-50%); font-size: 14px; opacity: .65;
-      pointer-events: none;
+      transform: translateY(-50%); font-size: 14px;
+      opacity: .65; pointer-events: none;
     }
-
-    .chips {
-      display: flex; gap: 8px; overflow-x: auto;
-      scrollbar-width: none; padding-bottom: 2px; flex-wrap: nowrap;
-    }
+    .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; flex-wrap: nowrap; }
     .chips::-webkit-scrollbar { display: none; }
     .chip {
       border: 1px solid var(--kut-border); background: #fff;
       color: var(--kut-text); padding: 8px 14px; border-radius: 999px;
       font-size: 13px; font-weight: 500; cursor: pointer;
-      white-space: nowrap; font-family: inherit; transition: all .18s ease;
+      white-space: nowrap; font-family: inherit;
     }
     .chip:hover { border-color: var(--kut-green); color: var(--kut-green); }
-    .chip.is-active {
-      background: var(--kut-green); color: #fff; border-color: var(--kut-green);
-      box-shadow: 0 4px 10px rgba(0,95,64,.22);
-    }
+    .chip.is-active { background: var(--kut-green); color: #fff; border-color: var(--kut-green); }
 
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
@@ -165,37 +124,20 @@
       transition: all .12s ease; white-space: nowrap;
     }
     .btn:active { transform: translateY(1px); }
-    .btn--primary {
-      background: var(--kut-green); color: #fff;
-      box-shadow: 0 8px 18px rgba(0,95,64,.24);
-    }
+    .btn--primary { background: var(--kut-green); color: #fff; box-shadow: 0 8px 18px rgba(0,95,64,.24); }
     .btn--primary:hover { background: var(--kut-green-dark); }
-    .btn--gold {
-      background: var(--kut-gold); color: var(--kut-green-dark);
-      box-shadow: 0 8px 18px rgba(212,175,55,.32);
-    }
+    .btn--gold { background: var(--kut-gold); color: var(--kut-green-dark); box-shadow: 0 8px 18px rgba(212,175,55,.32); }
     .btn--gold:hover { background: var(--kut-gold-dark); }
-    .btn--ghost {
-      background: transparent; border-color: var(--kut-border); color: var(--kut-text);
-    }
-    .btn--ghost:hover {
-      background: var(--kut-green-soft); border-color: var(--kut-green);
-      color: var(--kut-green);
-    }
-    .btn--danger {
-      background: transparent; color: var(--kut-danger);
-      border-color: rgba(192,57,43,.25);
-    }
+    .btn--ghost { background: transparent; border-color: var(--kut-border); color: var(--kut-text); }
+    .btn--ghost:hover { background: var(--kut-green-soft); border-color: var(--kut-green); color: var(--kut-green); }
+    .btn--danger { background: transparent; color: var(--kut-danger); border-color: rgba(192,57,43,.25); }
     .btn--danger:hover { background: rgba(192,57,43,.08); border-color: var(--kut-danger); }
-    .btn--block { width: 100%; }
     .btn:disabled { opacity: .55; cursor: not-allowed; }
 
     .stock-card {
       background: var(--kut-surface); border: 1px solid var(--kut-border);
-      border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
-      overflow: hidden;
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden;
     }
-
     .stock-table { width: 100%; border-collapse: collapse; font-size: 14px; }
     .stock-table thead th {
       text-align: left; font-size: 12px; text-transform: uppercase;
@@ -203,30 +145,21 @@
       padding: 14px 16px; background: #FBFDFC;
       border-bottom: 1px solid var(--kut-border); white-space: nowrap;
     }
-    .stock-table tbody td {
-      padding: 14px 16px; border-bottom: 1px solid var(--kut-border);
-      vertical-align: middle;
-    }
+    .stock-table tbody td { padding: 14px 16px; border-bottom: 1px solid var(--kut-border); vertical-align: middle; }
     .stock-table tbody tr:last-child td { border-bottom: none; }
     .stock-table tbody tr:hover { background: #FAFCFB; }
 
-    .cell-name {
-      display: flex; align-items: center; gap: 12px; min-width: 200px;
-    }
+    .cell-name { display: flex; align-items: center; gap: 12px; min-width: 200px; }
     .cell-name__emoji {
       width: 40px; height: 40px; display: grid; place-items: center;
-      background: var(--kut-green-soft); border-radius: 10px;
-      font-size: 18px; flex-shrink: 0;
+      background: var(--kut-green-soft); border-radius: 10px; font-size: 18px; flex-shrink: 0;
     }
     .cell-name__text { min-width: 0; }
     .cell-name__title {
-      font-weight: 600; font-size: 14px; color: var(--kut-text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      max-width: 260px;
+      font-weight: 600; font-size: 14px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; max-width: 260px;
     }
-    .cell-name__sub {
-      font-size: 12px; color: var(--kut-muted); margin-top: 2px;
-    }
+    .cell-name__sub { font-size: 12px; color: var(--kut-muted); margin-top: 2px; }
 
     .badge {
       display: inline-block; padding: 4px 10px; font-size: 12px;
@@ -234,10 +167,11 @@
       background: var(--kut-green-soft); color: var(--kut-green);
       white-space: nowrap;
     }
-
     .price { font-variant-numeric: tabular-nums; white-space: nowrap; }
     .price--cost { color: var(--kut-muted); }
     .price--sale { color: var(--kut-green); font-weight: 700; }
+    .price-block { display: flex; flex-direction: column; gap: 2px; }
+    .price-block small { font-size: 11px; color: var(--kut-muted); font-weight: 500; }
 
     .qty-cell {
       display: inline-flex; align-items: center; gap: 2px;
@@ -246,18 +180,12 @@
     .qty-btn {
       width: 30px; height: 30px; display: grid; place-items: center;
       border: none; background: transparent; color: var(--kut-green);
-      font-size: 17px; font-weight: 700; border-radius: 8px; cursor: pointer;
-      font-family: inherit;
+      font-size: 17px; font-weight: 700; border-radius: 8px;
+      cursor: pointer; font-family: inherit;
     }
     .qty-btn:hover { background: #fff; }
-    .qty-value {
-      min-width: 40px; text-align: center; font-size: 14px; font-weight: 700;
-      font-variant-numeric: tabular-nums;
-    }
-    .qty-value small {
-      font-size: 11px; color: var(--kut-muted); font-weight: 500;
-      margin-left: 2px;
-    }
+    .qty-value { min-width: 40px; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .qty-value small { font-size: 11px; color: var(--kut-muted); font-weight: 500; margin-left: 2px; }
 
     .row-actions { display: inline-flex; gap: 4px; }
     .icon-btn {
@@ -266,36 +194,22 @@
       color: var(--kut-muted); border-radius: 10px; cursor: pointer;
       font-family: inherit; font-size: 15px; transition: all .15s ease;
     }
-    .icon-btn:hover {
-      color: var(--kut-green); border-color: var(--kut-green);
-      background: var(--kut-green-soft);
-    }
-    .icon-btn--danger:hover {
-      color: var(--kut-danger); border-color: var(--kut-danger);
-      background: rgba(192,57,43,.06);
-    }
+    .icon-btn:hover { color: var(--kut-green); border-color: var(--kut-green); background: var(--kut-green-soft); }
+    .icon-btn--danger:hover { color: var(--kut-danger); border-color: var(--kut-danger); background: rgba(192,57,43,.06); }
 
-    .empty {
-      padding: 60px 20px; text-align: center; color: var(--kut-muted);
-    }
+    .empty { padding: 60px 20px; text-align: center; color: var(--kut-muted); }
     .empty__icon { font-size: 40px; margin-bottom: 10px; opacity: .8; }
     .empty h3 { margin: 0 0 6px; color: var(--kut-text); font-size: 17px; }
     .empty p { margin: 0 0 18px; font-size: 14px; }
 
     @media (max-width: 860px) {
       .stock-table thead { display: none; }
-      .stock-table, .stock-table tbody, .stock-table tr, .stock-table td {
-        display: block; width: 100%;
-      }
-      .stock-table tr {
-        border-bottom: 1px solid var(--kut-border);
-        padding: 14px 14px 12px;
-      }
+      .stock-table, .stock-table tbody, .stock-table tr, .stock-table td { display: block; width: 100%; }
+      .stock-table tr { border-bottom: 1px solid var(--kut-border); padding: 14px 14px 12px; }
       .stock-table tr:last-child { border-bottom: none; }
       .stock-table td {
         border: none; padding: 4px 0;
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 12px;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
       }
       .stock-table td::before {
         content: attr(data-label);
@@ -309,29 +223,19 @@
     }
 
     .modal[hidden] { display: none; }
-    .modal {
-      position: fixed; inset: 0; z-index: 100;
-      display: grid; place-items: center; padding: 16px;
-    }
+    .modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; }
     .modal__backdrop {
-      position: absolute; inset: 0;
-      background: rgba(15,30,24,.5); backdrop-filter: blur(4px);
-      animation: fadeIn .2s ease;
+      position: absolute; inset: 0; background: rgba(15, 30, 24, .5);
+      backdrop-filter: blur(4px);
     }
     .modal__dialog {
       position: relative; width: 100%; max-width: 520px;
       background: var(--kut-surface); border-radius: var(--radius-lg);
       padding: 22px; box-shadow: var(--shadow-lg);
-      animation: popIn .22s cubic-bezier(.2,.9,.3,1.2);
       max-height: 92dvh; overflow-y: auto;
     }
     .modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 700; }
     .modal__subtitle { margin: 0 0 18px; color: var(--kut-muted); font-size: 13px; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes popIn {
-      from { opacity: 0; transform: translateY(12px) scale(.96); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .field { display: flex; flex-direction: column; gap: 6px; }
@@ -347,18 +251,13 @@
       border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
     }
     .field input.is-invalid, .field select.is-invalid {
-      border-color: var(--kut-danger);
-      box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+      border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12);
     }
-    .field__hint {
-      font-size: 12px; color: var(--kut-muted); min-height: 14px;
-    }
+    .field__hint { font-size: 12px; color: var(--kut-muted); min-height: 14px; }
     .field__hint.is-error { color: var(--kut-danger); font-weight: 500; }
 
     .input-group { display: flex; align-items: stretch; }
-    .input-group input {
-      border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none;
-    }
+    .input-group input { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; }
     .input-group__suffix {
       display: inline-flex; align-items: center; padding: 0 12px;
       background: #FBFDFC; border: 1.5px solid var(--kut-border);
@@ -370,16 +269,10 @@
     .barcode-row input {
       flex: 1; min-width: 0; padding: 12px 14px;
       border-radius: 10px; border: 1.5px solid var(--kut-border);
-      background: #fff; font-family: inherit; font-size: 15px;
-      outline: none;
+      background: #fff; font-family: inherit; font-size: 15px; outline: none;
     }
-    .barcode-row input:focus {
-      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
-    }
-    .barcode-row input.is-invalid {
-      border-color: var(--kut-danger);
-      box-shadow: 0 0 0 4px rgba(192,57,43,.12);
-    }
+    .barcode-row input:focus { border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
+    .barcode-row input.is-invalid { border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12); }
     .barcode-row__btn {
       flex-shrink: 0; padding: 0 14px;
       border: 1.5px solid var(--kut-green); background: var(--kut-green-soft);
@@ -397,18 +290,11 @@
     .margin-preview {
       margin-top: 6px; padding: 12px 14px; background: var(--kut-green-soft);
       border-radius: 12px; display: flex; align-items: center;
-      justify-content: space-between; font-size: 13px; gap: 10px;
-      flex-wrap: wrap;
+      justify-content: space-between; font-size: 13px; gap: 10px; flex-wrap: wrap;
     }
     .margin-preview__item { display: flex; flex-direction: column; gap: 2px; }
-    .margin-preview__label {
-      font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
-      color: var(--kut-muted); font-weight: 600;
-    }
-    .margin-preview__value {
-      font-size: 15px; font-weight: 700; color: var(--kut-green);
-      font-variant-numeric: tabular-nums;
-    }
+    .margin-preview__label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--kut-muted); font-weight: 600; }
+    .margin-preview__value { font-size: 15px; font-weight: 700; color: var(--kut-green); font-variant-numeric: tabular-nums; }
     .margin-preview__value.is-negative { color: var(--kut-danger); }
 
     .modal__actions { display: flex; gap: 10px; margin-top: 20px; }
@@ -420,10 +306,9 @@
 </head>
 <body class="page-stock">
 
-  <!-- Kill-switch кэша -->
   <script>
     (function () {
-      var BUILD = 'v4.3-STOCK-FIREBASE';
+      var BUILD = 'v6.0-COSTPRICE';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -470,7 +355,7 @@
     <div class="page-head">
       <div>
         <h1>Склад и товары</h1>
-        <p>Учёт остатков, себестоимости и цен продажи — всё в одном месте</p>
+        <p>Остатки, себестоимость и цены продажи</p>
       </div>
       <button class="btn btn--primary" id="openAddBtn" type="button">
         <span aria-hidden="true">＋</span> Добавить новый товар
@@ -517,8 +402,8 @@
             <th>Товар</th>
             <th>Категория</th>
             <th>Остаток</th>
-            <th>Закупка</th>
-            <th>Продажа</th>
+            <th>Себестоимость</th>
+            <th>Цена продажи</th>
             <th>Маржа</th>
             <th aria-label="Действия"></th>
           </tr>
@@ -534,7 +419,6 @@
     </section>
   </main>
 
-  <!-- Модалка товара -->
   <div class="modal" id="productModal" hidden>
     <div class="modal__backdrop" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true">
@@ -577,13 +461,13 @@
           </div>
 
           <div class="field">
-            <label for="fCost">Цена закупки <span class="req">*</span></label>
+            <label for="fCost">Себестоимость закупки (Cost Price) <span class="req">*</span></label>
             <div class="input-group">
               <input type="number" id="fCost" inputmode="decimal" min="0" step="0.01"
                 placeholder="0" required>
               <span class="input-group__suffix">KGS</span>
             </div>
-            <div class="field__hint" data-for="fCost"></div>
+            <div class="field__hint" data-for="fCost">Сколько вы заплатили поставщику за 1 единицу</div>
           </div>
 
           <div class="field">
@@ -634,7 +518,6 @@
     </div>
   </div>
 
-  <!-- Модалка удаления -->
   <div class="modal" id="deleteModal" hidden>
     <div class="modal__backdrop" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true">
