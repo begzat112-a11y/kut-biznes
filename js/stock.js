@@ -1,7 +1,6 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v2
-   Работает поверх window.KUT и window.FB.
-   Коллекция: businesses/{businessId}/products
+   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · Firebase v3
+   + менеджер имеет те же права на склад, что и владелец
    ========================================================= */
 
 (function () {
@@ -11,37 +10,28 @@
   const CATEGORIES = ['Одежда', 'Продукты', 'Напитки', 'Выпечка', 'Услуги', 'Хозтовары', 'Другое'];
   const CHIP_CATEGORIES = ['Все', ...CATEGORIES];
 
-  // =========================================================
-  // СОСТОЯНИЕ
-  // =========================================================
   const state = {
     products: [],
     search: '',
     category: 'Все',
     editingId: null,
     deletingId: null,
-    isOwner: true,
+    canEdit: false,   // ← owner или manager
     unsubProducts: null,
   };
 
-  // =========================================================
-  // DOM
-  // =========================================================
   const $ = (s) => document.querySelector(s);
   const el = {
     openAddBtn:   $('#openAddBtn'),
     emptyAddBtn:  $('#emptyAddBtn'),
     searchInput:  $('#searchInput'),
     chips:        $('#categoryChips'),
-
     stockBody:    $('#stockBody'),
     stockTable:   $('#stockTable'),
     stockEmpty:   $('#stockEmpty'),
-
     statTotalItems:  $('#statTotalItems'),
     statStockValue:  $('#statStockValue'),
     statLowStock:    $('#statLowStock'),
-
     productModal:      $('#productModal'),
     productModalTitle: $('#productModalTitle'),
     productModalSub:   $('#productModalSub'),
@@ -56,19 +46,13 @@
     fBarcode:          $('#fBarcode'),
     barcodeScanBtn:    $('#barcodeScanBtn'),
     saveBtn:           $('#saveBtn'),
-
     previewProfit:     $('#previewProfit'),
     previewMarkup:     $('#previewMarkup'),
     previewStockValue: $('#previewStockValue'),
-
     deleteModal:      $('#deleteModal'),
     deleteName:       $('#deleteName'),
     confirmDeleteBtn: $('#confirmDeleteBtn'),
   };
-
-  // =========================================================
-  // УТИЛИТЫ
-  // =========================================================
 
   const fmt = (n) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
@@ -113,10 +97,7 @@
     }
   }
 
-  // =========================================================
-  // СКАНЕР ШТРИХКОДА
-  // =========================================================
-
+  // ===== Сканер =====
   let scannerModal = null;
   let scannerInstance = null;
 
@@ -136,9 +117,7 @@
         <p style="margin:0 0 14px; color:#64776E; font-size:13px;">
           Наведите камеру на штрихкод товара.
         </p>
-        <div id="stockScannerReader"
-             style="width:100%; border-radius:14px; overflow:hidden;
-                    background:#000; min-height:220px;"></div>
+        <div id="stockScannerReader" style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
         <div style="display:flex; gap:10px; margin-top:16px;">
           <button class="btn btn--ghost btn--block" type="button" data-close-scan>Отмена</button>
         </div>
@@ -162,7 +141,6 @@
     readerEl.innerHTML = '';
     modal.hidden = false;
     document.body.style.overflow = 'hidden';
-
     try {
       scannerInstance = new Html5Qrcode('stockScannerReader');
       const config = {
@@ -180,7 +158,6 @@
           Html5QrcodeSupportedFormats.QR_CODE,
         ],
       };
-
       await scannerInstance.start(
         { facingMode: 'environment' },
         config,
@@ -213,16 +190,12 @@
     document.body.style.overflow = '';
   }
 
-  // =========================================================
-  // РЕНДЕР
-  // =========================================================
-
+  // ===== Рендер =====
   function renderStats() {
     const list = state.products;
     const totalItems = list.length;
     const stockValue = list.reduce(
-      (s, p) => s + (Number(p.qty) || 0) * (Number(p.costPrice) || 0), 0
-    );
+      (s, p) => s + (Number(p.qty) || 0) * (Number(p.costPrice) || 0), 0);
     const lowStock = list.filter((p) => Number(p.qty) < LOW_STOCK_THRESHOLD).length;
 
     if (el.statTotalItems) el.statTotalItems.innerHTML = `${fmt(totalItems)}<small>поз.</small>`;
@@ -260,14 +233,13 @@
     const items = getVisibleProducts();
 
     if (state.products.length === 0) {
-      if (el.stockTable) el.stockTable.hidden = true;
-      if (el.stockEmpty) el.stockEmpty.hidden = false;
+      el.stockTable.hidden = true;
+      el.stockEmpty.hidden = false;
       el.stockBody.innerHTML = '';
       return;
     }
-
-    if (el.stockTable) el.stockTable.hidden = false;
-    if (el.stockEmpty) el.stockEmpty.hidden = true;
+    el.stockTable.hidden = false;
+    el.stockEmpty.hidden = true;
 
     if (items.length === 0) {
       el.stockBody.innerHTML = `
@@ -283,10 +255,14 @@
       const profit = sale - cost;
       const profitLabel = `${profit > 0 ? '+' : ''}${fmt(profit)} KGS`;
       const barcode = p.barcode ? escapeHtml(p.barcode) : '—';
-      const ownerActions = state.isOwner ? `
+      const editActions = state.canEdit ? `
         <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
         <button class="icon-btn icon-btn--danger" type="button" data-act="delete" title="Удалить">🗑️</button>
       ` : '';
+      const qtyBtns = state.canEdit
+        ? `<button class="qty-btn" type="button" data-act="dec">−</button>` : '';
+      const qtyBtns2 = state.canEdit
+        ? `<button class="qty-btn" type="button" data-act="inc">+</button>` : '';
 
       return `
         <tr data-id="${escapeHtml(p.id)}">
@@ -294,19 +270,17 @@
             <div class="cell-name">
               <div class="cell-name__emoji">${emojiForCategory(p.category)}</div>
               <div class="cell-name__text">
-                <div class="cell-name__title" title="${escapeHtml(p.name)}">${escapeHtml(window.KUT_LANG?.tProduct(p.name) || p.name)}</div>
+                <div class="cell-name__title" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
                 <div class="cell-name__sub">Штрихкод: ${barcode}</div>
               </div>
             </div>
           </td>
-          <td data-label="Категория">
-            <span class="badge">${escapeHtml(window.KUT_LANG?.tCategory(p.category) || p.category)}</span>
-          </td>
+          <td data-label="Категория"><span class="badge">${escapeHtml(p.category)}</span></td>
           <td data-label="Остаток">
-            <div class="qty-cell" role="group">
-              ${state.isOwner ? `<button class="qty-btn" type="button" data-act="dec">−</button>` : ''}
+            <div class="qty-cell">
+              ${qtyBtns}
               <span class="qty-value">${fmt(p.qty)}<small>${escapeHtml(p.unit || 'шт')}</small></span>
-              ${state.isOwner ? `<button class="qty-btn" type="button" data-act="inc">+</button>` : ''}
+              ${qtyBtns2}
             </div>
           </td>
           <td data-label="Закупка"><span class="price price--cost">${fmt(cost)} KGS</span></td>
@@ -315,17 +289,15 @@
             <span class="price" style="${profit < 0 ? 'color:var(--kut-danger);' : 'color:var(--kut-green); font-weight:600;'}">${profitLabel}</span>
           </td>
           <td data-label="Действия">
-            <div class="row-actions">${ownerActions}</div>
+            <div class="row-actions">${editActions}</div>
           </td>
         </tr>`;
     }).join('');
   }
 
-  // =========================================================
-  // ОПЕРАЦИИ
-  // =========================================================
-
+  // ===== Операции =====
   async function changeQty(productId, delta) {
+    if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
     if (!p) return;
     const next = Math.max(0, (Number(p.qty) || 0) + delta);
@@ -338,56 +310,58 @@
   }
 
   function openAddModal() {
+    if (!state.canEdit) return;
     state.editingId = null;
-    if (el.productModalTitle) el.productModalTitle.textContent = 'Новый товар';
-    if (el.productModalSub) el.productModalSub.textContent = 'Заполните данные — они сохранятся в облаке.';
-    if (el.saveBtn) el.saveBtn.textContent = 'Добавить товар';
+    el.productModalTitle.textContent = 'Новый товар';
+    el.productModalSub.textContent = 'Заполните данные — они сохранятся в облаке.';
+    el.saveBtn.textContent = 'Добавить товар';
 
-    if (el.productForm) el.productForm.reset();
-    if (el.productId) el.productId.value = '';
-    if (el.fName) el.fName.value = '';
-    if (el.fCategory) el.fCategory.value = CATEGORIES[0];
-    if (el.fUnit) el.fUnit.value = 'шт';
-    if (el.fQty) el.fQty.value = '';
-    if (el.fCost) el.fCost.value = '';
-    if (el.fSale) el.fSale.value = '';
-    if (el.fBarcode) el.fBarcode.value = '';
+    el.productForm.reset();
+    el.productId.value = '';
+    el.fName.value = '';
+    el.fCategory.value = CATEGORIES[0];
+    el.fUnit.value = 'шт';
+    el.fQty.value = '';
+    el.fCost.value = '';
+    el.fSale.value = '';
+    el.fBarcode.value = '';
 
     clearFieldErrors();
     updateMarginPreview();
     openModal(el.productModal);
-    if (el.fName) requestAnimationFrame(() => el.fName.focus());
+    requestAnimationFrame(() => el.fName.focus());
   }
 
   function openEditModal(productId) {
+    if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
     if (!p) return;
-
     state.editingId = p.id;
-    if (el.productModalTitle) el.productModalTitle.textContent = 'Редактировать товар';
-    if (el.productModalSub) el.productModalSub.textContent = 'Измените данные и сохраните.';
-    if (el.saveBtn) el.saveBtn.textContent = 'Сохранить изменения';
+    el.productModalTitle.textContent = 'Редактировать товар';
+    el.productModalSub.textContent = 'Измените данные и сохраните.';
+    el.saveBtn.textContent = 'Сохранить изменения';
 
-    if (el.productId) el.productId.value = p.id;
-    if (el.fName) el.fName.value = p.name || '';
-    if (el.fCategory) el.fCategory.value = CATEGORIES.includes(p.category) ? p.category : 'Другое';
-    if (el.fUnit) el.fUnit.value = p.unit || 'шт';
-    if (el.fQty) el.fQty.value = p.qty ?? '';
-    if (el.fCost) el.fCost.value = p.costPrice ?? '';
-    if (el.fSale) el.fSale.value = p.salePrice ?? '';
-    if (el.fBarcode) el.fBarcode.value = p.barcode || '';
+    el.productId.value = p.id;
+    el.fName.value = p.name || '';
+    el.fCategory.value = CATEGORIES.includes(p.category) ? p.category : 'Другое';
+    el.fUnit.value = p.unit || 'шт';
+    el.fQty.value = p.qty ?? '';
+    el.fCost.value = p.costPrice ?? '';
+    el.fSale.value = p.salePrice ?? '';
+    el.fBarcode.value = p.barcode || '';
 
     clearFieldErrors();
     updateMarginPreview();
     openModal(el.productModal);
-    if (el.fName) requestAnimationFrame(() => el.fName.focus());
+    requestAnimationFrame(() => el.fName.focus());
   }
 
   function openDeleteModal(productId) {
+    if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
     if (!p) return;
     state.deletingId = p.id;
-    if (el.deleteName) el.deleteName.textContent = `«${p.name}» будет удалён со склада.`;
+    el.deleteName.textContent = `«${p.name}» будет удалён со склада.`;
     openModal(el.deleteModal);
   }
 
@@ -395,7 +369,6 @@
     const id = state.deletingId;
     if (!id) return;
     const p = state.products.find((x) => x.id === id);
-
     if (el.confirmDeleteBtn) {
       el.confirmDeleteBtn.disabled = true;
       el.confirmDeleteBtn.textContent = 'Удаляем...';
@@ -421,11 +394,8 @@
     if (!validateForm()) return;
 
     const barcode = el.fBarcode ? el.fBarcode.value.trim() : '';
-
     if (barcode) {
-      const dup = state.products.find(
-        (x) => x.barcode === barcode && x.id !== state.editingId
-      );
+      const dup = state.products.find((x) => x.barcode === barcode && x.id !== state.editingId);
       if (dup) {
         setFieldError('fBarcode', `Такой штрихкод уже у товара «${dup.name}»`);
         return;
@@ -446,7 +416,6 @@
       el.saveBtn.disabled = true;
       el.saveBtn.textContent = state.editingId ? 'Сохраняем...' : 'Добавляем...';
     }
-
     try {
       if (state.editingId) {
         await window.FB.updateItem('products', state.editingId, data);
@@ -467,10 +436,7 @@
     }
   }
 
-  // =========================================================
-  // ВАЛИДАЦИЯ
-  // =========================================================
-
+  // ===== Валидация =====
   function setFieldError(fieldId, message) {
     const input = document.getElementById(fieldId);
     const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
@@ -480,7 +446,6 @@
       hint.classList.toggle('is-error', Boolean(message));
     }
   }
-
   function clearFieldErrors() {
     document.querySelectorAll('.field__hint').forEach((h) => {
       h.textContent = '';
@@ -489,36 +454,19 @@
     document.querySelectorAll('#productForm input, #productForm select')
       .forEach((i) => i.classList.remove('is-invalid'));
   }
-
   function validateForm() {
     clearFieldErrors();
     let ok = true;
-
-    if (el.fName.value.trim().length < 2) {
-      setFieldError('fName', 'Название минимум 2 символа');
-      ok = false;
-    }
+    if (el.fName.value.trim().length < 2) { setFieldError('fName', 'Название минимум 2 символа'); ok = false; }
     const qty = Number(el.fQty.value);
-    if (el.fQty.value === '' || Number.isNaN(qty) || qty < 0) {
-      setFieldError('fQty', 'Введите количество (0 или больше)');
-      ok = false;
-    }
+    if (el.fQty.value === '' || Number.isNaN(qty) || qty < 0) { setFieldError('fQty', 'Введите количество'); ok = false; }
     const cost = Number(el.fCost.value);
-    if (el.fCost.value === '' || Number.isNaN(cost) || cost < 0) {
-      setFieldError('fCost', 'Введите цену закупки (0 или больше)');
-      ok = false;
-    }
+    if (el.fCost.value === '' || Number.isNaN(cost) || cost < 0) { setFieldError('fCost', 'Введите цену закупки'); ok = false; }
     const sale = Number(el.fSale.value);
-    if (el.fSale.value === '' || Number.isNaN(sale) || sale < 0) {
-      setFieldError('fSale', 'Введите цену продажи (0 или больше)');
-      ok = false;
-    }
-    if (ok && sale < cost) {
-      setFieldError('fSale', 'Продажа ниже закупки — проверьте цены');
-    }
+    if (el.fSale.value === '' || Number.isNaN(sale) || sale < 0) { setFieldError('fSale', 'Введите цену продажи'); ok = false; }
+    if (ok && sale < cost) setFieldError('fSale', 'Продажа ниже закупки — проверьте цены');
     return ok;
   }
-
   function updateMarginPreview() {
     if (!el.fCost || !el.fSale || !el.fQty) return;
     const cost = Number(el.fCost.value) || 0;
@@ -527,7 +475,6 @@
     const profit = sale - cost;
     const markup = cost > 0 ? (profit / cost) * 100 : (sale > 0 ? 100 : 0);
     const stockValue = cost * qty;
-
     if (el.previewProfit) {
       el.previewProfit.textContent = `${profit > 0 ? '+' : ''}${fmt(profit)} KGS`;
       el.previewProfit.classList.toggle('is-negative', profit < 0);
@@ -541,10 +488,7 @@
     }
   }
 
-  // =========================================================
-  // МОДАЛЬНЫЕ ОКНА
-  // =========================================================
-
+  // ===== Модалки =====
   let lastFocused = null;
   function openModal(modal) {
     lastFocused = document.activeElement;
@@ -557,10 +501,7 @@
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
-  // =========================================================
-  // СОБЫТИЯ
-  // =========================================================
-
+  // ===== События =====
   function bindEvents() {
     if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
     if (el.emptyAddBtn) el.emptyAddBtn.addEventListener('click', openAddModal);
@@ -569,7 +510,6 @@
       state.search = e.target.value;
       renderTable();
     });
-
     if (el.chips) el.chips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
@@ -577,11 +517,10 @@
       renderChips();
       renderTable();
     });
-
     if (el.stockBody) el.stockBody.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-act]');
       if (!btn) return;
-      if (!state.isOwner) return;
+      if (!state.canEdit) return;
       const row = btn.closest('tr[data-id]');
       if (!row) return;
       const id = row.dataset.id;
@@ -591,17 +530,13 @@
       else if (act === 'edit') openEditModal(id);
       else if (act === 'delete') openDeleteModal(id);
     });
-
     if (el.productForm) el.productForm.addEventListener('submit', saveProduct);
-
     ['input', 'change'].forEach((ev) => {
       if (el.fCost) el.fCost.addEventListener(ev, updateMarginPreview);
       if (el.fSale) el.fSale.addEventListener(ev, updateMarginPreview);
       if (el.fQty) el.fQty.addEventListener(ev, updateMarginPreview);
     });
-
     if (el.barcodeScanBtn) el.barcodeScanBtn.addEventListener('click', openScanner);
-
     if (el.confirmDeleteBtn) el.confirmDeleteBtn.addEventListener('click', confirmDelete);
 
     document.addEventListener('click', (e) => {
@@ -610,29 +545,23 @@
         if (modal) closeModal(modal);
       }
     });
-
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (el.productModal && !el.productModal.hidden) closeModal(el.productModal);
       else if (el.deleteModal && !el.deleteModal.hidden) closeModal(el.deleteModal);
       else stopScanner();
     });
-
     window.addEventListener('kut:lang', () => {
       renderChips();
       renderTable();
       renderStats();
     });
-
     window.addEventListener('beforeunload', () => {
       if (state.unsubProducts) state.unsubProducts();
     });
   }
 
-  // =========================================================
-  // ИНИЦИАЛИЗАЦИЯ
-  // =========================================================
-
+  // ===== Инициализация =====
   function renderCategoryOptions() {
     if (!el.fCategory) return;
     el.fCategory.innerHTML = CATEGORIES
@@ -642,22 +571,24 @@
 
   async function init() {
     const st = await waitForReady();
-    if (!st) {
-      console.warn('[stock] Не дождались businessId');
-      return;
-    }
+    if (!st) { console.warn('[stock] Не дождались businessId'); return; }
 
-    // Роль: только owner может редактировать
     const role = st.profile?.role;
-    state.isOwner = role === 'owner' || role === 'super_admin';
-    if (!state.isOwner && el.openAddBtn) el.openAddBtn.style.display = 'none';
-    if (!state.isOwner && el.emptyAddBtn) el.emptyAddBtn.style.display = 'none';
+    // ⬇️ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: и owner, и manager могут редактировать склад
+    state.canEdit = role === 'owner' || role === 'manager' || role === 'super_admin';
+
+    if (!state.canEdit) {
+      if (el.openAddBtn) el.openAddBtn.style.display = 'none';
+      if (el.emptyAddBtn) el.emptyAddBtn.style.display = 'none';
+    } else {
+      if (el.openAddBtn) el.openAddBtn.style.display = '';
+      if (el.emptyAddBtn) el.emptyAddBtn.style.display = '';
+    }
 
     renderCategoryOptions();
     renderChips();
     renderStats();
 
-    // Реалтайм-подписка на products
     state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
       state.products = items;
       renderStats();
@@ -665,7 +596,7 @@
     });
 
     bindEvents();
-    console.info('[stock] Подключено · бизнес:', st.businessId);
+    console.info('[stock] Подключено · роль:', role, '· canEdit:', state.canEdit);
   }
 
   if (document.readyState === 'loading') {
