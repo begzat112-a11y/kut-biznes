@@ -115,6 +115,44 @@
 
   <div id="error-banner" role="alert"></div>
 
+  <script>
+    (function () {
+      var BUILD = 'v4.0-KILLCACHE';
+      var saved = null;
+      try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
+      if (saved === BUILD) return;
+      try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
+
+      var todo = [];
+      if ('serviceWorker' in navigator) {
+        todo.push(
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }).catch(function () {})
+        );
+      }
+      if ('caches' in window) {
+        todo.push(
+          caches.keys().then(function (keys) {
+            return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+          }).catch(function () {})
+        );
+      }
+
+      Promise.all(todo).then(function () {
+        setTimeout(function () {
+          try {
+            var url = new URL(window.location.href);
+            url.searchParams.set('_cb', Date.now().toString(36));
+            window.location.replace(url.toString());
+          } catch (e) {
+            window.location.reload();
+          }
+        }, 200);
+      });
+    })();
+  </script>
+
   <div class="auth-card">
     <div class="auth-brand">
       <div class="auth-brand__mark">К</div>
@@ -169,7 +207,7 @@
     </div>
 
     <div class="diag" id="diagBox"><strong>Диагностика:</strong><br>ожидание...</div>
-    <div class="version-badge">версия: v3.9-NOLOOP</div>
+    <div class="version-badge">версия: v4.0-KILLCACHE</div>
   </div>
 
   <script>
@@ -251,7 +289,6 @@
       else window.location.href = './index.html';
     }
 
-    // ---- Табы ----
     const phoneTab = $('#phoneTab'), emailTab = $('#emailTab');
     document.querySelectorAll('.auth-tab').forEach(t => {
       t.addEventListener('click', () => {
@@ -265,7 +302,6 @@
       });
     });
 
-    // ---- Вход по Email ----
     $('#emailForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       clearErrors(e.target); clearMessage();
@@ -304,7 +340,6 @@
         window.__kutDiag('✗ Firestore: ' + err.code);
       }
 
-      // Автовосстановление admin
       if (!profile && email === 'admin@kut.local') {
         window.__kutDiag('→ Самовосстановление admin-профиля...');
         try {
@@ -339,7 +374,6 @@
       catch (err) { showMessage('Не удалось отправить.', 'error'); }
     });
 
-    // ---- OTP ----
     let currentPhone = '', otpTimerInterval = null;
 
     $('#phoneInput').addEventListener('input', (e) => { e.target.value = maskPhone(e.target.value); });
@@ -455,9 +489,6 @@
       tick(); otpTimerInterval = setInterval(tick, 1000);
     }
     function stopOtpTimer() { if (otpTimerInterval) { clearInterval(otpTimerInterval); otpTimerInterval = null; } }
-
-    // ВАЖНО: убрана авто-редирект-подписка onAuthStateChanged.
-    // Поэтому страница не перекидывает сама — только по кнопке «Войти».
 
     window.__kutDiag('✓ Готово. Нажмите "Войти".');
   </script>
