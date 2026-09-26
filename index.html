@@ -110,8 +110,11 @@
     @media (min-width: 1000px) {
       .main-content { padding: 26px 32px 34px; gap: 22px; }
     }
+    /* Отступ под фиксированный таб-бар + safe area */
     @media (max-width: 999px) {
-      body.page-home .main-content { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+      body.page-home .main-content {
+        padding-bottom: calc(170px + env(safe-area-inset-bottom)) !important;
+      }
     }
     .page-head {
       display: flex; flex-direction: column; gap: 10px;
@@ -194,7 +197,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v9.4-DASHBOARD';
+      var BUILD = 'v9.4.1-DASHBOARD';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -404,7 +407,7 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · v9.4</div>
+        <div class="footer">КУТ: БИЗНЕС · v9.4.1</div>
       </main>
     </div>
   </div>
