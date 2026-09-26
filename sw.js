@@ -6,7 +6,7 @@
    • Остальное — cache-first с фоллбэком на сеть
    ========================================================= */
 
-const CACHE_NAME = 'kut-biznes-v3.5.1';
+const CACHE_NAME = 'kut-biznes-v3.5.2';
 
 const CORE_ASSETS = [
   './',
