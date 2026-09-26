@@ -1,7 +1,8 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Configuration
+   КУТ: БИЗНЕС — Firebase Configuration v8.1
    Единая точка подключения Auth + Firestore ко всем модулям.
    Импортируется из js/app.js и используется всеми страницами.
+   + enablePersistence() — офлайн-очередь продаж (IndexedDB)
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -30,6 +31,7 @@ import {
   serverTimestamp,
   onSnapshot,
   writeBatch,
+  enableIndexedDbPersistence,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // =========================================================
@@ -89,6 +91,28 @@ function fakeEmailFromPhone(phone) {
 
 function fakePasswordFromPhone(phone) {
   return 'kut_' + phone.replace(/\D/g, '') + '_secret';
+}
+
+// =========================================================
+// OFFLINE PERSISTENCE — офлайн-очередь продаж
+// =========================================================
+async function enablePersistence() {
+  try {
+    await enableIndexedDbPersistence(db);
+    return { ok: true, mode: 'enabled' };
+  } catch (err) {
+    if (err && err.code === 'failed-precondition') {
+      // Несколько вкладок открыто одновременно — persistence включится в первой из них.
+      console.info('[KUT FB] Persistence уже активна в другой вкладке');
+      return { ok: true, mode: 'multi-tab' };
+    }
+    if (err && err.code === 'unimplemented') {
+      console.warn('[KUT FB] Браузер не поддерживает IndexedDB persistence');
+      return { ok: false, mode: 'unsupported' };
+    }
+    console.warn('[KUT FB] enablePersistence error:', err && err.message);
+    return { ok: false, mode: 'error', error: err };
+  }
 }
 
 // =========================================================
@@ -386,6 +410,8 @@ window.FB = {
   login, registerOwner, logout, resetPassword,
   sendWhatsAppOtp, verifyWhatsAppOtp,
 
+  enablePersistence,
+
   getBusinessId,
   getCollection, subscribeCollection,
   addItem, updateItem, deleteItem,
@@ -401,6 +427,7 @@ export {
   waitForAuth, fetchProfile, redirectByRole, makeBusinessId,
   login, registerOwner, logout, resetPassword,
   sendWhatsAppOtp, verifyWhatsAppOtp,
+  enablePersistence,
   getBusinessId,
   getCollection, subscribeCollection,
   addItem, updateItem, deleteItem,
@@ -409,4 +436,4 @@ export {
   query, where, orderBy, limit, serverTimestamp, onSnapshot, writeBatch,
 };
 
-console.info('[KUT FB] Firebase v10 · проект:', firebaseConfig.projectId);
+console.info('[KUT FB] Firebase v10 · проект:', firebaseConfig.projectId, '· persistence ready');
