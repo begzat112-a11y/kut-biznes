@@ -1,11 +1,9 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v7
-   + Блок профиля в сайдбаре с аватаром и ролью
-   + Кнопка «Выйти из аккаунта» внизу сайдбара
-   + Модалка «Мой профиль» с системой заявок:
-       • owner → сохраняет мгновенно
-       • cashier / manager → создаёт заявку в businesses/{bizId}/requests
-   + Для owner — блок «Заявки от сотрудников» (Одобрить / Отклонить)
+   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v8
+   + Нижняя панель навигации с подсветкой активной кнопки
+   + Бейдж роли сверху и в мобильной шапке
+   + Профиль и кнопка «Выйти» в сайдбаре (из v7)
+   + Модалка «Мой профиль» с системой заявок (из v7)
    ========================================================= */
 
 import './firebase-config.js';
@@ -117,7 +115,7 @@ const state = {
 };
 
 // =========================================================
-// АГРЕГАТЫ (без изменений)
+// АГРЕГАТЫ
 // =========================================================
 function startOfMonth() {
   const d = new Date();
@@ -324,7 +322,7 @@ function renderRecentSales() {
       const ta = toDate(a.createdAt)?.getTime() || 0;
       const tb = toDate(b.createdAt)?.getTime() || 0;
       return tb - ta;
-    }).slice(0, 5);
+    }).slice(0, 20);
 
   if (sales.length === 0) {
     container.innerHTML = `<div class="recent__empty"><span>🧾</span>Продаж ещё не было. Начните с кассы.</div>`;
@@ -377,7 +375,60 @@ function formatSaleDate(ts) {
 }
 
 // =========================================================
-// САЙДБАР — настройка бургера и оверлея
+// РОЛЬ — БЕЙДЖ
+// =========================================================
+function renderRoleBadge(profile) {
+  const role = profile?.role || '';
+  const label = roleLabel(role);
+  const cls = 'role-badge--' + roleClass(role);
+
+  // Большой бейдж на главной
+  const big = document.getElementById('role-badge');
+  if (big) {
+    big.textContent = label;
+    big.className = 'role-badge ' + cls;
+  }
+
+  // Маленький бейдж в мобильной шапке
+  const small = document.getElementById('mobile-role-badge');
+  if (small) {
+    small.textContent = label;
+    small.style.display = '';
+  }
+}
+
+// =========================================================
+// НИЖНЯЯ ПАНЕЛЬ — ПОДСВЕТКА АКТИВНОЙ КНОПКИ
+// =========================================================
+function setupBottomNavHighlight() {
+  const nav = document.getElementById('bottomNav') || document.querySelector('.bottom-nav');
+  if (!nav) return;
+
+  // Определяем текущую страницу по имени файла
+  let file = (window.location.pathname || '').split('/').pop().toLowerCase();
+  if (!file || file === '') file = 'index.html';
+
+  // Достаём data-page из URL (иногда главная = '' или '/')
+  const map = {
+    'index.html': 'index',
+    '':           'index',
+    'cash.html':  'cash',
+    'stock.html': 'stock',
+    'debts.html': 'debts',
+  };
+  const current = map[file] || null;
+
+  nav.querySelectorAll('.bottom-nav__item').forEach((a) => {
+    const page = a.dataset.page;
+    const isActive = page === current;
+    a.classList.toggle('is-active', isActive);
+    if (isActive) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+}
+
+// =========================================================
+// САЙДБАР (бургер)
 // =========================================================
 function setupSidebar() {
   const sidebar = document.getElementById('sidebar');
@@ -406,7 +457,7 @@ function setupSidebar() {
 }
 
 // =========================================================
-// ПРОФИЛЬ В САЙДБАРЕ + КНОПКА ВЫХОДА
+// ПРОФИЛЬ + КНОПКА ВЫХОДА В САЙДБАРЕ
 // =========================================================
 
 function mountProfileBlock() {
@@ -452,7 +503,7 @@ function mountLogoutBlock() {
 function injectProfileStyles() {
   if (document.getElementById('kut-profile-styles')) return;
   const css = `
-    /* Профиль */
+    /* Профиль в сайдбаре */
     .sidebar-profile {
       display: flex; align-items: center; gap: 10px;
       width: 100%; padding: 10px 10px;
@@ -478,18 +529,10 @@ function injectProfileStyles() {
       box-shadow: 0 4px 12px rgba(0,0,0,.20);
       text-transform: uppercase;
     }
-    .sidebar-profile__avatar--owner {
-      background: linear-gradient(135deg, #D4AF37, #B8952A); color: #003F2A;
-    }
-    .sidebar-profile__avatar--manager {
-      background: linear-gradient(135deg, #F0B458, #B87117); color: #3F2400;
-    }
-    .sidebar-profile__avatar--cashier {
-      background: linear-gradient(135deg, #7FE4A5, #1EBE5A); color: #003F2A;
-    }
-    .sidebar-profile__avatar--admin {
-      background: linear-gradient(135deg, #E0F0FF, #7FB8E0); color: #003F5C;
-    }
+    .sidebar-profile__avatar--owner   { background: linear-gradient(135deg, #D4AF37, #B8952A); color: #003F2A; }
+    .sidebar-profile__avatar--manager { background: linear-gradient(135deg, #F0B458, #B87117); color: #3F2400; }
+    .sidebar-profile__avatar--cashier { background: linear-gradient(135deg, #7FE4A5, #1EBE5A); color: #003F2A; }
+    .sidebar-profile__avatar--admin   { background: linear-gradient(135deg, #E0F0FF, #7FB8E0); color: #003F5C; }
     .sidebar-profile__info {
       flex: 1; min-width: 0;
       display: flex; flex-direction: column; gap: 2px;
@@ -508,7 +551,7 @@ function injectProfileStyles() {
       flex-shrink: 0; line-height: 1;
     }
 
-    /* Кнопка выхода */
+    /* Кнопка «Выйти» внизу сайдбара */
     .sidebar-logout {
       display: flex; align-items: center; gap: 10px;
       width: 100%; padding: 12px 14px;
@@ -744,7 +787,6 @@ function ensureProfileModal() {
   `;
   document.body.appendChild(modal);
 
-  // Слушатели
   modal.addEventListener('click', (e) => {
     if (e.target.matches('[data-close-profile]')) closeProfileModal();
   });
@@ -771,7 +813,6 @@ function openProfileModal() {
   nameEl.value = p.displayName || '';
   phoneEl.value = p.phone || '';
 
-  // Очистка ошибок
   modal.querySelectorAll('.kut-field__hint').forEach((h) => {
     h.textContent = ''; h.classList.remove('is-error');
   });
@@ -792,7 +833,6 @@ function openProfileModal() {
     infoEl.hidden = true;
   }
 
-  // Блок заявок — только для owner
   if (isOwner) {
     reqBlock.hidden = false;
     renderRequests(reqList, reqCount);
@@ -824,7 +864,6 @@ async function saveProfile(event) {
   const saveBtn = modal.querySelector('#kutProfileSaveBtn');
   const infoEl = modal.querySelector('#kutProfileInfo');
 
-  // Очистка ошибок
   modal.querySelectorAll('.kut-field__hint').forEach((h) => {
     h.textContent = ''; h.classList.remove('is-error');
   });
@@ -844,7 +883,6 @@ async function saveProfile(event) {
 
   let newPhone = '';
   if (newPhoneRaw) {
-    // мягкая проверка — не блокируем, если что-то странное
     const digits = newPhoneRaw.replace(/\D/g, '');
     if (digits.length < 7) {
       const hint = modal.querySelector('.kut-field__hint[data-for="kutPfPhone"]');
@@ -868,7 +906,6 @@ async function saveProfile(event) {
     phone: newPhone,
   };
 
-  // Если ничего не изменилось — просто закрываем
   if (oldData.displayName === newData.displayName && oldData.phone === newData.phone) {
     toast('Изменений нет');
     closeProfileModal();
@@ -883,7 +920,6 @@ async function saveProfile(event) {
     const isOwner = p.role === 'owner';
 
     if (isOwner) {
-      // Владелец — сохраняем мгновенно
       await updateDoc(doc(db, 'users', p.uid), {
         displayName: newData.displayName,
         phone: newData.phone,
@@ -891,12 +927,12 @@ async function saveProfile(event) {
       });
       state.profile = { ...p, displayName: newData.displayName, phone: newData.phone };
       mountProfileBlock();
+      renderRoleBadge(state.profile);
       const who = document.getElementById('user-name');
       if (who) who.textContent = newData.displayName || p.email || '—';
       toast('Профиль обновлён');
       closeProfileModal();
     } else {
-      // Кассир / менеджер — создаём заявку
       if (!state.businessId) {
         toast('Нет привязанного бизнеса', true);
         return;
@@ -927,7 +963,7 @@ async function saveProfile(event) {
 }
 
 // =========================================================
-// ЗАЯВКИ ОТ СОТРУДНИКОВ (только для владельца)
+// ЗАЯВКИ
 // =========================================================
 function renderRequests(listEl, countEl) {
   if (!listEl) return;
@@ -974,7 +1010,6 @@ function renderRequests(listEl, countEl) {
       </div>`;
   }).join('');
 
-  // Навешиваем обработчики
   listEl.querySelectorAll('button[data-act]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const act = btn.dataset.act;
@@ -1019,7 +1054,6 @@ function subscribeRequests() {
     );
     state.unsubRequests = onSnapshot(q, (snap) => {
       state.requests = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      // Обновляем блок заявок, если модалка открыта
       const modal = document.getElementById('kutProfileModal');
       if (modal && !modal.hidden) {
         const listEl = modal.querySelector('#kutRequestsList');
@@ -1035,7 +1069,7 @@ function subscribeRequests() {
 }
 
 // =========================================================
-// АВТО-ПРИВЯЗКА КАССИРА (без изменений)
+// АВТО-ПРИВЯЗКА КАССИРА
 // =========================================================
 async function tryClaimStaffInvite(profile, user) {
   const phone = profile.phone;
@@ -1062,7 +1096,7 @@ async function tryClaimStaffInvite(profile, user) {
 }
 
 // =========================================================
-// PUBLIC API (без изменений)
+// PUBLIC API
 // =========================================================
 const KEYS = {
   products:  'kut_products',
@@ -1214,31 +1248,33 @@ async function boot() {
     if (claimed) { state.profile = claimed; state.businessId = claimed.businessId; }
   }
 
-  const who = document.getElementById('user-name');
-  if (who) who.textContent = profile.displayName || profile.email || 'Пользователь';
+  // Бейдж роли
+  renderRoleBadge(state.profile);
 
+  // Видимость пунктов меню в сайдбаре
   const isManager = profile.role === 'owner' || profile.role === 'manager';
   if (isManager) {
     const navStaff = document.getElementById('nav-staff-link');
-    const quickStaff = document.getElementById('quick-staff');
     if (navStaff) navStaff.hidden = false;
-    if (quickStaff) quickStaff.hidden = false;
   }
 
   // Сайдбар, бургер, оверлей
   setupSidebar();
 
-  // Профиль и кнопка выхода в сайдбаре
+  // Профиль и выход
   injectProfileStyles();
   mountProfileBlock();
   mountLogoutBlock();
   ensureProfileModal();
 
-  // Год в подвале
+  // Подсветка нижней панели
+  setupBottomNavHighlight();
+
+  // Год
   const yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
-  // Кнопка «Выйти» в шапке контента
+  // Кнопка «Выйти» в шапке контента (если осталась в каком-то шаблоне)
   const logoutBtn = document.getElementById('logout-btn');
   if (logoutBtn) logoutBtn.addEventListener('click', () => {
     if (!confirm('Выйти из аккаунта?')) return;
@@ -1275,7 +1311,6 @@ async function boot() {
     }
   }
 
-  // Подписка на заявки — только для владельца
   subscribeRequests();
 
   window.addEventListener('kut:lang', () => renderDashboard());
