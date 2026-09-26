@@ -1,7 +1,7 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Configuration (v10 modular CDN)
-   Единая точка входа для всех модулей проекта.
-   Экспортирует window.FB — публичный API.
+   КУТ: БИЗНЕС — Firebase Configuration
+   Единая точка подключения Auth + Firestore ко всем модулям.
+   Импортируется из js/app.js и используется всеми страницами.
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -33,7 +33,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // =========================================================
-// FIREBASE CONFIG — точные ключи проекта
+// FIREBASE CONFIG — правильные ключи проекта
 // =========================================================
 const firebaseConfig = {
   apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
@@ -41,7 +41,7 @@ const firebaseConfig = {
   projectId:         "kut-biznes",
   storageBucket:     "kut-biznes.firebasestorage.app",
   messagingSenderId: "699153181693",
-  appId:             "1:699153181693:web:2f10e57664a8a0cefc4794",
+  appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
   measurementId:     "G-VTZ49G265B"
 };
 
@@ -86,6 +86,7 @@ function toDate(ts) {
 function fakeEmailFromPhone(phone) {
   return phone.replace(/\D/g, '') + '@kut.local';
 }
+
 function fakePasswordFromPhone(phone) {
   return 'kut_' + phone.replace(/\D/g, '') + '_secret';
 }
@@ -126,10 +127,11 @@ function redirectByRole(profile) {
     signOut(auth);
     return;
   }
-  if (profile.role === 'super_admin')      window.location.href = './admin.html';
-  else if (profile.role === 'owner')       window.location.href = './index.html';
-  else if (profile.role === 'cashier')     window.location.href = './cash.html';
-  else                                     window.location.href = './index.html';
+  if (profile.role === 'super_admin')  window.location.href = './admin.html';
+  else if (profile.role === 'owner')   window.location.href = './index.html';
+  else if (profile.role === 'manager') window.location.href = './index.html';
+  else if (profile.role === 'cashier') window.location.href = './cash.html';
+  else                                 window.location.href = './index.html';
 }
 
 function makeBusinessId() {
@@ -169,9 +171,9 @@ async function registerOwner({ email, password, displayName, companyName }) {
 
   await setDoc(doc(db, 'businesses', businessId), {
     name: companyName,
-    ownerId: uid,
+    ownerUid: uid,
     ownerEmail: email,
-    active: true,
+    status: 'active',
     createdAt: serverTimestamp(),
   });
 
@@ -193,7 +195,7 @@ async function resetPassword(email) {
 }
 
 // =========================================================
-// WHATSAPP OTP — РЕАЛЬНАЯ ОТПРАВКА
+// WHATSAPP OTP — GREEN-API
 // =========================================================
 
 const WA_CONFIG = {
@@ -214,9 +216,7 @@ function otpSessionDoc(phone) {
 
 async function sendWhatsAppOtp(rawPhone) {
   const phone = normalizePhone(rawPhone);
-  if (!/^\+996\d{9}$/.test(phone)) {
-    throw new Error('INVALID_PHONE');
-  }
+  if (!/^\+996\d{9}$/.test(phone)) throw new Error('INVALID_PHONE');
 
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
@@ -237,20 +237,14 @@ async function sendWhatsAppOtp(rawPhone) {
   const res = await fetch(WA_CONFIG.buildUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chatId: `${phoneDigits}@c.us`,
-      message: message,
-    }),
+    body: JSON.stringify({ chatId: `${phoneDigits}@c.us`, message }),
   });
 
   if (!res.ok) {
-    let errText = '';
-    try { errText = await res.text(); } catch (_) {}
+    const errText = await res.text().catch(() => '');
     console.error('[KUT OTP] Green-API ошибка:', res.status, errText);
     throw new Error('WHATSAPP_FAILED');
   }
-
-  console.info('[KUT OTP] Код', code, 'отправлен на', phone);
   return true;
 }
 
@@ -263,17 +257,11 @@ async function verifyWhatsAppOtp(rawPhone, code) {
 
   const data = snap.data();
   const expiresAt = toDate(data.expiresAt);
-
   if (!expiresAt || Date.now() > expiresAt.getTime()) {
     await deleteDoc(ref).catch(() => {});
     throw new Error('OTP_EXPIRED');
   }
-
-  if (String(data.code) !== String(code)) {
-    await updateDoc(ref, { attempts: (data.attempts || 0) + 1 }).catch(() => {});
-    throw new Error('OTP_MISMATCH');
-  }
-
+  if (String(data.code) !== String(code)) throw new Error('OTP_MISMATCH');
   await deleteDoc(ref).catch(() => {});
 
   const fakeEmail = fakeEmailFromPhone(phone);
@@ -310,12 +298,11 @@ async function verifyWhatsAppOtp(rawPhone, code) {
 
   currentUser = cred.user;
   currentProfile = profile;
-
   return { user: cred.user, profile };
 }
 
 // =========================================================
-// FIRESTORE CRUD — МУЛЬТИТЕНАНТ
+// FIRESTORE CRUD
 // =========================================================
 
 function getBusinessId() {
@@ -371,7 +358,7 @@ async function deleteItem(name, id) {
 }
 
 // =========================================================
-// SUPER ADMIN API
+// SUPER ADMIN
 // =========================================================
 
 async function adminGetAllBusinesses() {
@@ -385,39 +372,6 @@ async function adminToggleBusinessStatus(bizId, active) {
 
 async function adminToggleUserStatus(uid, active) {
   await updateDoc(doc(db, 'users', uid), { active });
-}
-
-async function updateEmployeePhone(employeeUid, newPhone) {
-  if (!currentProfile) throw new Error('NOT_AUTHENTICATED');
-
-  const callerRole = currentProfile.role;
-  const callerBiz = currentProfile.businessId;
-
-  const targetSnap = await getDoc(doc(db, 'users', employeeUid));
-  if (!targetSnap.exists()) throw new Error('USER_NOT_FOUND');
-  const target = targetSnap.data();
-
-  const isSuperAdmin = callerRole === 'super_admin';
-  const isOwnerOfSameBiz =
-    callerRole === 'owner' &&
-    callerBiz &&
-    target.businessId === callerBiz;
-
-  if (!isSuperAdmin && !isOwnerOfSameBiz) {
-    throw new Error('PERMISSION_DENIED');
-  }
-
-  const normalized = normalizePhone(newPhone);
-  if (!/^\+996\d{9}$/.test(normalized)) {
-    throw new Error('INVALID_PHONE');
-  }
-
-  await updateDoc(doc(db, 'users', employeeUid), {
-    phone: normalized,
-    updatedAt: serverTimestamp(),
-  });
-
-  return true;
 }
 
 // =========================================================
@@ -437,7 +391,6 @@ window.FB = {
   addItem, updateItem, deleteItem,
 
   adminGetAllBusinesses, adminToggleBusinessStatus, adminToggleUserStatus,
-  updateEmployeePhone,
 
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, serverTimestamp, onSnapshot, writeBatch,
@@ -452,7 +405,6 @@ export {
   getCollection, subscribeCollection,
   addItem, updateItem, deleteItem,
   adminGetAllBusinesses, adminToggleBusinessStatus, adminToggleUserStatus,
-  updateEmployeePhone,
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, serverTimestamp, onSnapshot, writeBatch,
 };
