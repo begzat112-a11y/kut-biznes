@@ -6,9 +6,11 @@
   <meta name="theme-color" content="#005F40">
   <meta name="description" content="КУТ: БИЗНЕС — вход в систему.">
   <title>Вход — КУТ: БИЗНЕС</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
@@ -18,6 +20,7 @@
     }
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
+
     body {
       font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: linear-gradient(160deg, #005F40 0%, #003F2A 100%);
@@ -25,80 +28,176 @@
       display: flex; align-items: center; justify-content: center;
       padding: 20px; -webkit-font-smoothing: antialiased;
     }
+
     #error-banner {
-      position: fixed; top: 0; left: 0; right: 0; background: #C0392B; color: #fff;
-      padding: 10px 14px; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
-      line-height: 1.4; z-index: 9999; display: none; max-height: 40vh;
-      overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+      position: fixed; top: 0; left: 0; right: 0;
+      background: #C0392B; color: #fff; padding: 10px 14px;
+      font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+      line-height: 1.4; z-index: 9999; display: none;
+      max-height: 40vh; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
     }
     #error-banner.is-visible { display: block; }
     #error-banner strong { display: block; margin-bottom: 4px; font-size: 13px; }
+
     .auth-card {
       width: 100%; max-width: 460px; background: #fff; border-radius: 24px;
       padding: 28px 26px; box-shadow: var(--shadow-lg);
       animation: cardIn .35s cubic-bezier(.2,.9,.3,1.1);
     }
-    @keyframes cardIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .auth-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; justify-content: center; }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-brand {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px; justify-content: center;
+    }
     .auth-brand__mark {
-      width: 52px; height: 52px; border-radius: 14px; background: var(--kut-green);
-      color: var(--kut-gold); display: grid; place-items: center; font-size: 26px;
+      width: 52px; height: 52px; border-radius: 14px;
+      background: var(--kut-green); color: var(--kut-gold);
+      display: grid; place-items: center; font-size: 26px;
       font-weight: 800; box-shadow: 0 8px 20px rgba(0,95,64,.30);
     }
     .auth-brand__text { line-height: 1.15; }
-    .auth-brand__text strong { display: block; font-size: 20px; font-weight: 800; color: var(--kut-green); letter-spacing: -.3px; }
-    .auth-brand__text small { display: block; font-size: 12px; color: var(--kut-muted); margin-top: 2px; }
-    .auth-tabs { display: flex; gap: 4px; background: var(--kut-green-soft); padding: 4px; border-radius: 14px; margin-bottom: 18px; }
+    .auth-brand__text strong {
+      display: block; font-size: 20px; font-weight: 800;
+      color: var(--kut-green); letter-spacing: -.3px;
+    }
+    .auth-brand__text small {
+      display: block; font-size: 12px; color: var(--kut-muted); margin-top: 2px;
+    }
+
+    .auth-tabs {
+      display: flex; gap: 4px; background: var(--kut-green-soft);
+      padding: 4px; border-radius: 14px; margin-bottom: 18px;
+    }
     .auth-tab {
-      flex: 1; padding: 10px 8px; border: none; background: transparent; border-radius: 10px;
-      font-family: inherit; font-size: 13px; font-weight: 600; color: var(--kut-muted);
-      cursor: pointer; transition: all .18s ease; display: inline-flex; align-items: center;
-      justify-content: center; gap: 6px; -webkit-tap-highlight-color: transparent;
+      flex: 1; padding: 10px 8px; border: none; background: transparent;
+      border-radius: 10px; font-family: inherit; font-size: 13px;
+      font-weight: 600; color: var(--kut-muted); cursor: pointer;
+      transition: all .18s ease; display: inline-flex;
+      align-items: center; justify-content: center; gap: 6px;
+      -webkit-tap-highlight-color: transparent;
     }
     .auth-tab:hover { color: var(--kut-green); }
-    .auth-tab.is-active { background: #fff; color: var(--kut-green); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-    .auth-message {
-      padding: 12px 14px; border-radius: 12px; font-size: 13px; font-weight: 500;
-      margin-bottom: 16px; display: none; line-height: 1.4; word-break: break-word;
+    .auth-tab.is-active {
+      background: #fff; color: var(--kut-green);
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
     }
-    .auth-message.is-error { display: block; background: rgba(192,57,43,.08); color: var(--kut-danger); border: 1px solid rgba(192,57,43,.20); }
-    .auth-message.is-success { display: block; background: rgba(30,190,90,.08); color: #0F7F3A; border: 1px solid rgba(30,190,90,.20); }
-    .auth-message.is-info { display: block; background: var(--kut-green-soft); color: var(--kut-green); border: 1px solid rgba(0,95,64,.20); }
-    .form-field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
-    .form-field label { font-size: 13px; font-weight: 600; color: var(--kut-text); }
+
+    .auth-message {
+      padding: 12px 14px; border-radius: 12px; font-size: 13px;
+      font-weight: 500; margin-bottom: 16px; display: none;
+      line-height: 1.4; word-break: break-word;
+    }
+    .auth-message.is-error {
+      display: block; background: rgba(192,57,43,.08); color: var(--kut-danger);
+      border: 1px solid rgba(192,57,43,.20);
+    }
+    .auth-message.is-success {
+      display: block; background: rgba(30,190,90,.08); color: #0F7F3A;
+      border: 1px solid rgba(30,190,90,.20);
+    }
+    .auth-message.is-info {
+      display: block; background: var(--kut-green-soft); color: var(--kut-green);
+      border: 1px solid rgba(0,95,64,.20);
+    }
+
+    .form-field {
+      margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .form-field label {
+      font-size: 13px; font-weight: 600; color: var(--kut-text);
+    }
     .form-field label .req { color: var(--kut-danger); margin-left: 2px; }
+
     .form-field input {
       width: 100%; padding: 14px 15px; border: 1.5px solid var(--kut-border);
-      border-radius: 12px; font-family: inherit; font-size: 16px; color: var(--kut-text);
-      outline: none; background: #fff; transition: border-color .18s ease, box-shadow .18s ease;
+      border-radius: 12px; font-family: inherit; font-size: 16px;
+      color: var(--kut-text); outline: none; background: #fff;
+      transition: border-color .18s ease, box-shadow .18s ease;
     }
-    .form-field input:focus { border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
-    .form-field input.is-invalid { border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12); }
-    .form-field input.otp-input { text-align: center; letter-spacing: 14px; font-size: 26px; font-weight: 700; padding: 16px 20px 16px 30px; }
-    .form-error { font-size: 12px; color: var(--kut-danger); min-height: 14px; font-weight: 500; }
+    .form-field input:focus {
+      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .form-field input.is-invalid {
+      border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+    .form-field input.otp-input {
+      text-align: center; letter-spacing: 14px; font-size: 26px;
+      font-weight: 700; padding: 16px 20px 16px 30px;
+    }
+
+    /* ===== Phone group с селектом страны ===== */
+    .phone-group {
+      display: grid; grid-template-columns: 140px 1fr;
+      gap: 8px; align-items: stretch;
+    }
+    @media (max-width: 420px) {
+      .phone-group { grid-template-columns: 118px 1fr; gap: 6px; }
+    }
+    .country-select {
+      width: 100%; padding: 14px 10px; font-family: inherit;
+      font-size: 14px; font-weight: 600; color: var(--kut-text);
+      border: 1.5px solid var(--kut-border); border-radius: 12px;
+      background: #fff; text-align: center; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .country-select:focus {
+      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
+    }
+    .country-select.is-invalid {
+      border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12);
+    }
+    .phone-input {
+      min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: .3px;
+    }
+
+    .form-error {
+      font-size: 12px; color: var(--kut-danger); min-height: 14px; font-weight: 500;
+    }
+
     .auth-btn {
       width: 100%; padding: 15px 18px; border: none; border-radius: 14px;
-      background: var(--kut-green); color: #fff; font-family: inherit; font-size: 15px;
-      font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0,95,64,.28);
-      transition: background .18s ease, transform .12s ease; margin-top: 8px;
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--kut-green); color: #fff; font-family: inherit;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,95,64,.28);
+      transition: background .18s ease, transform .12s ease;
+      margin-top: 8px; display: inline-flex;
+      align-items: center; justify-content: center; gap: 8px;
     }
     .auth-btn:hover { background: var(--kut-green-dark); }
     .auth-btn:active { transform: translateY(1px); }
     .auth-btn:disabled { opacity: .7; cursor: wait; }
-    .auth-btn--whatsapp { background: var(--kut-whatsapp); box-shadow: 0 8px 20px rgba(37,211,102,.35); }
+    .auth-btn--whatsapp {
+      background: var(--kut-whatsapp);
+      box-shadow: 0 8px 20px rgba(37,211,102,.35);
+    }
     .auth-btn--whatsapp:hover { background: #1EBE5A; }
     .auth-btn--ghost {
-      background: transparent; color: var(--kut-green); border: 1.5px solid var(--kut-border);
-      box-shadow: none; margin-top: 10px;
+      background: transparent; color: var(--kut-green);
+      border: 1.5px solid var(--kut-border); box-shadow: none; margin-top: 10px;
     }
     .auth-btn--ghost:hover { background: var(--kut-green-soft); }
-    .auth-footer { text-align: center; margin-top: 16px; font-size: 13px; color: var(--kut-muted); line-height: 1.4; }
-    .forgot-link { text-align: right; margin-top: -6px; margin-bottom: 8px; }
+
+    .auth-footer {
+      text-align: center; margin-top: 16px; font-size: 13px;
+      color: var(--kut-muted); line-height: 1.4;
+    }
+
+    .forgot-link {
+      text-align: right; margin-top: -6px; margin-bottom: 8px;
+    }
     .forgot-link button {
       background: transparent; border: none; color: var(--kut-green);
-      font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 0;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; padding: 4px 0;
     }
+    .forgot-link button:hover { text-decoration: underline; }
+
     .diag {
       margin-top: 16px; padding: 10px 12px; background: #F7F9F8;
       border: 1px dashed #C7D4CE; border-radius: 10px;
@@ -106,7 +205,11 @@
       color: #4A5C54; line-height: 1.5; word-break: break-word;
       max-height: 200px; overflow-y: auto;
     }
-    .version-badge { text-align: center; margin-top: 10px; font-size: 11px; color: var(--kut-muted); font-family: ui-monospace, Menlo, monospace; }
+    .version-badge {
+      text-align: center; margin-top: 10px; font-size: 11px;
+      color: var(--kut-muted); font-family: ui-monospace, Menlo, monospace;
+    }
+
     .hidden { display: none !important; }
     ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
   </style>
@@ -115,39 +218,32 @@
 
   <div id="error-banner" role="alert"></div>
 
+  <!-- Kill-switch кэша -->
   <script>
     (function () {
-      var BUILD = 'v4.0-KILLCACHE';
+      var BUILD = 'v4.7-LOGIN-COUNTRIES';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
       try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
-
       var todo = [];
       if ('serviceWorker' in navigator) {
-        todo.push(
-          navigator.serviceWorker.getRegistrations().then(function (regs) {
-            return Promise.all(regs.map(function (r) { return r.unregister(); }));
-          }).catch(function () {})
-        );
+        todo.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }).catch(function () {}));
       }
       if ('caches' in window) {
-        todo.push(
-          caches.keys().then(function (keys) {
-            return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-          }).catch(function () {})
-        );
+        todo.push(caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }).catch(function () {}));
       }
-
       Promise.all(todo).then(function () {
         setTimeout(function () {
           try {
             var url = new URL(window.location.href);
             url.searchParams.set('_cb', Date.now().toString(36));
             window.location.replace(url.toString());
-          } catch (e) {
-            window.location.reload();
-          }
+          } catch (e) { window.location.reload(); }
         }, 200);
       });
     })();
@@ -156,84 +252,202 @@
   <div class="auth-card">
     <div class="auth-brand">
       <div class="auth-brand__mark">К</div>
-      <div class="auth-brand__text"><strong>КУТ: БИЗНЕС</strong><small>Вход в систему</small></div>
+      <div class="auth-brand__text">
+        <strong>КУТ: БИЗНЕС</strong>
+        <small>Вход в систему</small>
+      </div>
     </div>
 
     <div class="auth-tabs" role="tablist">
-      <button class="auth-tab is-active" type="button" data-tab="phone" role="tab" aria-selected="true">📱 По номеру</button>
-      <button class="auth-tab" type="button" data-tab="email" role="tab" aria-selected="false">✉️ По Email</button>
+      <button class="auth-tab is-active" type="button" data-tab="phone" role="tab" aria-selected="true">
+        <span aria-hidden="true">📱</span> По номеру
+      </button>
+      <button class="auth-tab" type="button" data-tab="email" role="tab" aria-selected="false">
+        <span aria-hidden="true">✉️</span> По Email
+      </button>
     </div>
 
     <div class="auth-message" id="authMessage"></div>
 
+    <!-- ========== ВХОД ПО НОМЕРУ ========== -->
     <div id="phoneTab">
       <form id="phoneForm" novalidate>
         <div class="form-field">
-          <label for="phoneInput">Номер телефона <span class="req">*</span></label>
-          <input type="tel" id="phoneInput" placeholder="+996 700 123 456" inputmode="tel" required>
-          <div class="form-error" data-for="phoneInput"></div>
+          <label for="phone">Номер телефона <span class="req">*</span></label>
+          <div class="phone-group">
+            <select id="countrySelect" class="country-select" aria-label="Код страны">
+              <option value="kg" data-code="+996" data-digits="9"  data-pattern="XXX XXX XXX">🇰🇬 +996</option>
+              <option value="ru" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇷🇺 +7</option>
+              <option value="kz" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇰🇿 +7</option>
+              <option value="uz" data-code="+998" data-digits="9"  data-pattern="XX XXX XX XX">🇺🇿 +998</option>
+              <option value="tj" data-code="+992" data-digits="9"  data-pattern="XX XXX XX XX">🇹🇯 +992</option>
+              <option value="tm" data-code="+993" data-digits="8"  data-pattern="XX XXXXXX">🇹🇲 +993</option>
+              <option value="az" data-code="+994" data-digits="9"  data-pattern="XX XXX XX XX">🇦🇿 +994</option>
+              <option value="am" data-code="+374" data-digits="8"  data-pattern="XX XXX XXX">🇦🇲 +374</option>
+              <option value="by" data-code="+375" data-digits="9"  data-pattern="XX XXX XX XX">🇧🇾 +375</option>
+              <option value="md" data-code="+373" data-digits="8"  data-pattern="XX XXX XXX">🇲🇩 +373</option>
+            </select>
+            <input
+              type="tel"
+              id="phone"
+              class="phone-input"
+              placeholder="700 123 456"
+              inputmode="tel"
+              autocomplete="tel"
+              required>
+          </div>
+          <div class="form-error" data-for="phone"></div>
         </div>
-        <button class="auth-btn auth-btn--whatsapp" type="submit" id="sendOtpBtn">💬 Получить код в WhatsApp</button>
-        <div class="auth-footer">Для сотрудников и кассиров.</div>
+
+        <button class="auth-btn auth-btn--whatsapp" type="submit" id="sendOtpBtn">
+          <span aria-hidden="true">💬</span> Получить код в WhatsApp
+        </button>
+
+        <div class="auth-footer">
+          Для сотрудников и кассиров. Код приходит в WhatsApp.
+        </div>
       </form>
+
       <form id="otpForm" class="hidden" novalidate>
         <div class="form-field">
           <label for="otpInput">Введи 4-значный код <span class="req">*</span></label>
-          <input type="text" id="otpInput" class="otp-input" placeholder="0000" inputmode="numeric" maxlength="4" required>
+          <input
+            type="text"
+            id="otpInput"
+            class="otp-input"
+            placeholder="0000"
+            inputmode="numeric"
+            maxlength="4"
+            autocomplete="one-time-code"
+            required>
           <div class="form-error" data-for="otpInput"></div>
         </div>
-        <button class="auth-btn" type="submit" id="verifyOtpBtn">Войти в систему</button>
-        <button class="auth-btn auth-btn--ghost" type="button" id="backBtn">← Изменить номер</button>
-        <div class="auth-footer">Код действителен ещё <strong id="otpTimer">05:00</strong></div>
+
+        <button class="auth-btn" type="submit" id="verifyOtpBtn">
+          Войти в систему
+        </button>
+
+        <button class="auth-btn auth-btn--ghost" type="button" id="backBtn">
+          ← Изменить номер
+        </button>
+
+        <div class="auth-footer" id="otpTimerWrap">
+          Код действителен ещё <strong id="otpTimer">05:00</strong>
+        </div>
       </form>
     </div>
 
+    <!-- ========== ВХОД ПО EMAIL ========== -->
     <div id="emailTab" class="hidden">
       <form id="emailForm" novalidate>
         <div class="form-field">
           <label for="emailInput">Email <span class="req">*</span></label>
-          <input type="email" id="emailInput" placeholder="admin@kut.local" required>
+          <input
+            type="email"
+            id="emailInput"
+            placeholder="admin@kut.local"
+            autocomplete="email"
+            required>
           <div class="form-error" data-for="emailInput"></div>
         </div>
+
         <div class="form-field">
           <label for="passwordInput">Пароль <span class="req">*</span></label>
-          <input type="password" id="passwordInput" placeholder="••••••••" required>
+          <input
+            type="password"
+            id="passwordInput"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required>
           <div class="form-error" data-for="passwordInput"></div>
         </div>
-        <div class="forgot-link"><button type="button" id="forgotBtn">Забыли пароль?</button></div>
-        <button class="auth-btn" type="submit" id="emailLoginBtn">Войти</button>
-        <div class="auth-footer">Для владельцев бизнеса и супер-администратора.</div>
+
+        <div class="forgot-link">
+          <button type="button" id="forgotBtn">Забыли пароль?</button>
+        </div>
+
+        <button class="auth-btn" type="submit" id="emailLoginBtn">
+          Войти
+        </button>
+
+        <div class="auth-footer">
+          Для владельцев бизнеса и супер-администратора.
+        </div>
       </form>
     </div>
 
-    <div class="diag" id="diagBox"><strong>Диагностика:</strong><br>ожидание...</div>
-    <div class="version-badge">версия: v4.0-KILLCACHE</div>
+    <div class="diag" id="diagBox">
+      <strong>Диагностика:</strong><br>
+      ожидание загрузки скриптов...
+    </div>
+
+    <div class="version-badge">версия: v4.7-LOGIN-COUNTRIES</div>
   </div>
 
   <script>
     (function () {
-      var b = document.getElementById('error-banner');
-      var d = document.getElementById('diagBox');
-      window.__kutDiag = function (l) { if (d) { d.innerHTML += '<br>' + l; d.scrollTop = d.scrollHeight; } };
-      window.__kutResetDiag = function () { if (d) d.innerHTML = '<strong>Диагностика:</strong>'; };
+      var banner = document.getElementById('error-banner');
+      var diag = document.getElementById('diagBox');
+      function showBanner(label, msg) {
+        banner.innerHTML = '<strong>' + label + '</strong>' + String(msg);
+        banner.classList.add('is-visible');
+      }
+      window.__kutDiag = function (line) {
+        if (!diag) return;
+        diag.innerHTML += '<br>' + line;
+        diag.scrollTop = diag.scrollHeight;
+      };
+      window.__kutResetDiag = function () {
+        if (!diag) return;
+        diag.innerHTML = '<strong>Диагностика:</strong>';
+      };
       window.addEventListener('error', function (e) {
-        b.innerHTML = '<strong>JS ошибка:</strong>' + (e.message || '') + '\n' + (e.filename || '') + ':' + (e.lineno || '');
-        b.classList.add('is-visible');
+        showBanner('JS ошибка:', (e.message || 'неизвестно') +
+          '\n' + (e.filename || '') + ':' + (e.lineno || ''));
       });
       window.addEventListener('unhandledrejection', function (e) {
-        var r = e.reason; var m = (r && r.message) ? r.message : String(r);
-        b.innerHTML = '<strong>Promise ошибка:</strong>' + m; b.classList.add('is-visible');
+        var r = e.reason;
+        var msg = (r && r.message) ? r.message : String(r);
+        showBanner('Promise ошибка:', msg);
       });
+      window.__kutDiag('HTML загружен, ожидание модуля...');
     })();
   </script>
 
   <script type="module">
     window.__kutResetDiag();
-    window.__kutDiag('Модуль запущен');
+    window.__kutDiag('Модуль начал выполняться');
 
-    const appMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const authMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-    const fsMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+        signOut, onAuthStateChanged, sendPasswordResetEmail, getFirestore,
+        doc, getDoc, setDoc, deleteDoc, serverTimestamp;
+
+    try {
+      const appMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+      initializeApp = appMod.initializeApp;
+      window.__kutDiag('✓ firebase-app.js загружен');
+
+      const authMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+      getAuth = authMod.getAuth;
+      signInWithEmailAndPassword = authMod.signInWithEmailAndPassword;
+      createUserWithEmailAndPassword = authMod.createUserWithEmailAndPassword;
+      signOut = authMod.signOut;
+      onAuthStateChanged = authMod.onAuthStateChanged;
+      sendPasswordResetEmail = authMod.sendPasswordResetEmail;
+      window.__kutDiag('✓ firebase-auth.js загружен');
+
+      const fsMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      getFirestore = fsMod.getFirestore;
+      doc = fsMod.doc;
+      getDoc = fsMod.getDoc;
+      setDoc = fsMod.setDoc;
+      deleteDoc = fsMod.deleteDoc;
+      serverTimestamp = fsMod.serverTimestamp;
+      window.__kutDiag('✓ firebase-firestore.js загружен');
+    } catch (e) {
+      window.__kutDiag('✗ Ошибка загрузки Firebase SDK: ' + e.message);
+      throw e;
+    }
 
     const firebaseConfig = {
       apiKey: "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
@@ -241,254 +455,508 @@
       projectId: "kut-biznes",
       storageBucket: "kut-biznes.firebasestorage.app",
       messagingSenderId: "699153181693",
-      appId: "1:699153181693:web:2f10e57664a8a0cefc4794",
+      appId: "1:699153181693:web:2f10e57664e8a0cefc4794",
       measurementId: "G-VTZ49G265B"
     };
 
     const WA_CONFIG = {
       idInstance: '720122747171',
       apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
-      buildUrl() { return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`; },
+      buildUrl() {
+        return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
+      },
     };
 
-    const app  = appMod.initializeApp(firebaseConfig);
-    const auth = authMod.getAuth(app);
-    const db   = fsMod.getFirestore(app);
-
-    window.__kutDiag('✓ Firebase: ' + firebaseConfig.projectId);
+    let app, auth, db;
+    try {
+      app  = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db   = getFirestore(app);
+      window.__kutDiag('✓ Firebase инициализирован: ' + firebaseConfig.projectId);
+    } catch (initErr) {
+      window.__kutDiag('✗ Ошибка initializeApp: ' + initErr.message);
+      throw initErr;
+    }
 
     const $ = (s) => document.querySelector(s);
-    const showMessage = (t, k) => { const b = $('#authMessage'); b.textContent = t; b.className = 'auth-message ' + (k ? 'is-' + k : ''); };
-    const clearMessage = () => { const b = $('#authMessage'); b.className = 'auth-message'; b.textContent = ''; };
-    const setError = (id, m) => { const i = document.getElementById(id); const b = document.querySelector(`.form-error[data-for="${id}"]`); if (i) i.classList.toggle('is-invalid', !!m); if (b) b.textContent = m || ''; };
-    const clearErrors = (f) => { f.querySelectorAll('.form-error').forEach(e => e.textContent = ''); f.querySelectorAll('input').forEach(i => i.classList.remove('is-invalid')); };
 
-    function maskPhone(raw) {
+    function showMessage(text, kind) {
+      const box = $('#authMessage');
+      box.textContent = text;
+      box.className = 'auth-message ' + (kind ? 'is-' + kind : '');
+    }
+    function clearMessage() {
+      const box = $('#authMessage');
+      box.className = 'auth-message';
+      box.textContent = '';
+    }
+    function setError(fieldId, msg) {
+      const input = document.getElementById(fieldId);
+      const box = document.querySelector(`.form-error[data-for="${fieldId}"]`);
+      if (input) input.classList.toggle('is-invalid', Boolean(msg));
+      if (box) box.textContent = msg || '';
+    }
+    function clearErrors(form) {
+      form.querySelectorAll('.form-error').forEach((e) => (e.textContent = ''));
+      form.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
+      const cs = document.getElementById('countrySelect');
+      if (cs) cs.classList.remove('is-invalid');
+    }
+
+    // =========================================================
+    // СТРАНЫ И МАСКИ ТЕЛЕФОНА
+    // =========================================================
+
+    const countrySelect = $('#countrySelect');
+    const phoneInput    = $('#phone');
+
+    function getSelectedCountry() {
+      const opt = countrySelect.options[countrySelect.selectedIndex];
+      return {
+        code:    opt.dataset.code,
+        digits:  Number(opt.dataset.digits),
+        pattern: opt.dataset.pattern,
+      };
+    }
+
+    function digitsOnly(raw, maxDigits) {
       let d = String(raw || '').replace(/\D/g, '');
-      if (d.startsWith('996')) d = d.slice(3); else if (d.startsWith('0')) d = d.slice(1);
-      d = d.slice(0, 9);
-      if (!d.length) return '';
-      let o = '+996 '; if (d.length <= 3) return o + d;
-      o += d.slice(0, 3) + ' '; if (d.length <= 6) return o + d.slice(3);
-      o += d.slice(3, 6) + ' '; o += d.slice(6); return o;
-    }
-    function normalizePhone(raw) {
-      let d = String(raw || '').replace(/\D/g, '');
-      if (d.startsWith('996')) d = d.slice(3); else if (d.startsWith('0')) d = d.slice(1);
-      return '+996' + d.slice(0, 9);
-    }
-    const isValidPhone = (n) => /^\+996\d{9}$/.test(n);
-
-    function redirectByRole(p) {
-      if (!p) { window.location.href = './login.html'; return; }
-      if (p.active === false) { alert('Ваш аккаунт заблокирован.'); authMod.signOut(auth); return; }
-      window.__kutDiag('→ Роль: ' + p.role);
-      if (p.role === 'super_admin') window.location.href = './admin.html';
-      else if (p.role === 'owner') window.location.href = './index.html';
-      else if (p.role === 'cashier') window.location.href = './cash.html';
-      else window.location.href = './index.html';
+      if (d.startsWith('0')) d = d.slice(1);
+      return d.slice(0, maxDigits);
     }
 
-    const phoneTab = $('#phoneTab'), emailTab = $('#emailTab');
-    document.querySelectorAll('.auth-tab').forEach(t => {
-      t.addEventListener('click', () => {
-        const target = t.dataset.tab;
-        document.querySelectorAll('.auth-tab').forEach(x => {
-          const on = x.dataset.tab === target; x.classList.toggle('is-active', on); x.setAttribute('aria-selected', String(on));
+    function applyMask(digits, pattern) {
+      let out = '';
+      let di = 0;
+      for (let i = 0; i < pattern.length; i++) {
+        const p = pattern[i];
+        if (p === 'X') {
+          if (di >= digits.length) break;
+          out += digits[di++];
+        } else {
+          if (di >= digits.length) break;
+          out += p;
+        }
+      }
+      return out;
+    }
+
+    function updatePhonePlaceholder() {
+      const c = getSelectedCountry();
+      phoneInput.placeholder = c.pattern;
+    }
+
+    function formatPhoneInput(raw) {
+      const c = getSelectedCountry();
+      const d = digitsOnly(raw, c.digits);
+      return applyMask(d, c.pattern);
+    }
+
+    function normalizePhoneFromInput() {
+      const c = getSelectedCountry();
+      const d = digitsOnly(phoneInput.value, c.digits);
+      return c.code + d;
+    }
+
+    function isValidPhoneValue() {
+      const c = getSelectedCountry();
+      const d = digitsOnly(phoneInput.value, c.digits);
+      return d.length === c.digits;
+    }
+
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = formatPhoneInput(e.target.value);
+    });
+
+    countrySelect.addEventListener('change', () => {
+      updatePhonePlaceholder();
+      phoneInput.value = formatPhoneInput(phoneInput.value);
+      setError('phone', '');
+    });
+
+    // =========================================================
+    // РЕДИРЕКТ ПО РОЛИ
+    // =========================================================
+    function redirectByRole(profile) {
+      if (!profile) {
+        window.__kutDiag('✗ Профиль не найден при редиректе');
+        window.location.href = './login.html';
+        return;
+      }
+      if (profile.active === false) {
+        window.__kutDiag('✗ Аккаунт заблокирован');
+        signOut(auth);
+        return;
+      }
+      const role = profile.role;
+      window.__kutDiag('→ Роль: ' + role);
+      if (role === 'super_admin')      window.location.href = './admin.html';
+      else if (role === 'owner')       window.location.href = './index.html';
+      else if (role === 'cashier')     window.location.href = './cash.html';
+      else                             window.location.href = './index.html';
+    }
+
+    // =========================================================
+    // ПЕРЕКЛЮЧЕНИЕ ТАБОВ
+    // =========================================================
+    const phoneTab = $('#phoneTab');
+    const emailTab = $('#emailTab');
+
+    document.querySelectorAll('.auth-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.tab;
+        document.querySelectorAll('.auth-tab').forEach((t) => {
+          const active = t.dataset.tab === target;
+          t.classList.toggle('is-active', active);
+          t.setAttribute('aria-selected', String(active));
         });
         phoneTab.classList.toggle('hidden', target !== 'phone');
         emailTab.classList.toggle('hidden', target !== 'email');
         clearMessage();
+        stopOtpTimer();
       });
     });
 
-    $('#emailForm').addEventListener('submit', async (e) => {
+    // =========================================================
+    // ВХОД ПО EMAIL
+    // =========================================================
+    const emailForm = $('#emailForm');
+
+    emailForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      clearErrors(e.target); clearMessage();
-      window.__kutResetDiag(); window.__kutDiag('--- Вход по email ---');
+      clearErrors(emailForm);
+      clearMessage();
+      window.__kutResetDiag();
+      window.__kutDiag('--- Вход по email ---');
 
       const email = $('#emailInput').value.trim();
       const password = $('#passwordInput').value;
       let ok = true;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('emailInput', 'Введите email'); ok = false; }
-      if (password.length < 6) { setError('passwordInput', 'Минимум 6 символов'); ok = false; }
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setError('emailInput', 'Введите корректный email');
+        ok = false;
+      }
+      if (password.length < 6) {
+        setError('passwordInput', 'Пароль минимум 6 символов');
+        ok = false;
+      }
       if (!ok) return;
 
-      const btn = $('#emailLoginBtn'); btn.disabled = true; btn.textContent = 'Входим...';
+      const btn = $('#emailLoginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Входим...';
 
       let user = null;
       try {
-        const cred = await authMod.signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, email, password);
         user = cred.user;
         window.__kutDiag('✓ Auth OK. UID: ' + user.uid);
-      } catch (err) {
-        window.__kutDiag('✗ Auth: ' + err.code);
-        showMessage('Ошибка входа: ' + err.code, 'error');
-        btn.disabled = false; btn.textContent = 'Войти'; return;
+      } catch (error) {
+        window.__kutDiag('✗ Auth: ' + error.code + ' | ' + error.message);
+        showMessage('Ошибка входа: ' + error.code, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+        return;
       }
 
       let profile = null;
       try {
-        const snap = await fsMod.getDoc(fsMod.doc(db, 'users', user.uid));
-        if (snap.exists()) {
-          profile = { uid: user.uid, ...snap.data() };
-          window.__kutDiag('✓ Профиль: role=' + (profile.role || '—'));
-        } else {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (!snap.exists()) {
           window.__kutDiag('✗ users/' + user.uid + ' не найден');
+          showMessage('Профиль не найден в Firestore', 'error');
+          await signOut(auth).catch(() => {});
+          btn.disabled = false;
+          btn.textContent = 'Войти';
+          return;
         }
+        profile = { uid: user.uid, ...snap.data() };
+        window.__kutDiag('✓ Профиль: role=' + (profile.role || '(пусто)'));
       } catch (err) {
-        window.__kutDiag('✗ Firestore: ' + err.code);
+        window.__kutDiag('✗ Firestore: ' + err.code + ' | ' + err.message);
+        showMessage('Ошибка чтения профиля: ' + err.code, 'error');
+        await signOut(auth).catch(() => {});
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+        return;
       }
 
-      if (!profile && email === 'admin@kut.local') {
-        window.__kutDiag('→ Самовосстановление admin-профиля...');
-        try {
-          await fsMod.setDoc(fsMod.doc(db, 'users', user.uid), {
-            email, displayName: 'Администратор', phone: '+79998485254',
-            role: 'super_admin', businessId: '', active: true,
-            createdAt: fsMod.serverTimestamp(),
-          });
-          const snap = await fsMod.getDoc(fsMod.doc(db, 'users', user.uid));
-          profile = { uid: user.uid, ...snap.data() };
-          window.__kutDiag('✓ Профиль admin создан');
-        } catch (err) {
-          window.__kutDiag('✗ Не удалось создать: ' + err.code + ' ' + err.message);
-        }
+      if (!profile.role) {
+        window.__kutDiag('✗ Поле role пустое');
+        showMessage('Поле role пустое в Firestore', 'error');
+        await signOut(auth).catch(() => {});
+        btn.disabled = false;
+        btn.textContent = 'Войти';
+        return;
       }
 
-      if (!profile || !profile.role) {
-        window.__kutDiag('✗ Профиль недоступен');
-        showMessage('Профиль не найден в Firestore', 'error');
-        await authMod.signOut(auth).catch(() => {});
-        btn.disabled = false; btn.textContent = 'Войти'; return;
-      }
-
-      showMessage('Успешно! Переходим...', 'success');
+      showMessage('Успешно! Перенаправляем...', 'success');
       setTimeout(() => redirectByRole(profile), 300);
+
+      btn.disabled = false;
+      btn.textContent = 'Войти';
     });
 
     $('#forgotBtn').addEventListener('click', async () => {
       const email = $('#emailInput').value.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMessage('Введите email.', 'info'); return; }
-      try { await authMod.sendPasswordResetEmail(auth, email); showMessage('Письмо отправлено на ' + email, 'success'); }
-      catch (err) { showMessage('Не удалось отправить.', 'error'); }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showMessage('Введите email — мы отправим ссылку для сброса пароля.', 'info');
+        $('#emailInput').focus();
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
+      } catch (err) {
+        window.__kutDiag('✗ resetPassword: ' + err.code + ' | ' + err.message);
+        showMessage('Не удалось отправить письмо.', 'error');
+      }
     });
 
-    let currentPhone = '', otpTimerInterval = null;
+    // =========================================================
+    // ВХОД ПО НОМЕРУ + WHATSAPP OTP
+    // =========================================================
 
-    $('#phoneInput').addEventListener('input', (e) => { e.target.value = maskPhone(e.target.value); });
+    function generateOtpCode() {
+      return String(Math.floor(1000 + Math.random() * 9000));
+    }
 
-    $('#phoneForm').addEventListener('submit', async (e) => {
+    async function sendWhatsAppOtp(rawPhone) {
+      if (!/^\+\d{8,15}$/.test(rawPhone)) {
+        throw new Error('INVALID_PHONE');
+      }
+
+      const code = generateOtpCode();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      const phoneKey = rawPhone.replace(/\D/g, '');
+
+      window.__kutDiag('→ setDoc(otp_sessions/' + phoneKey + ')');
+      await setDoc(doc(db, 'otp_sessions', phoneKey), {
+        phone: rawPhone,
+        code,
+        expiresAt,
+        createdAt: serverTimestamp(),
+        attempts: 0,
+      });
+      window.__kutDiag('✓ OTP записан в Firestore');
+
+      const message =
+        `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\n` +
+        `Никому не сообщайте этот код. Действителен 5 минут.`;
+
+      window.__kutDiag('→ fetch Green-API: ' + phoneKey);
+      const res = await fetch(WA_CONFIG.buildUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: `${phoneKey}@c.us`,
+          message: message,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        window.__kutDiag('✗ Green-API: ' + res.status + ' ' + errText);
+        throw new Error('WHATSAPP_FAILED');
+      }
+
+      window.__kutDiag('✓ Green-API: код отправлен');
+      return true;
+    }
+
+    async function verifyWhatsAppOtp(rawPhone, code) {
+      const phoneKey = rawPhone.replace(/\D/g, '');
+      const ref = doc(db, 'otp_sessions', phoneKey);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()) throw new Error('OTP_NOT_FOUND');
+
+      const data = snap.data();
+      let expiresAt = data.expiresAt;
+      if (expiresAt && typeof expiresAt.toDate === 'function') expiresAt = expiresAt.toDate();
+      else if (expiresAt && expiresAt.seconds) expiresAt = new Date(expiresAt.seconds * 1000);
+      else expiresAt = new Date(expiresAt);
+
+      if (!expiresAt || Date.now() > expiresAt.getTime()) {
+        await deleteDoc(ref).catch(() => {});
+        throw new Error('OTP_EXPIRED');
+      }
+
+      if (String(data.code) !== String(code)) {
+        throw new Error('OTP_MISMATCH');
+      }
+
+      await deleteDoc(ref).catch(() => {});
+
+      const fakeEmail = phoneKey + '@kut.local';
+      const fakePassword = 'kut_' + phoneKey + '_secret';
+
+      let cred;
+      try {
+        cred = await signInWithEmailAndPassword(auth, fakeEmail, fakePassword);
+      } catch (err) {
+        if (err.code === 'auth/user-not-found' ||
+            err.code === 'auth/invalid-credential' ||
+            err.code === 'auth/invalid-login-credentials') {
+          cred = await createUserWithEmailAndPassword(auth, fakeEmail, fakePassword);
+        } else {
+          throw err;
+        }
+      }
+
+      const uid = cred.user.uid;
+      let profileSnap = await getDoc(doc(db, 'users', uid));
+
+      if (!profileSnap.exists()) {
+        await setDoc(doc(db, 'users', uid), {
+          email: fakeEmail,
+          displayName: '',
+          phone: rawPhone,
+          role: 'cashier',
+          businessId: '',
+          active: true,
+          createdAt: serverTimestamp(),
+        });
+        profileSnap = await getDoc(doc(db, 'users', uid));
+      }
+
+      const profile = { uid, ...profileSnap.data() };
+      return { user: cred.user, profile };
+    }
+
+    let currentPhone = '';
+    let otpTimerInterval = null;
+
+    const phoneForm = $('#phoneForm');
+    const otpForm = $('#otpForm');
+
+    phoneForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      clearErrors(e.target); clearMessage();
-      window.__kutResetDiag(); window.__kutDiag('--- Вход по номеру ---');
+      clearErrors(phoneForm);
+      clearMessage();
+      window.__kutResetDiag();
+      window.__kutDiag('--- Вход по номеру ---');
 
-      const phone = normalizePhone($('#phoneInput').value);
-      if (!isValidPhone(phone)) { setError('phoneInput', 'Введите корректный номер'); return; }
+      if (!isValidPhoneValue()) {
+        const c = getSelectedCountry();
+        setError('phone', `Введите ${c.digits} цифр номера`);
+        return;
+      }
 
-      const btn = $('#sendOtpBtn'); btn.disabled = true; btn.textContent = '⏳ Отправляем...';
+      const phoneNorm = normalizePhoneFromInput();
+      window.__kutDiag('→ Номер: ' + phoneNorm);
+
+      const btn = $('#sendOtpBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Отправляем код...';
 
       try {
-        const code = String(Math.floor(1000 + Math.random() * 9000));
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-        await fsMod.setDoc(fsMod.doc(db, 'otp_sessions', phone.replace(/\D/g, '')), {
-          phone, code, expiresAt, createdAt: fsMod.serverTimestamp(), attempts: 0,
-        });
-        window.__kutDiag('✓ OTP записан');
-
-        const phoneDigits = phone.replace(/\D/g, '');
-        const message = `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\nНикому не сообщайте этот код. Действителен 5 минут.`;
-        const res = await fetch(WA_CONFIG.buildUrl(), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatId: `${phoneDigits}@c.us`, message }),
-        });
-        if (!res.ok) throw new Error('WHATSAPP_FAILED');
-        window.__kutDiag('✓ WhatsApp отправлен');
-
-        currentPhone = phone;
-        showMessage('Код отправлен в WhatsApp на ' + phone, 'success');
-        $('#phoneForm').classList.add('hidden');
-        $('#otpForm').classList.remove('hidden');
+        await sendWhatsAppOtp(phoneNorm);
+        currentPhone = phoneNorm;
+        showMessage('Код отправлен в WhatsApp на ' + phoneNorm, 'success');
+        phoneForm.classList.add('hidden');
+        otpForm.classList.remove('hidden');
         $('#otpInput').focus();
         startOtpTimer(300);
       } catch (err) {
         window.__kutDiag('✗ sendOtp: ' + err.message);
-        showMessage('Не удалось отправить код.', 'error');
+        let msg = 'Не удалось отправить код. Попробуйте ещё раз.';
+        if (err.message === 'INVALID_PHONE') msg = 'Некорректный номер телефона.';
+        else if (err.message === 'WHATSAPP_FAILED') msg = 'WhatsApp-шлюз не смог отправить код.';
+        showMessage(msg, 'error');
       } finally {
-        btn.disabled = false; btn.textContent = '💬 Получить код в WhatsApp';
+        btn.disabled = false;
+        btn.innerHTML = '<span aria-hidden="true">💬</span> Получить код в WhatsApp';
       }
     });
 
-    $('#otpForm').addEventListener('submit', async (e) => {
+    otpForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      clearErrors(e.target); clearMessage();
+      clearErrors(otpForm);
+      clearMessage();
+      window.__kutDiag('--- Проверка OTP ---');
 
       const code = $('#otpInput').value.trim();
-      if (!/^\d{4}$/.test(code)) { setError('otpInput', 'Введите 4-значный код'); return; }
+      if (!/^\d{4}$/.test(code)) {
+        setError('otpInput', 'Введите 4-значный код');
+        return;
+      }
 
-      const btn = $('#verifyOtpBtn'); btn.disabled = true; btn.textContent = 'Проверяем...';
+      const btn = $('#verifyOtpBtn');
+      btn.disabled = true;
+      btn.textContent = 'Проверяем...';
 
       try {
-        const phone = normalizePhone(currentPhone);
-        const ref = fsMod.doc(db, 'otp_sessions', phone.replace(/\D/g, ''));
-        const snap = await fsMod.getDoc(ref);
-        if (!snap.exists()) throw new Error('OTP_NOT_FOUND');
+        const { profile } = await verifyWhatsAppOtp(currentPhone, code);
+        window.__kutDiag('✓ OTP подтверждён, роль: ' + (profile.role || '—'));
 
-        const data = snap.data();
-        let ex = data.expiresAt;
-        if (ex && typeof ex.toDate === 'function') ex = ex.toDate();
-        else if (ex && ex.seconds) ex = new Date(ex.seconds * 1000);
-        else ex = new Date(ex);
-        if (!ex || Date.now() > ex.getTime()) { await fsMod.deleteDoc(ref).catch(() => {}); throw new Error('OTP_EXPIRED'); }
-        if (String(data.code) !== String(code)) throw new Error('OTP_MISMATCH');
-        await fsMod.deleteDoc(ref).catch(() => {});
+        if (!profile) {
+          showMessage('Профиль не найден.', 'error');
+          return;
+        }
+        if (profile.active === false) {
+          showMessage('Ваш аккаунт заблокирован.', 'error');
+          await signOut(auth).catch(() => {});
+          return;
+        }
 
-        const fakeEmail = phone.replace(/\D/g, '') + '@kut.local';
-        const fakePassword = 'kut_' + phone.replace(/\D/g, '') + '_secret';
-        let cred;
-        try { cred = await authMod.signInWithEmailAndPassword(auth, fakeEmail, fakePassword); }
-        catch (err) {
-          if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
-            cred = await authMod.createUserWithEmailAndPassword(auth, fakeEmail, fakePassword);
-          } else throw err;
-        }
-        const uid = cred.user.uid;
-        let pSnap = await fsMod.getDoc(fsMod.doc(db, 'users', uid));
-        if (!pSnap.exists()) {
-          await fsMod.setDoc(fsMod.doc(db, 'users', uid), {
-            email: fakeEmail, displayName: '', phone, role: 'cashier',
-            businessId: '', active: true, createdAt: fsMod.serverTimestamp(),
-          });
-          pSnap = await fsMod.getDoc(fsMod.doc(db, 'users', uid));
-        }
-        const profile = { uid, ...pSnap.data() };
-        showMessage('Успешно! Переходим...', 'success');
+        showMessage('Успешно! Перенаправляем...', 'success');
         setTimeout(() => redirectByRole(profile), 400);
       } catch (err) {
         window.__kutDiag('✗ verifyOtp: ' + err.message);
-        let msg = 'Неверный код.';
-        if (err.message === 'OTP_EXPIRED') msg = 'Код истёк.';
-        else if (err.message === 'OTP_NOT_FOUND') msg = 'Код не найден.';
+        let msg = 'Неверный код. Попробуйте ещё раз.';
+        if (err.message === 'OTP_EXPIRED') msg = 'Код истёк. Запросите новый.';
+        else if (err.message === 'OTP_NOT_FOUND') msg = 'Код не найден. Запросите новый.';
+        else if (err.message === 'OTP_MISMATCH') msg = 'Неверный код.';
         showMessage(msg, 'error');
       } finally {
-        btn.disabled = false; btn.textContent = 'Войти в систему';
+        btn.disabled = false;
+        btn.textContent = 'Войти в систему';
       }
     });
 
     $('#backBtn').addEventListener('click', () => {
       stopOtpTimer();
-      $('#otpForm').classList.add('hidden');
-      $('#phoneForm').classList.remove('hidden');
-      $('#otpInput').value = ''; clearMessage();
+      otpForm.classList.add('hidden');
+      phoneForm.classList.remove('hidden');
+      $('#otpInput').value = '';
+      clearErrors(otpForm);
+      clearMessage();
+      phoneInput.focus();
     });
 
-    function startOtpTimer(sec) {
+    function startOtpTimer(seconds) {
       stopOtpTimer();
-      const el = $('#otpTimer'); let l = sec;
-      const tick = () => { const m = String(Math.floor(l / 60)).padStart(2, '0'); const s = String(l % 60).padStart(2, '0'); el.textContent = `${m}:${s}`; if (l <= 0) { stopOtpTimer(); el.textContent = '00:00'; } l--; };
-      tick(); otpTimerInterval = setInterval(tick, 1000);
+      const el = $('#otpTimer');
+      let left = seconds;
+      const tick = () => {
+        const m = String(Math.floor(left / 60)).padStart(2, '0');
+        const s = String(left % 60).padStart(2, '0');
+        el.textContent = `${m}:${s}`;
+        if (left <= 0) {
+          stopOtpTimer();
+          el.textContent = '00:00';
+        }
+        left--;
+      };
+      tick();
+      otpTimerInterval = setInterval(tick, 1000);
     }
-    function stopOtpTimer() { if (otpTimerInterval) { clearInterval(otpTimerInterval); otpTimerInterval = null; } }
+    function stopOtpTimer() {
+      if (otpTimerInterval) {
+        clearInterval(otpTimerInterval);
+        otpTimerInterval = null;
+      }
+    }
+
+    // =========================================================
+    // СТАРТ
+    // =========================================================
+    updatePhonePlaceholder();
+
+    // НЕ делаем автоматический редирект — пользователь сам нажимает «Войти».
+    // Это защищает от цикла перезагрузок между login.html и admin.html.
 
     window.__kutDiag('✓ Готово. Нажмите "Войти".');
   </script>
