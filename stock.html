@@ -166,6 +166,27 @@
     html[data-theme="light"] .stock-table thead th { background: #FBFDFC !important; color: #4A5C54 !important; border-bottom-color: rgba(0,95,64,.10) !important; }
     .stock-table tbody td { padding: 14px 16px !important; vertical-align: middle !important; border-bottom: 1px solid rgba(255,255,255,.05) !important; color: var(--v9-text-1) !important; }
     html[data-theme="light"] .stock-table tbody td { border-bottom-color: rgba(0,95,64,.06) !important; color: #14211C !important; }
+
+    /* ✅ ФИКС: убираем белый фон при тапе/наведении */
+    .stock-table tbody tr { transition: background .15s ease; }
+    html[data-theme="dark"] .stock-table tbody tr:hover,
+    body.page-stock .stock-table tbody tr:hover {
+      background: rgba(212, 175, 55, 0.06) !important;
+    }
+    html[data-theme="light"] .stock-table tbody tr:hover {
+      background: #FAFCFB !important;
+    }
+    @media (hover: none) and (pointer: coarse) {
+      .stock-table tbody tr:hover,
+      .stock-table tbody tr:focus,
+      .stock-table tbody tr:active,
+      .stock-table tr:hover,
+      .stock-table tr:focus,
+      .stock-table tr:active {
+        background: transparent !important;
+      }
+    }
+
     .cell-name { display: flex !important; align-items: center !important; gap: 12px !important; min-width: 200px !important; }
     .cell-name__emoji { width: 40px !important; height: 40px !important; display: grid !important; place-items: center !important; background: rgba(212,175,55,.14) !important; border-radius: 10px !important; font-size: 18px !important; flex-shrink: 0 !important; }
     .cell-name__text { min-width: 0 !important; }
@@ -196,13 +217,15 @@
     @media (max-width: 860px) {
       .stock-table thead { display: none !important; }
       .stock-table, .stock-table tbody, .stock-table tr, .stock-table td { display: block !important; width: 100% !important; }
-      .stock-table tr { border-bottom: 1px solid var(--v9-glass-border) !important; padding: 14px !important; }
+      .stock-table tr { border-bottom: 1px solid var(--v9-glass-border) !important; padding: 14px !important; background: transparent !important; }
       .stock-table tbody td { border: none !important; padding: 5px 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; }
       .stock-table td::before { content: attr(data-label) !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: .5px !important; font-weight: 700 !important; color: var(--v9-text-3) !important; flex-shrink: 0 !important; }
       .stock-table td[data-label="Товар"] { display: block !important; padding-bottom: 10px !important; }
       .stock-table td[data-label="Товар"]::before { display: none !important; }
       .cell-name { min-width: 0 !important; }
       .cell-name__title { max-width: none !important; white-space: normal !important; }
+      /* В мобильной разметке тоже глушим hover */
+      .stock-table tr:hover, .stock-table tr:focus, .stock-table tr:active { background: transparent !important; }
     }
 
     .modal[hidden] { display: none !important; }
@@ -265,7 +288,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v10.0-STOCK';
+      var BUILD = 'v10.1-STOCK';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -397,7 +420,7 @@
           </div>
 
           <div class="wh-load-more" id="whLoadMoreWrap" hidden>
-            <button class="wh-load-more__btn" type="button" id="whLoadMoreBtn">📜 Загрузить ещё</button>
+            <button class="wh-load-more__btn" type="button" id="whLoadMoreBtn">📜 Показать ещё 50</button>
           </div>
         </section>
       </main>
