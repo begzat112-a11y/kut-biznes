@@ -1,10 +1,11 @@
 /* =========================================================
-   КУТ: БИЗНЕС — UI Chrome v10.2 «Aurora»
+   КУТ: БИЗНЕС — UI Chrome v10.3 «Aurora»
    
    • Единый глобальный хедер
    • Динамический заголовок страницы
-   • Кнопка темы — toggle-переключатель ВНУТРИ сайдбара
-   • ЗАЩИТА от двойного обработчика на #burger
+   • Кнопка темы — toggle ВНУТРИ сайдбара (жёстко одна)
+   • 🚀 Бургер: CAPTURE-ФАЗА + stopImmediatePropagation
+       → убивает любые чужие обработчики (app.js, старый ui-chrome)
    • Гарантированные тап-зоны 48×48
    ========================================================= */
 
@@ -25,10 +26,10 @@
     'diag.html':      'Диагностика',
   };
 
-  const currentFile = () => {
+  function currentFile() {
     const f = (window.location.pathname || '').split('/').pop().toLowerCase();
     return f || 'index.html';
-  };
+  }
 
   function setPageTitle() {
     const el = document.getElementById('page-title');
@@ -38,7 +39,80 @@
   }
 
   // ---------------------------------------------------------
-  // 1. Кнопка темы ВНУТРИ сайдбара
+  // 🚀 БУРГЕР — ЕДИНСТВЕННЫЙ ОБРАБОТЧИК В CAPTURE-ФАЗЕ
+  //    Он сработает ПЕРВЫМ (до всех bubble-обработчиков на элементе)
+  //    и остановит их через stopImmediatePropagation.
+  // ---------------------------------------------------------
+  let burgerWired = false;
+  function wireBurgerOnce() {
+    if (burgerWired) return;
+    burgerWired = true;
+
+    const open = () => {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      if (!sidebar) return;
+      sidebar.classList.add('is-open');
+      if (overlay) overlay.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+    };
+    const close = () => {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      if (!sidebar) return;
+      sidebar.classList.remove('is-open');
+      if (overlay) overlay.classList.remove('is-open');
+      document.body.style.overflow = '';
+    };
+    const toggle = () => {
+      const sidebar = document.getElementById('sidebar');
+      if (!sidebar) return;
+      if (sidebar.classList.contains('is-open')) close();
+      else open();
+    };
+
+    // 🚀 capture = true — срабатываем ДО остальных обработчиков
+    document.addEventListener('click', function (e) {
+      const burger = e.target.closest && e.target.closest('#burger');
+      if (!burger) return;
+
+      // Убиваем все чужие обработчики (bubble на #burger, document и т.п.)
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+
+      toggle();
+    }, true); // ← capture-фаза
+
+    // Закрытие по overlay (в capture тоже, чтобы избежать конфликтов)
+    document.addEventListener('click', function (e) {
+      const overlay = e.target.closest && e.target.closest('#overlay');
+      if (!overlay) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      close();
+    }, true);
+
+    // Закрытие по клику на ссылку внутри сайдбара
+    document.addEventListener('click', function (e) {
+      const link = e.target.closest && e.target.closest('#sidebar a');
+      if (!link) return;
+      close();
+    });
+
+    // Esc
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') close();
+    });
+
+    // Авто-закрытие при переходе на ПК
+    window.addEventListener('resize', function () {
+      if (window.innerWidth >= 1000) close();
+    });
+  }
+
+  // ---------------------------------------------------------
+  // Кнопка темы — toggle внутри сайдбара
   // ---------------------------------------------------------
   function mountSidebarThemeToggle() {
     const api = window.KUT_THEME;
@@ -47,7 +121,6 @@
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
-    // Находим или создаём слот
     let slot = sidebar.querySelector('#sidebar-theme-slot');
     if (!slot) {
       slot = document.createElement('div');
@@ -60,14 +133,15 @@
       else sidebar.appendChild(slot);
     }
 
-    // 🚀 ЖЁСТКО удаляем ВСЕ старые кнопки (включая .sidebar-theme-toggle)
-    slot.querySelectorAll('.sidebar-theme, .sidebar-theme-toggle, .theme-toggle').forEach((b) => b.remove());
+    // 🚀 Удаляем ВСЕ старые кнопки (включая круглую .sidebar-theme)
+    slot.querySelectorAll(
+      '.sidebar-theme, .sidebar-theme-toggle, .theme-toggle'
+    ).forEach((b) => b.remove());
 
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'sidebar-theme-toggle';
     btn.setAttribute('role', 'switch');
-    btn.setAttribute('aria-checked', String(api.get() === 'light'));
 
     const render = () => {
       const isLight = api.get() === 'light';
@@ -82,60 +156,20 @@
     };
     render();
 
-    // 🚀 Клик вызываем через KUT_THEME.toggle (логика — в theme.js)
+    // Обработчик тоже в capture — чтобы никто не помешал
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      api.toggle();
+      e.stopImmediatePropagation();
+      const newTheme = api.toggle();
       render();
-    });
+      console.info('[KUT theme] Переключено на:', newTheme);
+    }, true);
 
     slot.appendChild(btn);
   }
 
   // ---------------------------------------------------------
-  // 2. Бургер — ГАРАНТИРОВАННО один обработчик
-  // ---------------------------------------------------------
-  function ensureBurgerWorks() {
-    const burger = document.getElementById('burger');
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-    if (!burger || !sidebar) return;
-
-    // 🚀 Если уже настроен — не вешаем второй
-    if (burger.dataset.kutWired === '1') return;
-    burger.dataset.kutWired = '1';
-
-    const open = () => {
-      sidebar.classList.add('is-open');
-      if (overlay) overlay.classList.add('is-open');
-      document.body.style.overflow = 'hidden';
-    };
-    const close = () => {
-      sidebar.classList.remove('is-open');
-      if (overlay) overlay.classList.remove('is-open');
-      document.body.style.overflow = '';
-    };
-
-    burger.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (sidebar.classList.contains('is-open')) close();
-      else open();
-    });
-
-    if (overlay) overlay.addEventListener('click', close);
-    sidebar.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && sidebar.classList.contains('is-open')) close();
-    });
-    window.addEventListener('resize', () => {
-      if (window.innerWidth >= 1000) close();
-    });
-  }
-
-  // ---------------------------------------------------------
-  // 3. Синхронизация темы между вкладками
+  // Синхронизация темы между вкладками
   // ---------------------------------------------------------
   window.addEventListener('storage', (e) => {
     if (e.key !== 'kut_theme') return;
@@ -146,12 +180,12 @@
   });
 
   // ---------------------------------------------------------
-  // 4. Boot
+  // Boot
   // ---------------------------------------------------------
   function boot() {
     setPageTitle();
+    wireBurgerOnce();
     mountSidebarThemeToggle();
-    ensureBurgerWorks();
   }
 
   if (document.readyState === 'loading') {
@@ -160,17 +194,14 @@
     boot();
   }
 
-  // Повторные попытки — на случай, если DOM перестраивается модулями
+  // Повторные попытки — на случай, если модули перестраивают DOM
   window.addEventListener('load', () => {
     [100, 400, 1200].forEach((t) => setTimeout(() => {
+      setPageTitle();
+      wireBurgerOnce();
       mountSidebarThemeToggle();
-      ensureBurgerWorks();
     }, t));
   });
 
-  // ⚠️ ВАЖНО: НЕ переопределяем существующий обработчик burger.
-  // Старый ui-chrome.js делал wired='1' и НЕ выставлял флаг — из-за
-  // этого app.js вешал второй обработчик и шторка глючила.
-  // Теперь используем отдельное поле dataset.kutWired.
-
+  console.info('[KUT ui-chrome] v10.3 · бургер в capture-фазе · тема toggle');
 })();
