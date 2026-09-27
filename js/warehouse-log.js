@@ -1,16 +1,12 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Складской журнал · v4
-   • Realtime через onSnapshot (окно 50 свежих записей)
-   • Бессрочное хранение + пагинация через startAfter
-   • Мягкая обработка ошибки отсутствия composite index
-   Путь: businesses/{businessId}/warehouse_logs
-
-   Публичный API:
-     WAREHOUSE_LOG.saveLog({...})
-     WAREHOUSE_LOG.createTestLog()
-     WAREHOUSE_LOG.listenToLogsRealtime(filter?)
-     WAREHOUSE_LOG.loadMoreLogs()
-     WAREHOUSE_LOG.refresh(filter?)
+   КУТ: БИЗНЕС — Складской журнал · v10.1 «Aurora»
+   
+   • Первая загрузка: 10 последних операций
+   • Кнопка «Показать ещё 50»: +50 записей за клик
+   • Realtime через onSnapshot (первые 10 обновляются вживую)
+   • Догруженный хвост не теряется при апдейтах
+   • Бессрочное хранение в Firestore
+   • Путь: businesses/{businessId}/warehouse_logs
    ========================================================= */
 
 import './firebase-config.js';
@@ -19,37 +15,32 @@ import './firebase-config.js';
   'use strict';
 
   const COLLECTION = 'warehouse_logs';
-  const PAGE_SIZE  = 50;   // 50 свежих через onSnapshot + порции по 50 при пагинации
+  const INITIAL_LIMIT = 10;
+  const LOAD_MORE_LIMIT = 50;
 
   const local = {
     filter: 'all',
     logs: [],
-    unsub: null,             // отписка от onSnapshot
-    firstPageLastDoc: null,  // lastDoc после первой realtime-страницы
-    tailEndDoc: null,        // lastDoc после «Загрузить ещё»
+    unsub: null,
+    firstPageLastDoc: null,
+    tailEndDoc: null,
     loadingMore: false,
     hasMore: true,
-    indexError: false,       // true если Firestore вернул failed-precondition
+    indexError: false,
     bizId: null,
   };
 
   // =========================================================
   // УТИЛИТЫ
   // =========================================================
-
   function getState() {
-    return (window.KUT && typeof window.KUT.getState === 'function')
-      ? window.KUT.getState()
-      : {};
+    return (window.KUT && typeof window.KUT.getState === 'function') ? window.KUT.getState() : {};
   }
-  function getBizId() {
-    return getState().businessId || null;
-  }
+  function getBizId() { return getState().businessId || null; }
   function getWorkerName() {
     const p = getState().profile || {};
     return p.displayName || p.email || 'Сотрудник';
   }
-
   function toDate(ts) {
     if (!ts) return null;
     if (typeof ts.toDate === 'function') return ts.toDate();
@@ -58,12 +49,10 @@ import './firebase-config.js';
     return isNaN(d.getTime()) ? null : d;
   }
   function fmtMoney(n) {
-    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
-      .format(Number(n) || 0) + ' KGS';
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0) + ' KGS';
   }
   function fmtQty(n) {
-    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
-      .format(Number(n) || 0);
+    return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(n) || 0);
   }
   function fmtTime(d) {
     if (!d) return '—';
@@ -87,8 +76,6 @@ import './firebase-config.js';
     if (window.KUT?.toast) window.KUT.toast(msg, isError);
     else console.log('[wh]', msg);
   }
-
-  // Извлечь URL создания индекса из сообщения Firestore
   function extractIndexUrl(message) {
     if (!message) return null;
     const m = String(message).match(/https:\/\/console\.firebase\.google\.com\/[^\s"']+/);
@@ -107,7 +94,6 @@ import './firebase-config.js';
     try {
       const { db, collection, addDoc, serverTimestamp } = window.FB;
       const ref = collection(db, 'businesses', bizId, COLLECTION);
-
       const payload = {
         actionType,
         itemName:   String(itemName || '').trim().slice(0, 120),
@@ -117,9 +103,7 @@ import './firebase-config.js';
         workerName: workerName || getWorkerName(),
         timestamp:  serverTimestamp(),
       };
-
       const docRef = await addDoc(ref, payload);
-      console.log('[wh] ✓ записано:', actionType, payload.itemName);
       return { ok: true, id: docRef.id };
     } catch (err) {
       console.error('[wh] ✗ ошибка записи:', err);
@@ -146,8 +130,6 @@ import './firebase-config.js';
 
   // =========================================================
   // 3. listenToLogsRealtime
-  //    Открывает окно последних 50 записей и слушает изменения.
-  //    При фильтре in/out — может требовать composite index.
   // =========================================================
   function listenToLogsRealtime(filterType) {
     filterType = filterType || local.filter;
@@ -159,13 +141,11 @@ import './firebase-config.js';
     const bizId = getBizId();
     if (!bizId) { renderWaiting(); return; }
 
-    // Отписываемся от прошлого слушателя
     if (local.unsub) {
       try { local.unsub(); } catch (_) {}
       local.unsub = null;
     }
 
-    // Сбрасываем пагинацию под новый фильтр
     local.filter          = filterType;
     local.bizId           = bizId;
     local.logs            = [];
@@ -185,7 +165,7 @@ import './firebase-config.js';
       constraints.push(where('actionType', '==', filterType));
     }
     constraints.push(orderBy('timestamp', 'desc'));
-    constraints.push(limit(PAGE_SIZE));
+    constraints.push(limit(INITIAL_LIMIT));
 
     const q = query(base, ...constraints);
 
@@ -193,18 +173,13 @@ import './firebase-config.js';
       (snap) => {
         const fresh = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         const freshIds = new Set(fresh.map((l) => l.id));
-
-        // Сохраняем «хвост» — записи, подгруженные пагинацией и не попавшие
-        // в текущее окно realtime. Иначе пользователь потеряет архив.
         const tail = local.logs.filter((l) => !freshIds.has(l.id));
-
         local.logs = fresh.concat(tail);
 
-        // Курсор первой страницы — для startAfter при первой пагинации
         local.firstPageLastDoc = snap.docs[snap.docs.length - 1] || null;
         if (!local.tailEndDoc) local.tailEndDoc = local.firstPageLastDoc;
 
-        local.hasMore = snap.docs.length >= PAGE_SIZE;
+        local.hasMore = snap.docs.length >= INITIAL_LIMIT;
         local.indexError = false;
 
         setLiveStatus('live', fresh.length);
@@ -217,7 +192,6 @@ import './firebase-config.js';
         const msg  = String(err?.message || '');
 
         if (code.includes('failed-precondition') || /index/i.test(msg)) {
-          // Мягкая обработка: не блокируем «Все», показываем предупреждение
           local.indexError = true;
           local.hasMore = false;
           setLiveStatus('warn');
@@ -235,7 +209,7 @@ import './firebase-config.js';
   }
 
   // =========================================================
-  // 4. loadMoreLogs — «Загрузить ещё» (пагинация startAfter)
+  // 4. loadMoreLogs — +50 за клик
   // =========================================================
   async function loadMoreLogs() {
     if (local.loadingMore) return;
@@ -258,7 +232,7 @@ import './firebase-config.js';
     }
     constraints.push(orderBy('timestamp', 'desc'));
     constraints.push(startAfter(cursor));
-    constraints.push(limit(PAGE_SIZE));
+    constraints.push(limit(LOAD_MORE_LIMIT));
 
     const q = query(base, ...constraints);
 
@@ -267,11 +241,12 @@ import './firebase-config.js';
       const more = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
       if (more.length > 0) {
-        local.logs = local.logs.concat(more);
+        const ids = new Set(local.logs.map((l) => l.id));
+        const add = more.filter((l) => !ids.has(l.id));
+        local.logs = local.logs.concat(add);
         local.tailEndDoc = snap.docs[snap.docs.length - 1];
       }
-      local.hasMore = snap.docs.length >= PAGE_SIZE;
-
+      local.hasMore = snap.docs.length >= LOAD_MORE_LIMIT;
       renderLogs(local.logs);
     } catch (err) {
       console.error('[wh] loadMore error:', err);
@@ -292,7 +267,6 @@ import './firebase-config.js';
   // =========================================================
   // 5. РЕНДЕР
   // =========================================================
-
   function setLiveStatus(status, count) {
     const el = document.getElementById('whLive');
     if (!el) return;
@@ -409,9 +383,6 @@ import './firebase-config.js';
       </div>`;
   }
 
-  // =========================================================
-  // Мягкое предупреждение про индекс — НЕ блокирует «Все»
-  // =========================================================
   function renderIndexWarning(message) {
     const listEl  = document.getElementById('whLogList');
     const emptyEl = document.getElementById('whLogEmpty');
@@ -457,9 +428,6 @@ Field 2: timestamp — Descending</div>`}
       </div>`;
   }
 
-  // =========================================================
-  // Кнопка «Загрузить ещё»
-  // =========================================================
   function renderLoadMore(loading) {
     const wrap = document.getElementById('whLoadMoreWrap');
     const btn  = document.getElementById('whLoadMoreBtn');
@@ -476,11 +444,11 @@ Field 2: timestamp — Descending</div>`}
 
     wrap.hidden = false;
     btn.disabled = !!loading;
-    btn.textContent = loading ? 'Загружаем…' : '📜 Загрузить ещё';
+    btn.textContent = loading ? 'Загружаем…' : '📜 Показать ещё 50';
   }
 
   // =========================================================
-  // 6. CSS + UI
+  // 6. CSS
   // =========================================================
   function injectStyles() {
     if (document.getElementById('wh-log-styles')) return;
@@ -500,270 +468,84 @@ Field 2: timestamp — Descending</div>`}
         border-color: rgba(0,95,64,.10);
         box-shadow: 0 6px 18px rgba(16,32,25,.08);
       }
-
-      .wh-head {
-        display: flex; align-items: flex-start; justify-content: space-between;
-        gap: 10px; padding: 16px 18px 10px; flex-wrap: wrap;
-      }
-      .wh-head__title {
-        margin: 0; font-size: 16px; font-weight: 700;
-        color: var(--v9-text-1, #EDF5F1);
-      }
+      .wh-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px 18px 10px; flex-wrap: wrap; }
+      .wh-head__title { margin: 0; font-size: 16px; font-weight: 700; color: var(--v9-text-1, #EDF5F1); }
       html[data-theme="light"] .wh-head__title { color: #14211C; }
-      .wh-head__sub {
-        font-size: 12px; color: var(--v9-text-3, rgba(237,245,241,.48));
-        margin-top: 2px;
-      }
-      .wh-live {
-        font-size: 11px; font-weight: 700; padding: 5px 10px;
-        border-radius: 999px; background: rgba(255,255,255,.05);
-        color: var(--v9-text-3, rgba(237,245,241,.48));
-        white-space: nowrap; flex-shrink: 0;
-      }
-      .wh-live.is-live {
-        background: rgba(46,204,113,.14); color: #2ecc71;
-        border: 1px solid rgba(46,204,113,.28);
-      }
-      .wh-live.is-connecting {
-        background: rgba(212,175,55,.14); color: #F0D772;
-        border: 1px solid rgba(212,175,55,.28);
-      }
-      .wh-live.is-warn {
-        background: rgba(255,167,38,.14); color: #FFA726;
-        border: 1px solid rgba(255,167,38,.28);
-      }
-      .wh-live.is-error {
-        background: rgba(255,92,92,.14); color: #FF5C5C;
-        border: 1px solid rgba(255,92,92,.28);
-      }
+      .wh-head__sub { font-size: 12px; color: var(--v9-text-3, rgba(237,245,241,.48)); margin-top: 2px; }
+      .wh-live { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.05); color: var(--v9-text-3, rgba(237,245,241,.48)); white-space: nowrap; flex-shrink: 0; }
+      .wh-live.is-live { background: rgba(46,204,113,.14); color: #2ecc71; border: 1px solid rgba(46,204,113,.28); }
+      .wh-live.is-connecting { background: rgba(212,175,55,.14); color: #F0D772; border: 1px solid rgba(212,175,55,.28); }
+      .wh-live.is-warn { background: rgba(255,167,38,.14); color: #FFA726; border: 1px solid rgba(255,167,38,.28); }
+      .wh-live.is-error { background: rgba(255,92,92,.14); color: #FF5C5C; border: 1px solid rgba(255,92,92,.28); }
 
-      .wh-filters {
-        display: flex; gap: 8px; padding: 0 18px 12px;
-        overflow-x: auto; scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-      }
+      .wh-filters { display: flex; gap: 8px; padding: 0 18px 12px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
       .wh-filters::-webkit-scrollbar { display: none; }
-      .wh-chip {
-        flex-shrink: 0; min-height: 34px; padding: 7px 14px;
-        border-radius: 999px;
-        border: 1px solid var(--v9-glass-border, rgba(255,255,255,.09));
-        background: rgba(255,255,255,.04);
-        color: var(--v9-text-2, rgba(237,245,241,.72));
-        font-family: inherit; font-size: 13px; font-weight: 600;
-        line-height: 1; cursor: pointer; white-space: nowrap;
-        transition: background .18s ease, color .18s ease, transform .12s ease;
-        -webkit-tap-highlight-color: transparent;
-      }
-      html[data-theme="light"] .wh-chip {
-        background: #F4F7F5; color: #4A5C54;
-        border-color: rgba(0,95,64,.12);
-      }
+      .wh-chip { flex-shrink: 0; min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--v9-glass-border, rgba(255,255,255,.09)); background: rgba(255,255,255,.04); color: var(--v9-text-2, rgba(237,245,241,.72)); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap; transition: background .18s ease, color .18s ease, transform .12s ease; -webkit-tap-highlight-color: transparent; }
+      html[data-theme="light"] .wh-chip { background: #F4F7F5; color: #4A5C54; border-color: rgba(0,95,64,.12); }
       .wh-chip:active { transform: scale(.96); }
-      .wh-chip.is-active {
-        background: linear-gradient(135deg, #E7C14A, #B88F1D);
-        color: #06150F; border-color: transparent;
-        box-shadow: 0 6px 18px rgba(212,175,55,.32);
-      }
+      .wh-chip.is-active { background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; border-color: transparent; box-shadow: 0 6px 18px rgba(212,175,55,.32); }
 
-      .wh-test-btn {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 7px 12px; border-radius: 10px;
-        border: 1px solid rgba(212,175,55,.28);
-        background: rgba(212,175,55,.10);
-        color: #F0D772;
-        font-family: inherit; font-size: 12px; font-weight: 700;
-        cursor: pointer; white-space: nowrap;
-        transition: transform .12s ease, background .18s ease;
-        -webkit-tap-highlight-color: transparent;
-      }
+      .wh-test-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(212,175,55,.28); background: rgba(212,175,55,.10); color: #F0D772; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: transform .12s ease, background .18s ease; -webkit-tap-highlight-color: transparent; }
       .wh-test-btn:active { transform: scale(.95); }
       .wh-test-btn:hover { background: rgba(212,175,55,.20); }
 
       .wh-list { padding: 4px 8px 12px; min-height: 100px; }
-
       .wh-day { margin-bottom: 8px; }
       .wh-day:last-child { margin-bottom: 0; }
-      .wh-day__label {
-        font-size: 11px; font-weight: 700;
-        text-transform: uppercase; letter-spacing: .5px;
-        color: var(--v9-text-3, rgba(237,245,241,.48));
-        padding: 10px 12px 6px;
-      }
+      .wh-day__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--v9-text-3, rgba(237,245,241,.48)); padding: 10px 12px 6px; }
       html[data-theme="light"] .wh-day__label { color: #7A8783; }
 
-      .wh-row {
-        display: grid; grid-template-columns: 60px 1fr auto;
-        align-items: center; gap: 12px;
-        padding: 12px; border-radius: 14px;
-        transition: background .14s ease;
-      }
-      .wh-row:hover { background: rgba(255,255,255,.03); }
+      .wh-row { display: grid; grid-template-columns: 60px 1fr auto; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; }
       .wh-row + .wh-row { border-top: 1px dashed rgba(255,255,255,.06); }
-      html[data-theme="light"] .wh-row + .wh-row {
-        border-top-color: rgba(0,95,64,.08);
-      }
-
-      .wh-row__left {
-        display: flex; align-items: center; gap: 8px; flex-shrink: 0;
-      }
-      .wh-row__time {
-        font-size: 12px; font-weight: 700;
-        color: var(--v9-text-2, rgba(237,245,241,.72));
-        font-variant-numeric: tabular-nums; min-width: 38px;
-      }
+      html[data-theme="light"] .wh-row + .wh-row { border-top-color: rgba(0,95,64,.08); }
+      .wh-row__left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+      .wh-row__time { font-size: 12px; font-weight: 700; color: var(--v9-text-2, rgba(237,245,241,.72)); font-variant-numeric: tabular-nums; min-width: 38px; }
       html[data-theme="light"] .wh-row__time { color: #4A5C54; }
-
-      .wh-row__dot {
-        width: 10px; height: 10px; border-radius: 50%;
-        flex-shrink: 0; position: relative;
-      }
-      .wh-row__dot::after {
-        content: ""; position: absolute;
-        left: 50%; top: 50%;
-        transform: translate(-50%, -50%);
-        width: 4px; height: 4px;
-        border-radius: 50%; background: #fff; opacity: .85;
-      }
+      .wh-row__dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; position: relative; }
+      .wh-row__dot::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 4px; height: 4px; border-radius: 50%; background: #fff; opacity: .85; }
       .wh-row--in  .wh-row__dot { background: #2ecc71; box-shadow: 0 0 10px rgba(46,204,113,.55); }
       .wh-row--out .wh-row__dot { background: #FF5C5C; box-shadow: 0 0 10px rgba(255,92,92,.55); }
 
       .wh-row__body { min-width: 0; }
-      .wh-row__name {
-        font-size: 14px; font-weight: 700;
-        color: var(--v9-text-1, #EDF5F1);
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
+      .wh-row__name { font-size: 14px; font-weight: 700; color: var(--v9-text-1, #EDF5F1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       html[data-theme="light"] .wh-row__name { color: #14211C; }
-      .wh-row__worker {
-        font-size: 12px;
-        color: var(--v9-text-3, rgba(237,245,241,.48));
-        margin-top: 2px;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      }
+      .wh-row__worker { font-size: 12px; color: var(--v9-text-3, rgba(237,245,241,.48)); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       html[data-theme="light"] .wh-row__worker { color: #7A8783; }
 
       .wh-row__right { text-align: right; flex-shrink: 0; }
-      .wh-row__qty {
-        font-size: 14px; font-weight: 800;
-        font-variant-numeric: tabular-nums; white-space: nowrap;
-      }
+      .wh-row__qty { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
       .wh-row__qty--in  { color: #2ecc71; }
       .wh-row__qty--out { color: #FF5C5C; }
-      .wh-row__sum {
-        font-size: 11px;
-        color: var(--v9-text-3, rgba(237,245,241,.48));
-        margin-top: 2px;
-        font-variant-numeric: tabular-nums; white-space: nowrap;
-      }
+      .wh-row__sum { font-size: 11px; color: var(--v9-text-3, rgba(237,245,241,.48)); margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
       html[data-theme="light"] .wh-row__sum { color: #7A8783; }
 
-      /* Загрузить ещё */
-      .wh-load-more {
-        padding: 4px 16px 18px;
-        text-align: center;
-      }
-      .wh-load-more__btn {
-        width: 100%;
-        padding: 12px 16px;
-        border-radius: 14px;
-        border: 1px solid var(--v9-glass-border, rgba(255,255,255,.09));
-        background: rgba(255,255,255,.04);
-        color: var(--v9-text-2, rgba(237,245,241,.72));
-        font-family: inherit;
-        font-size: 13px; font-weight: 700;
-        cursor: pointer;
-        transition: background .18s ease, color .18s ease, transform .12s ease;
-        -webkit-tap-highlight-color: transparent;
-      }
-      html[data-theme="light"] .wh-load-more__btn {
-        background: #F4F7F5; color: #4A5C54;
-        border-color: rgba(0,95,64,.12);
-      }
-      .wh-load-more__btn:hover:not(:disabled) {
-        border-color: rgba(212,175,55,.4);
-        color: #F0D772;
-        background: rgba(212,175,55,.08);
-      }
+      .wh-load-more { padding: 4px 16px 18px; text-align: center; }
+      .wh-load-more__btn { width: 100%; padding: 14px 16px; min-height: 48px; border-radius: 14px; border: 1px solid var(--v9-glass-border, rgba(255,255,255,.09)); background: rgba(255,255,255,.04); color: var(--v9-text-2, rgba(237,245,241,.72)); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .18s ease, color .18s ease, transform .12s ease; -webkit-tap-highlight-color: transparent; }
+      html[data-theme="light"] .wh-load-more__btn { background: #F4F7F5; color: #4A5C54; border-color: rgba(0,95,64,.12); }
+      .wh-load-more__btn:hover:not(:disabled) { border-color: rgba(212,175,55,.4); color: #F0D772; background: rgba(212,175,55,.08); }
       .wh-load-more__btn:active { transform: scale(.98); }
-      .wh-load-more__btn:disabled {
-        opacity: .55;
-        cursor: default;
-      }
+      .wh-load-more__btn:disabled { opacity: .55; cursor: default; }
 
-      .wh-empty {
-        padding: 40px 20px; text-align: center;
-        color: var(--v9-text-3, rgba(237,245,241,.48));
-        font-size: 14px;
-      }
+      .wh-empty { padding: 40px 20px; text-align: center; color: var(--v9-text-3, rgba(237,245,241,.48)); font-size: 14px; }
       .wh-empty__icon { font-size: 34px; display: block; margin-bottom: 8px; opacity: .8; }
-      .wh-empty__hint {
-        display: block; margin-top: 8px;
-        font-size: 12px;
-        color: var(--v9-text-3, rgba(237,245,241,.4));
-      }
+      .wh-empty__hint { display: block; margin-top: 8px; font-size: 12px; color: var(--v9-text-3, rgba(237,245,241,.4)); }
       html[data-theme="light"] .wh-empty { color: #7A8783; }
 
-      .wh-loading {
-        display: flex; align-items: center; justify-content: center;
-        gap: 10px; padding: 40px 20px; font-size: 13px;
-        color: var(--v9-text-3, rgba(237,245,241,.48));
-      }
-      .wh-spinner {
-        width: 20px; height: 20px;
-        border: 2px solid rgba(212,175,55,.25);
-        border-top-color: #D4AF37;
-        border-radius: 50%;
-        animation: whSpin .9s linear infinite;
-      }
+      .wh-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; font-size: 13px; color: var(--v9-text-3, rgba(237,245,241,.48)); }
+      .wh-spinner { width: 20px; height: 20px; border: 2px solid rgba(212,175,55,.25); border-top-color: #D4AF37; border-radius: 50%; animation: whSpin .9s linear infinite; }
       @keyframes whSpin { to { transform: rotate(360deg); } }
 
       .wh-hint { padding: 24px 20px; text-align: center; }
       .wh-hint__icon { font-size: 34px; margin-bottom: 10px; }
-      .wh-hint__title {
-        font-size: 15px; font-weight: 700;
-        color: var(--v9-text-1, #EDF5F1);
-        margin-bottom: 8px;
-      }
+      .wh-hint__title { font-size: 15px; font-weight: 700; color: var(--v9-text-1, #EDF5F1); margin-bottom: 8px; }
       html[data-theme="light"] .wh-hint__title { color: #14211C; }
-      .wh-hint__text {
-        font-size: 13px; line-height: 1.55;
-        color: var(--v9-text-2, rgba(237,245,241,.72));
-        margin-bottom: 14px;
-      }
+      .wh-hint__text { font-size: 13px; line-height: 1.55; color: var(--v9-text-2, rgba(237,245,241,.72)); margin-bottom: 14px; }
       .wh-hint__text b { color: var(--v9-text-1, #EDF5F1); }
-      .wh-hint__code {
-        text-align: left;
-        background: rgba(0,0,0,.35); color: #B9F5CE;
-        padding: 12px; border-radius: 12px;
-        font-family: ui-monospace, Menlo, monospace;
-        font-size: 11px; line-height: 1.55;
-        overflow-x: auto; margin: 0 0 12px;
-        white-space: pre-wrap;
-      }
-      html[data-theme="light"] .wh-hint__code {
-        background: #14211C; color: #B9F5CE;
-      }
-      .wh-hint__btn {
-        display: inline-block;
-        padding: 10px 16px; border-radius: 12px;
-        border: 1px solid rgba(212,175,55,.35);
-        background: rgba(212,175,55,.14);
-        color: #F0D772;
-        font-family: inherit; font-size: 13px; font-weight: 700;
-        cursor: pointer;
-      }
-      .wh-hint__link {
-        display: inline-block;
-        padding: 12px 18px; border-radius: 12px;
-        background: linear-gradient(135deg, #E7C14A, #B88F1D);
-        color: #06150F; font-weight: 700; font-size: 13px;
-        text-decoration: none;
-        margin-bottom: 10px;
-      }
-      .wh-hint__note {
-        margin-top: 12px; font-size: 12px;
-        color: var(--v9-text-3, rgba(237,245,241,.48));
-      }
+      .wh-hint__code { text-align: left; background: rgba(0,0,0,.35); color: #B9F5CE; padding: 12px; border-radius: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.55; overflow-x: auto; margin: 0 0 12px; white-space: pre-wrap; }
+      html[data-theme="light"] .wh-hint__code { background: #14211C; color: #B9F5CE; }
+      .wh-hint__btn { display: inline-block; padding: 12px 18px; min-height: 44px; border-radius: 12px; border: 1px solid rgba(212,175,55,.35); background: rgba(212,175,55,.14); color: #F0D772; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+      .wh-hint__link { display: inline-block; padding: 12px 18px; min-height: 44px; border-radius: 12px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; font-weight: 700; font-size: 13px; text-decoration: none; margin-bottom: 10px; }
+      .wh-hint__note { margin-top: 12px; font-size: 12px; color: var(--v9-text-3, rgba(237,245,241,.48)); }
       .wh-hint--error .wh-hint__title { color: #FF5C5C; }
       .wh-hint--warn .wh-hint__title { color: #F0D772; }
     `;
@@ -780,17 +562,14 @@ Field 2: timestamp — Descending</div>`}
     const wrap = document.getElementById('whFilters');
     if (!wrap || wrap.dataset.wired === '1') return;
     wrap.dataset.wired = '1';
-
     wrap.addEventListener('click', (e) => {
       const btn = e.target.closest('.wh-chip');
       if (!btn) return;
       const filter = btn.dataset.filter;
       if (!filter || filter === local.filter) return;
-
       wrap.querySelectorAll('.wh-chip').forEach((c) => {
         c.classList.toggle('is-active', c.dataset.filter === filter);
       });
-
       listenToLogsRealtime(filter);
     });
   }
@@ -821,15 +600,11 @@ Field 2: timestamp — Descending</div>`}
     const tryStart = (attempt) => {
       const bizId = getBizId();
       if (bizId) {
-        console.log('[wh] стартуем с бизнесом:', bizId);
         listenToLogsRealtime(local.filter);
         return;
       }
       if (attempt < 50) setTimeout(() => tryStart(attempt + 1), 300);
-      else {
-        console.warn('[wh] businessId не появился за 15 сек');
-        renderError('Не удалось получить бизнес. Проверь вход в аккаунт.');
-      }
+      else renderError('Не удалось получить бизнес. Проверь вход в аккаунт.');
     };
     tryStart(0);
   }
@@ -844,7 +619,6 @@ Field 2: timestamp — Descending</div>`}
     loadMoreLogs,
     renderLogs,
     refresh: (f) => {
-      // Сброс UI-чипсов к указанному фильтру (по умолчанию — текущий)
       const target = f || local.filter;
       const wrap = document.getElementById('whFilters');
       if (wrap) {
