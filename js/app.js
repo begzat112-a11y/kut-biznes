@@ -1,10 +1,12 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · Firebase v10 · v9.5
+   КУТ: БИЗНЕС — Ядро системы (app.js) · v10.0 «Aurora»
    + Периоды аналитики (Сегодня / Вчера / 7 дней / Месяц)
    + Модуль «Критические остатки»
    + Детализация кассы: наличные + карта/перевод
    + Сквозная центральная кнопка-сканер
    + Профиль, заявки, роли
+   + Пагинация через subscribePage (не жрёт память телефона)
+   + Кэш-хеш для предотвращения лишних перерисовок
    ========================================================= */
 
 import './firebase-config.js';
@@ -27,7 +29,7 @@ function todayISO() {
 }
 function nowTimeHHMM() {
   const d = new Date();
-  const z = (n) => String(d.getHours()).padStart(2, '0');
+  const z = (n) => String(n).padStart(2, '0');
   return `${z(d.getHours())}:${z(d.getMinutes())}`;
 }
 function escapeHtml(str) {
@@ -144,7 +146,6 @@ function startOfMonth() {
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
 }
 
-/** Диапазон [from, to) для текущего периода */
 function getPeriodRange(period) {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -159,7 +160,6 @@ function getPeriodRange(period) {
   }
 }
 
-/** Продажи за выбранный период */
 function getPeriodSales() {
   const { from, to } = getPeriodRange(state.period);
   return (state.sales || []).filter((s) => {
@@ -190,7 +190,7 @@ function aggregateRevenue() {
   const wallet = m.filter((s) => s.paymentMethod === 'wallet').reduce((s, x) => s + sumOfSale(x), 0);
   const qr     = m.filter((s) => s.paymentMethod === 'qr').reduce((s, x) => s + sumOfSale(x), 0);
   const debt   = m.filter((s) => s.paymentMethod === 'debt').reduce((s, x) => s + sumOfSale(x), 0);
-  const card   = wallet + qr; // карта / перевод (безнал)
+  const card   = wallet + qr;
   return { total, cash, wallet, qr, card, debt, count: m.length };
 }
 
@@ -211,8 +211,12 @@ function aggregateStock() {
 
 function aggregateDebts() {
   const debts = state.debts || [];
-  const active = debts.filter((d) => d.status !== 'paid' && Number(d.amount) > 0);
-  const sum = active.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+  const active = debts.filter((d) => {
+    const status = d.status || (Number(d.amount ?? d.totalDebt) > 0 ? 'active' : 'paid');
+    const amount = Number(d.amount != null ? d.amount : d.totalDebt) || 0;
+    return status !== 'paid' && amount > 0;
+  });
+  const sum = active.reduce((s, d) => s + (Number(d.amount != null ? d.amount : d.totalDebt) || 0), 0);
   return { count: active.length, sum };
 }
 
@@ -225,7 +229,6 @@ function aggregateStaff() {
   };
 }
 
-/** График недели — ВСЕГДА текущая неделя (не зависит от периода) */
 function aggregateWeekChart() {
   const now = new Date();
   const day = now.getDay();
@@ -283,10 +286,8 @@ function setupNetIndicator() {
 async function tryEnablePersistence() {
   try {
     if (window.FB && typeof window.FB.enablePersistence === 'function') {
-      await window.FB.enablePersistence();
-      console.info('[KUT] enablePersistence вызван');
-    } else {
-      console.info('[KUT] enablePersistence не объявлена — офлайн без очереди');
+      const res = await window.FB.enablePersistence();
+      console.info('[KUT] enablePersistence:', res);
     }
   } catch (err) {
     console.warn('[KUT] enablePersistence error:', err?.message || err);
@@ -325,13 +326,11 @@ function renderAnalytics() {
   if (elProfit) elProfit.innerHTML = `${fmt(Math.round(profit.profit))}<small>KGS</small>`;
   if (elStock)  elStock.innerHTML  = `${fmt(Math.round(stock.costValue))}<small>KGS</small>`;
 
-  // Детализация кассы — Наличные / Карта-Перевод
   const elCash = document.getElementById('analyticsCash');
   const elCard = document.getElementById('analyticsCard');
   if (elCash) elCash.textContent = fmt(Math.round(rev.cash)) + ' KGS';
   if (elCard) elCard.textContent = fmt(Math.round(rev.card)) + ' KGS';
 
-  // Подпись периода
   const period = document.getElementById('analytics-period');
   if (period) period.textContent = PERIOD_LABELS[state.period] || '';
 
@@ -360,7 +359,6 @@ function renderWeekChart() {
   }).join('');
 }
 
-/** Модуль «Критические остатки» */
 function renderCriticalStock() {
   const wrap = document.getElementById('criticalStock');
   const list = document.getElementById('criticalStockList');
@@ -464,7 +462,6 @@ function renderDashboard() {
   renderRecentSales();
 }
 
-/** Обработчик клика по чипсам периода */
 function setupPeriodFilter() {
   const wrap = document.getElementById('periodChips');
   if (!wrap) return;
@@ -479,7 +476,6 @@ function setupPeriodFilter() {
 
     state.period = period;
 
-    // Переключаем активный класс на чипсах
     wrap.querySelectorAll('.period-chip').forEach((c) => {
       const active = c.dataset.period === period;
       c.classList.toggle('is-active', active);
@@ -487,20 +483,33 @@ function setupPeriodFilter() {
       c.setAttribute('aria-selected', String(active));
     });
 
-    // Перерисовываем только то, что зависит от периода
     renderAnalytics();
   });
+}
+
+// =========================================================
+// ✅ КЭШ-ХЕШ: не перерисовываем список без изменений
+// =========================================================
+let _lastSalesHash = '';
+function _hashSales(arr) {
+  return (arr || []).slice(0, 20).map((s) => s.id + ':' + sumOfSale(s)).join('|');
 }
 
 function renderRecentSales() {
   const container = document.getElementById('recent-sales');
   if (!container) return;
+
   const sales = (state.sales || []).slice()
     .sort((a, b) => {
       const ta = toDate(a.createdAt)?.getTime() || 0;
       const tb = toDate(b.createdAt)?.getTime() || 0;
       return tb - ta;
     }).slice(0, 20);
+
+  // 🚀 Если данные не изменились — вообще не трогаем DOM
+  const h = _hashSales(sales);
+  if (h === _lastSalesHash) return;
+  _lastSalesHash = h;
 
   if (sales.length === 0) {
     container.innerHTML = `<div class="recent__empty"><span>🧾</span>Продаж ещё не было. Начните с кассы.</div>`;
@@ -614,6 +623,15 @@ function setupBottomNavScan() {
         if (addBtn) addBtn.click();
       }
       setTimeout(() => {
+        // Приоритет: универсальный KUTScanner
+        if (window.KUTScanner && typeof window.KUTScanner.open === 'function') {
+          window.KUTScanner.open((code) => {
+            const fBarcode = document.getElementById('fBarcode');
+            if (fBarcode) fBarcode.value = code;
+            if (window.KUT?.toast) window.KUT.toast('Штрихкод: ' + code);
+          });
+          return;
+        }
         const scanBtn = document.getElementById('barcodeScanBtn');
         if (scanBtn) scanBtn.click();
       }, 250);
@@ -1209,14 +1227,15 @@ const getDebts    = () => state.debts || [];
 
 async function reloadAll() {
   if (!state.businessId) return;
-  const [products, sales, debts] = await Promise.all([
-    window.FB.getCollection('products'),
-    window.FB.getCollection('sales'),
-    window.FB.getCollection('debts'),
+  // Используем пагинацию — не тянем всё сразу
+  const [productsPage, salesPage, debtsPage] = await Promise.all([
+    window.FB.getPage('products', { pageSize: 200, orderByField: 'name', orderDirection: 'asc' }),
+    window.FB.getPage('sales',    { pageSize: 100, orderByField: 'createdAt', orderDirection: 'desc' }),
+    window.FB.getPage('debts',    { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' }),
   ]);
-  state.products = products;
-  state.sales = sales;
-  state.debts = debts;
+  state.products = productsPage.items;
+  state.sales    = salesPage.items;
+  state.debts    = debtsPage.items;
 }
 
 async function registerSale({ cart, total, paymentMethod, customer, customerPhone, cashier }) {
@@ -1287,11 +1306,13 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
 
     if (paymentMethod === 'debt') {
       const debtRef = doc(collection(db, 'businesses', bizId, 'debts'));
+      const debtAmount = Number(total) || 0;
       batch.set(debtRef, {
+        // 🆕 Единая схема: name/phone/initialAmount/amount
         name: String(customer || '').trim(),
         phone: customerPhone ? normalizePhone(customerPhone) : '',
-        initialAmount: Number(total) || 0,
-        amount: Number(total) || 0,
+        initialAmount: debtAmount,
+        amount: debtAmount,
         date: todayISO(),
         dueDate: '',
         note: 'Автоматически из продажи в кассе',
@@ -1301,6 +1322,10 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
         source: 'cash',
         cashierUid: staffInfo.uid,
         cashierName: staffInfo.name,
+        // Для обратной совместимости со старыми модулями
+        customerName: String(customer || '').trim(),
+        customerPhone: customerPhone ? normalizePhone(customerPhone) : '',
+        totalDebt: debtAmount,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -1391,14 +1416,27 @@ async function boot() {
   await reloadAll();
   renderDashboard();
 
-  window.FB.subscribeCollection('products', (items) => { state.products = items; renderDashboard(); });
-  window.FB.subscribeCollection('sales',    (items) => { state.sales = items;    renderDashboard(); });
-  window.FB.subscribeCollection('debts',    (items) => { state.debts = items;    renderDashboard(); });
+  // 🚀 ПАГИНИРОВАННЫЕ ПОДПИСКИ — ограничивают память телефона
+  window.FB.subscribePage('products',
+    ({ items }) => { state.products = items; renderDashboard(); },
+    { pageSize: 200, orderByField: 'name', orderDirection: 'asc' });
+
+  window.FB.subscribePage('sales',
+    ({ items }) => { state.sales = items; renderDashboard(); },
+    { pageSize: 100, orderByField: 'createdAt', orderDirection: 'desc' });
+
+  window.FB.subscribePage('debts',
+    ({ items }) => { state.debts = items; renderDashboard(); },
+    { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' });
 
   if (isManager) {
     try {
-      const { db, collection, query, where, onSnapshot } = window.FB;
-      const q = query(collection(db, 'staff'), where('businessId', '==', state.businessId));
+      const { db, collection, query, where, onSnapshot, limit } = window.FB;
+      const q = query(
+        collection(db, 'staff'),
+        where('businessId', '==', state.businessId),
+        limit(200)
+      );
       onSnapshot(q, (snap) => {
         state.staff = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         renderDashboard();
@@ -1416,7 +1454,7 @@ async function boot() {
     if (state.unsubRequests) state.unsubRequests();
   });
 
-  console.info('[KUT] Ядро готово · бизнес:', state.businessId, '· роль:', profile.role, '· период:', state.period);
+  console.info('[KUT] Ядро v10 готово · бизнес:', state.businessId, '· роль:', profile.role, '· период:', state.period);
 }
 
 if (document.readyState === 'loading') {
