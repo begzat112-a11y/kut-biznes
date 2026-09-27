@@ -1,9 +1,11 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · v6
+   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · v10.0
+   
+   + Пагинация через subscribePage (не жрёт память)
    + Складской журнал (warehouse_logs) — автотриггеры при +/−
-     и при создании нового товара
    + Своя категория через «Другое»
    + Категории подтягиваются из существующих товаров
+   + Универсальный сканер через window.KUTScanner
    ========================================================= */
 
 (function () {
@@ -13,6 +15,7 @@
   const BASE_CATEGORIES = ['Одежда', 'Продукты', 'Напитки', 'Выпечка', 'Услуги', 'Хозтовары'];
   const OTHER_LABEL = 'Другое';
   const CHIP_OTHER = 'Все';
+  const PRODUCTS_PAGE_SIZE = 200;
 
   const state = {
     products: [],
@@ -119,7 +122,6 @@
   // =========================================================
   // КАТЕГОРИИ
   // =========================================================
-
   function getAllCategories() {
     const set = new Set(BASE_CATEGORIES);
     (state.products || []).forEach((p) => {
@@ -181,98 +183,18 @@
   }
 
   // =========================================================
-  // СКАНЕР ШТРИХКОДА
+  // 🚀 СКАНЕР ШТРИХКОДА — через универсальный KUTScanner
   // =========================================================
-  let scannerModal = null;
-  let scannerInstance = null;
-
-  function ensureScannerModal() {
-    if (document.getElementById('stockScannerModal')) {
-      scannerModal = document.getElementById('stockScannerModal');
-      return scannerModal;
-    }
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.id = 'stockScannerModal';
-    modal.hidden = true;
-    modal.innerHTML = `
-      <div class="modal__backdrop" data-close-scan></div>
-      <div class="modal__dialog" role="dialog" aria-modal="true" style="max-width:520px;">
-        <h3 style="margin:0 0 4px;">📷 Сканер штрихкода</h3>
-        <p style="margin:0 0 14px; color:#64776E; font-size:13px;">
-          Наведите камеру на штрихкод товара.
-        </p>
-        <div id="stockScannerReader" style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
-        <div style="display:flex; gap:10px; margin-top:16px;">
-          <button class="btn btn--ghost btn--block" type="button" data-close-scan>Отмена</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click', (e) => {
-      if (e.target.matches('[data-close-scan]')) stopScanner();
-    });
-    scannerModal = modal;
-    return modal;
-  }
-
   async function openScanner() {
-    if (!window.Html5Qrcode) {
-      showToast('Сканер ещё загружается. Попробуйте через секунду.', true);
+    if (window.KUTScanner && typeof window.KUTScanner.open === 'function') {
+      window.KUTScanner.open((code) => {
+        if (el.fBarcode) el.fBarcode.value = code;
+        if (navigator.vibrate) navigator.vibrate(80);
+        showToast('Штрихкод считан: ' + code);
+      });
       return;
     }
-    const Html5Qrcode = window.Html5Qrcode;
-    const modal = ensureScannerModal();
-    const readerEl = modal.querySelector('#stockScannerReader');
-    readerEl.innerHTML = '';
-    modal.hidden = false;
-    document.body.style.overflow = 'hidden';
-    try {
-      scannerInstance = new Html5Qrcode('stockScannerReader');
-      const config = {
-        fps: 10,
-        qrbox: { width: 280, height: 180 },
-        aspectRatio: 1.0,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.ITF,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ],
-      };
-      await scannerInstance.start(
-        { facingMode: 'environment' },
-        config,
-        (decodedText) => {
-          const code = String(decodedText).trim();
-          if (el.fBarcode) el.fBarcode.value = code;
-          if (navigator.vibrate) navigator.vibrate(80);
-          showToast('Штрихкод считан: ' + code);
-          stopScanner();
-        },
-        () => {}
-      );
-    } catch (err) {
-      console.error('[stock scanner]', err);
-      showToast('Не удалось запустить камеру.', true);
-      stopScanner();
-    }
-  }
-
-  function stopScanner() {
-    try {
-      if (scannerInstance) {
-        const inst = scannerInstance;
-        scannerInstance = null;
-        inst.stop().then(() => inst.clear()).catch(() => {});
-      }
-    } catch (_) {}
-    const modal = document.getElementById('stockScannerModal');
-    if (modal) modal.hidden = true;
-    document.body.style.overflow = '';
+    showToast('Сканер ещё загружается. Обновите страницу.', true);
   }
 
   // =========================================================
@@ -396,7 +318,6 @@
   // =========================================================
   // ОПЕРАЦИИ
   // =========================================================
-
   async function changeQty(productId, delta) {
     if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
@@ -405,7 +326,6 @@
     try {
       await window.FB.updateItem('products', productId, { qty: Number(next.toFixed(2)) });
 
-      // Триггер: записать операцию в складской журнал
       if (delta !== 0) {
         logWarehouse({
           actionType: delta > 0 ? 'in' : 'out',
@@ -553,7 +473,6 @@
         await window.FB.addItem('products', data);
         showToast(`Товар «${data.name}» добавлен`);
 
-        // Триггер: первый приход нового товара — тоже в журнал
         if (Number(data.qty) > 0) {
           logWarehouse({
             actionType: 'in',
@@ -682,12 +601,14 @@
     if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
       state.search = e.target.value; renderTable();
     });
+
     if (el.chips) el.chips.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
       state.category = chip.dataset.cat;
       renderChips(); renderTable();
     });
+
     if (el.stockBody) el.stockBody.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-act]');
       if (!btn) return;
@@ -716,11 +637,13 @@
     }
 
     if (el.productForm) el.productForm.addEventListener('submit', saveProduct);
+
     ['input', 'change'].forEach((ev) => {
       if (el.fCost) el.fCost.addEventListener(ev, updateMarginPreview);
       if (el.fSale) el.fSale.addEventListener(ev, updateMarginPreview);
       if (el.fQty)  el.fQty.addEventListener(ev, updateMarginPreview);
     });
+
     if (el.barcodeScanBtn) el.barcodeScanBtn.addEventListener('click', openScanner);
     if (el.confirmDeleteBtn) el.confirmDeleteBtn.addEventListener('click', confirmDelete);
 
@@ -730,15 +653,17 @@
         if (modal) closeModal(modal);
       }
     });
+
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       if (el.productModal && !el.productModal.hidden) closeModal(el.productModal);
       else if (el.deleteModal && !el.deleteModal.hidden) closeModal(el.deleteModal);
-      else stopScanner();
     });
+
     window.addEventListener('kut:lang', () => {
       renderChips(); renderTable(); renderStats();
     });
+
     window.addEventListener('beforeunload', () => {
       if (state.unsubProducts) state.unsubProducts();
     });
@@ -762,7 +687,8 @@
     renderChips();
     renderStats();
 
-    state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
+    // 🚀 Пагинированная подписка на товары
+    state.unsubProducts = window.FB.subscribePage('products', ({ items }) => {
       state.products = items;
       renderStats();
       renderTable();
@@ -771,10 +697,14 @@
       if (!el.productModal || el.productModal.hidden) {
         renderCategoryOptions(el.fCategory.value || BASE_CATEGORIES[0]);
       }
+    }, {
+      pageSize: PRODUCTS_PAGE_SIZE,
+      orderByField: 'name',
+      orderDirection: 'asc',
     });
 
     bindEvents();
-    console.info('[stock] Подключено · роль:', role, '· canEdit:', state.canEdit);
+    console.info('[stock] Склад v10 подключён · роль:', role, '· canEdit:', state.canEdit);
   }
 
   if (document.readyState === 'loading') {
