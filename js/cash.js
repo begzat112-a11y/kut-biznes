@@ -1,12 +1,11 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v10.0 «Aurora»
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v10.7 «Aurora»
    
-   + Пагинация товаров через subscribePage (не жрёт память)
+   + Пагинация товаров через subscribePage
    + Универсальный сканер через window.KUTScanner
    + Голосовое озвучивание суммы чека
    + QR-оплата MBANK / Элсом / О!Деньги
-   + Кэш-хеш для предотвращения лишних перерисовок
-   + Enter-поиск в поле поиска (мгновенное добавление)
+   + 🆕 Обязательные Имя + Телефон при продаже в долг
    ========================================================= */
 
 (function () {
@@ -16,6 +15,9 @@
   const PRODUCTS_PAGE_SIZE = 200;
   const CATEGORIES_FALLBACK = ['Все', 'Выпечка', 'Напитки', 'Продукты', 'Хозтовары', 'Одежда', 'Услуги', 'Другое'];
 
+  const PHONE_REGEX = /^\+?[0-9\s\-()]{9,20}$/;
+  const digitsOnly = (s) => String(s || '').replace(/\D/g, '');
+
   const state = {
     products: [],
     cart: [],
@@ -23,6 +25,7 @@
     search: '',
     paymentMethod: null,
     customer: '',
+    customerPhone: '',
     unsubProducts: null,
   };
 
@@ -49,6 +52,8 @@
     payMethods:     $('#payMethods'),
     debtBlock:      $('#debtBlock'),
     debtCustomer:   $('#debtCustomer'),
+    debtPhone:      $('#debtPhone'),
+    debtHint:       $('#debtHint'),
     debtList:       $('#debtCustomersList'),
     confirmPayBtn:  $('#confirmPayBtn'),
     successModal:   $('#successModal'),
@@ -158,7 +163,7 @@
   }
 
   // =========================================================
-  // ГОЛОСОВОЕ ОЗВУЧИВАНИЕ СУММЫ ЧЕКА
+  // ГОЛОСОВОЕ ОЗВУЧИВАНИЕ
   // =========================================================
   function speakAmount(total) {
     try {
@@ -195,18 +200,15 @@
   }
 
   // =========================================================
-  // 🚀 СКАНЕР ШТРИХКОДА — через универсальный KUTScanner
+  // СКАНЕР
   // =========================================================
   async function openScanner() {
-    // Приоритет: универсальный сканер
     if (window.KUTScanner && typeof window.KUTScanner.open === 'function') {
       window.KUTScanner.open((code) => {
         handleDecodedBarcode(String(code).trim(), true);
       });
       return;
     }
-
-    // Fallback: если scanner.js не подключён — старый встроенный
     if (!window.Html5Qrcode) {
       notify('Сканер ещё загружается. Попробуйте через секунду.', true);
       return;
@@ -310,7 +312,7 @@
       const unit = p.unit || 'шт';
       const stockLine = isFiniteQty
         ? `<span style="font-size:11px;font-weight:600;margin-top:2px;color:${
-            isOut ? '#C0392B' : qty < 5 ? '#E08A1E' : '#64776E'
+            isOut ? 'var(--kut-danger)' : qty < 5 ? 'var(--kut-warning)' : 'var(--kut-text-3)'
           };">${isOut ? 'нет в наличии' : 'осталось ' + fmt(qty) + ' ' + escapeHtml(unit)}</span>`
         : '';
       return `
@@ -452,7 +454,21 @@
     if (state.cart.length === 0) return;
     state.paymentMethod = null;
     state.customer = '';
-    if (el.debtCustomer) el.debtCustomer.value = '';
+    state.customerPhone = '';
+
+    if (el.debtCustomer) {
+      el.debtCustomer.value = '';
+      el.debtCustomer.classList.remove('is-invalid');
+    }
+    if (el.debtPhone) {
+      el.debtPhone.value = '';
+      el.debtPhone.classList.remove('is-invalid');
+    }
+    if (el.debtHint) {
+      el.debtHint.textContent = 'Начните вводить имя — появятся ранее сохранённые должники.';
+      el.debtHint.classList.remove('is-error');
+    }
+
     if (el.debtBlock) el.debtBlock.hidden = true;
     if (el.confirmPayBtn) el.confirmPayBtn.disabled = true;
     if (el.payMethods) {
@@ -486,19 +502,31 @@
 
     if (el.debtBlock) el.debtBlock.hidden = true;
     if (el.debtCustomer) el.debtCustomer.value = '';
+    if (el.debtPhone) el.debtPhone.value = '';
     state.customer = '';
+    state.customerPhone = '';
 
     if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
   }
 
+  // 🆕 Проверка: имя ≥2 символов И телефон валидный
   function updateConfirmState() {
     if (!el.confirmPayBtn) return;
-    if (state.paymentMethod !== 'debt') { el.confirmPayBtn.disabled = false; return; }
-    el.confirmPayBtn.disabled = state.customer.trim().length < 2;
+
+    if (state.paymentMethod !== 'debt') {
+      el.confirmPayBtn.disabled = false;
+      return;
+    }
+
+    const nameOk = state.customer.trim().length >= 2;
+    const phoneOk = PHONE_REGEX.test(state.customerPhone.trim())
+                    && digitsOnly(state.customerPhone).length >= 9;
+
+    el.confirmPayBtn.disabled = !(nameOk && phoneOk);
   }
 
   // =========================================================
-  // СПИСОК КЛИЕНТОВ (для «в долг»)
+  // СПИСОК КЛИЕНТОВ
   // =========================================================
   function readCustomersLS() {
     try {
@@ -584,12 +612,7 @@
       qr.addData(payload);
       qr.make();
 
-      const svg = qr.createSvgTag({
-        cellSize: 6,
-        margin: 8,
-        scalable: true,
-      });
-
+      const svg = qr.createSvgTag({ cellSize: 6, margin: 8, scalable: true });
       el.qrCodeContainer.innerHTML = svg;
     } catch (err) {
       console.error('[cash] QR generation error:', err);
@@ -612,7 +635,29 @@
   async function confirmPayment() {
     if (state.cart.length === 0) return;
     if (!state.paymentMethod) return;
-    if (state.paymentMethod === 'debt' && state.customer.trim().length < 2) return;
+
+    // 🆕 Для «В долг» — обязательны имя И телефон
+    if (state.paymentMethod === 'debt') {
+      let ok = true;
+
+      if (state.customer.trim().length < 2) {
+        if (el.debtCustomer) el.debtCustomer.classList.add('is-invalid');
+        ok = false;
+      }
+      if (!PHONE_REGEX.test(state.customerPhone.trim()) || digitsOnly(state.customerPhone).length < 9) {
+        if (el.debtPhone) el.debtPhone.classList.add('is-invalid');
+        ok = false;
+      }
+
+      if (!ok) {
+        if (el.debtHint) {
+          el.debtHint.textContent = 'Заполните имя и телефон — без них нельзя оформить долг.';
+          el.debtHint.classList.add('is-error');
+        }
+        notify('Введите имя и телефон клиента', true);
+        return;
+      }
+    }
 
     if (state.paymentMethod === 'wallet') {
       openQrPaymentModal();
@@ -670,7 +715,7 @@
       total,
       paymentMethod,
       customer: paymentMethod === 'debt' ? state.customer : '',
-      customerPhone: '',
+      customerPhone: paymentMethod === 'debt' ? state.customerPhone : '',  // 🆕
       cashier: cashier,
     });
 
@@ -715,6 +760,7 @@
     state.cart = [];
     state.paymentMethod = null;
     state.customer = '';
+    state.customerPhone = '';
     renderCart();
     if (el.cart) el.cart.classList.remove('is-open');
   }
@@ -729,7 +775,6 @@
         renderProducts();
       });
 
-      // 🚀 Enter — быстрое добавление первого совпадения
       el.searchInput.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter') return;
         const visible = getVisibleProducts();
@@ -781,8 +826,31 @@
       selectPaymentMethod(btn.dataset.method);
     });
 
+    // 🆕 Имя — обновляем state + валидацию
     if (el.debtCustomer) el.debtCustomer.addEventListener('input', (e) => {
       state.customer = e.target.value;
+      if (e.target.classList.contains('is-invalid') && state.customer.trim().length >= 2) {
+        e.target.classList.remove('is-invalid');
+      }
+      if (el.debtHint && el.debtHint.classList.contains('is-error')) {
+        el.debtHint.textContent = 'Начните вводить имя — появятся ранее сохранённые должники.';
+        el.debtHint.classList.remove('is-error');
+      }
+      updateConfirmState();
+    });
+
+    // 🆕 Телефон — обновляем state + валидацию
+    if (el.debtPhone) el.debtPhone.addEventListener('input', (e) => {
+      state.customerPhone = e.target.value;
+      const valid = PHONE_REGEX.test(state.customerPhone.trim())
+                    && digitsOnly(state.customerPhone).length >= 9;
+      if (e.target.classList.contains('is-invalid') && valid) {
+        e.target.classList.remove('is-invalid');
+      }
+      if (el.debtHint && el.debtHint.classList.contains('is-error') && valid) {
+        el.debtHint.textContent = 'Начните вводить имя — появятся ранее сохранённые должники.';
+        el.debtHint.classList.remove('is-error');
+      }
       updateConfirmState();
     });
 
@@ -790,7 +858,6 @@
     if (el.qrConfirmBtn) el.qrConfirmBtn.addEventListener('click', confirmQrPayment);
     if (el.qrCancelBtn) el.qrCancelBtn.addEventListener('click', closeQrPaymentModal);
 
-    // Скрытая кнопка — открывает сканер по клику из центральной кнопки app.js
     if (el.scanBtn) el.scanBtn.addEventListener('click', openScanner);
 
     document.addEventListener('click', (e) => {
@@ -840,7 +907,6 @@
     const st = await waitForReady();
     if (!st) { console.warn('[cash] Не дождались businessId'); return; }
 
-    // 🚀 Пагинированная подписка на товары — защита памяти
     state.unsubProducts = window.FB.subscribePage('products', ({ items }) => {
       state.products = items.map(stockToCashProduct);
       renderCategories();
@@ -855,7 +921,7 @@
     renderProducts();
     renderCart();
     bindEvents();
-    console.info('[cash] Касса v10 подключена · бизнес:', st.businessId);
+    console.info('[cash] Касса v10.7 подключена · бизнес:', st.businessId);
   }
 
   if (document.readyState === 'loading') {
