@@ -1,11 +1,14 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v10.7 «Aurora»
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v10.12 «Aurora»
    
-   + Пагинация товаров через subscribePage
-   + Универсальный сканер через window.KUTScanner
-   + Голосовое озвучивание суммы чека
-   + QR-оплата MBANK / Элсом / О!Деньги
-   + 🆕 Обязательные Имя + Телефон при продаже в долг
+   НАДЁЖНОЕ СОХРАНЕНИЕ КОРЗИНЫ:
+   • Синхронно при КАЖДОМ изменении корзины
+   • visibilitychange (сворачивание браузера)
+   • pagehide (мобильный аналог beforeunload)
+   • beforeunload (десктоп)
+   • Восстановление — в самом начале init(), до Firebase
+   • Миграция со старых ключей v1/v2
+   • Отладка через console + window.__KUT_CART__
    ========================================================= */
 
 (function () {
@@ -18,6 +21,10 @@
   const PHONE_REGEX = /^\+?[0-9\s\-()]{9,20}$/;
   const digitsOnly = (s) => String(s || '').replace(/\D/g, '');
 
+  // Ключи localStorage для корзины
+  const CART_LS_KEYS = ['kut_cart_v3', 'kut_cart_v2', 'kut_cart_v1'];
+  const CART_LS_PRIMARY = 'kut_cart_v3';
+
   const state = {
     products: [],
     cart: [],
@@ -27,6 +34,8 @@
     customer: '',
     customerPhone: '',
     unsubProducts: null,
+    cartRestored: false,
+    productsLoaded: false,
   };
 
   let lastScannedBarcode = null;
@@ -96,6 +105,135 @@
       if (Date.now() - start > timeoutMs) return null;
       await sleep(100);
     }
+  }
+
+  // =========================================================
+  // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ КОРЗИНЫ
+  // =========================================================
+  function saveCartToLS() {
+    try {
+      const full = state.cart.map((i) => ({
+        id:        String(i.id),
+        name:      String(i.name || ''),
+        price:     Number(i.price) || 0,
+        costPrice: Number(i.costPrice) || 0,
+        unit:      String(i.unit || 'шт'),
+        qty:       Number(i.qty) || 0,
+      }));
+
+      localStorage.setItem(CART_LS_PRIMARY, JSON.stringify(full));
+
+      // Для отладки
+      window.__KUT_CART__ = full;
+
+      console.log('[cash] 💾 Корзина сохранена:', full.length, 'поз.',
+                  full.map((x) => x.name + '×' + x.qty).join(', '));
+    } catch (e) {
+      console.warn('[cash] saveCartToLS error:', e);
+    }
+  }
+
+  function readCartFromLS() {
+    // Пробуем все ключи (миграция с v1/v2 → v3)
+    for (const key of CART_LS_KEYS) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        const arr = JSON.parse(raw);
+        if (!Array.isArray(arr) || arr.length === 0) continue;
+
+        const parsed = arr
+          .filter((x) => x && typeof x.id === 'string' && Number(x.qty) > 0)
+          .map((x) => ({
+            id:        String(x.id),
+            name:      String(x.name || ''),
+            price:     Number(x.price) || 0,
+            costPrice: Number(x.costPrice) || 0,
+            unit:      String(x.unit || 'шт'),
+            qty:       Number(x.qty) || 0,
+          }));
+
+        if (parsed.length > 0) {
+          console.log('[cash] 📖 Корзина найдена в LS[' + key + ']:', parsed.length, 'поз.');
+          // Если ключ не основной — мигрируем
+          if (key !== CART_LS_PRIMARY) {
+            try { localStorage.setItem(CART_LS_PRIMARY, JSON.stringify(parsed)); } catch (_) {}
+          }
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('[cash] readCartFromLS key=' + key + ' error:', e);
+      }
+    }
+    console.log('[cash] 📖 Корзина в LS не найдена (все ключи пусты)');
+    return [];
+  }
+
+  function clearCartFromLS() {
+    try {
+      CART_LS_KEYS.forEach((k) => localStorage.removeItem(k));
+      window.__KUT_CART__ = [];
+      console.log('[cash] 🗑️ Корзина очищена из LS');
+    } catch (_) {}
+  }
+
+  function restoreCartFromLS() {
+    if (state.cartRestored) return;
+    state.cartRestored = true;
+
+    const saved = readCartFromLS();
+    if (saved.length === 0) return;
+
+    state.cart = saved;
+    renderCart();
+    console.log('[cash] ✓ Корзина восстановлена мгновенно:', state.cart.length, 'поз.');
+  }
+
+  function mergeCartWithProducts() {
+    if (state.cart.length === 0) return;
+    if (state.products.length === 0) return;
+
+    const merged = [];
+    let changed = false;
+
+    state.cart.forEach((item) => {
+      const fresh = state.products.find((p) => p.id === item.id);
+      if (!fresh) {
+        changed = true;
+        console.log('[cash] ✗ Товар удалён со склада:', item.name);
+        return;
+      }
+
+      const stockQty = Number(fresh.qty);
+      let qty = Number(item.qty) || 0;
+
+      if (Number.isFinite(stockQty) && stockQty > 0 && qty > stockQty) {
+        qty = stockQty;
+        changed = true;
+      }
+      if (qty <= 0) {
+        changed = true;
+        return;
+      }
+
+      if (Number(item.price) !== Number(fresh.price)) changed = true;
+      if (String(item.name) !== String(fresh.name)) changed = true;
+
+      merged.push({
+        id: fresh.id,
+        name: fresh.name,
+        price: fresh.price,
+        costPrice: fresh.costPrice,
+        unit: fresh.unit || 'шт',
+        qty,
+      });
+    });
+
+    state.cart = merged;
+    renderCart();
+    if (changed) saveCartToLS();
+    console.log('[cash] 🔄 Корзина синхронизирована со складом:', merged.length, 'поз.');
   }
 
   function emojiForCategory(cat) {
@@ -178,13 +316,9 @@
       } catch (_) {}
 
       let text;
-      if (lang === 'kg') {
-        text = 'Төлөндү ' + amount + ' сом';
-      } else if (lang === 'en') {
-        text = 'Paid ' + amount + ' som';
-      } else {
-        text = 'Товар продан. Сумма ' + amount + ' сомов';
-      }
+      if (lang === 'kg') text = 'Төлөндү ' + amount + ' сом';
+      else if (lang === 'en') text = 'Paid ' + amount + ' som';
+      else text = 'Товар продан. Сумма ' + amount + ' сомов';
 
       const u = new SpeechSynthesisUtterance(text);
       u.lang = lang === 'kg' ? 'ru-RU' : (lang === 'en' ? 'en-US' : 'ru-RU');
@@ -264,10 +398,11 @@
 
     renderCart();
     pulseCartBadge();
+    saveCartToLS();
   }
 
   // =========================================================
-  // РЕНДЕР: категории и товары
+  // РЕНДЕР
   // =========================================================
   function renderCategories() {
     if (!el.categories) return;
@@ -349,6 +484,7 @@
     });
     renderCart();
     pulseCartBadge();
+    saveCartToLS();
   }
 
   function changeQty(productId, delta) {
@@ -365,17 +501,20 @@
     item.qty += delta;
     if (item.qty <= 0) state.cart = state.cart.filter((i) => i.id !== productId);
     renderCart();
+    saveCartToLS();
   }
 
   function removeFromCart(productId) {
     state.cart = state.cart.filter((i) => i.id !== productId);
     renderCart();
+    saveCartToLS();
   }
 
   function clearCart() {
     if (state.cart.length === 0) return;
     state.cart = [];
     renderCart();
+    clearCartFromLS();
   }
 
   const getCartTotal = () => state.cart.reduce((s, i) => s + i.price * i.qty, 0);
@@ -387,9 +526,11 @@
     const count = getCartCount();
 
     if (cart.length === 0) {
-      if (el.cartItems) el.cartItems.innerHTML = '';
+      if (el.cartItems) {
+        el.cartItems.innerHTML = '';
+        el.cartItems.hidden = true;
+      }
       if (el.cartEmpty) el.cartEmpty.hidden = false;
-      if (el.cartItems) el.cartItems.hidden = true;
     } else {
       if (el.cartEmpty) el.cartEmpty.hidden = true;
       if (el.cartItems) {
@@ -465,7 +606,7 @@
       el.debtPhone.classList.remove('is-invalid');
     }
     if (el.debtHint) {
-      el.debtHint.textContent = 'Начните вводить имя — появятся ранее сохранённые должники.';
+      el.debtHint.textContent = 'Имя и телефон обязательны — без них нельзя оформить долг.';
       el.debtHint.classList.remove('is-error');
     }
 
@@ -509,7 +650,6 @@
     if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
   }
 
-  // 🆕 Проверка: имя ≥2 символов И телефон валидный
   function updateConfirmState() {
     if (!el.confirmPayBtn) return;
 
@@ -636,7 +776,6 @@
     if (state.cart.length === 0) return;
     if (!state.paymentMethod) return;
 
-    // 🆕 Для «В долг» — обязательны имя И телефон
     if (state.paymentMethod === 'debt') {
       let ok = true;
 
@@ -715,7 +854,7 @@
       total,
       paymentMethod,
       customer: paymentMethod === 'debt' ? state.customer : '',
-      customerPhone: paymentMethod === 'debt' ? state.customerPhone : '',  // 🆕
+      customerPhone: paymentMethod === 'debt' ? state.customerPhone : '',
       cashier: cashier,
     });
 
@@ -757,10 +896,12 @@
     if (el.successTotal) el.successTotal.textContent = `${fmt(total)} KGS`;
     openModal(el.successModal);
 
+    // Очистка корзины ТОЛЬКО после продажи
     state.cart = [];
     state.paymentMethod = null;
     state.customer = '';
     state.customerPhone = '';
+    clearCartFromLS();
     renderCart();
     if (el.cart) el.cart.classList.remove('is-open');
   }
@@ -826,20 +967,18 @@
       selectPaymentMethod(btn.dataset.method);
     });
 
-    // 🆕 Имя — обновляем state + валидацию
     if (el.debtCustomer) el.debtCustomer.addEventListener('input', (e) => {
       state.customer = e.target.value;
       if (e.target.classList.contains('is-invalid') && state.customer.trim().length >= 2) {
         e.target.classList.remove('is-invalid');
       }
       if (el.debtHint && el.debtHint.classList.contains('is-error')) {
-        el.debtHint.textContent = 'Начните вводить имя — появятся ранее сохранённые должники.';
+        el.debtHint.textContent = 'Имя и телефон обязательны — без них нельзя оформить долг.';
         el.debtHint.classList.remove('is-error');
       }
       updateConfirmState();
     });
 
-    // 🆕 Телефон — обновляем state + валидацию
     if (el.debtPhone) el.debtPhone.addEventListener('input', (e) => {
       state.customerPhone = e.target.value;
       const valid = PHONE_REGEX.test(state.customerPhone.trim())
@@ -848,7 +987,7 @@
         e.target.classList.remove('is-invalid');
       }
       if (el.debtHint && el.debtHint.classList.contains('is-error') && valid) {
-        el.debtHint.textContent = 'Начните вводить имя — появятся ранее сохранённые должники.';
+        el.debtHint.textContent = 'Имя и телефон обязательны — без них нельзя оформить долг.';
         el.debtHint.classList.remove('is-error');
       }
       updateConfirmState();
@@ -894,9 +1033,46 @@
         }
       }
     });
+  }
 
+  // =========================================================
+  // ГЛОБАЛЬНЫЕ ХУКИ СОХРАНЕНИЯ
+  // =========================================================
+  function bindGlobalPersistence() {
+    // 1. При уходе со страницы (перезагрузка, закрытие)
+    window.addEventListener('pagehide', () => {
+      console.log('[cash] 📌 pagehide → сохраняем корзину');
+      try { saveCartToLS(); } catch (_) {}
+    });
+
+    // 2. При сворачивании/переключении на другое приложение
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        console.log('[cash] 📌 visibilitychange → сохраняем корзину');
+        try { saveCartToLS(); } catch (_) {}
+      } else {
+        // Развернулись обратно — на всякий случай проверяем LS
+        const saved = readCartFromLS();
+        if (saved.length > 0 && state.cart.length === 0) {
+          console.log('[cash] 📌 вернулись на страницу — корзина была пуста в JS, но есть в LS');
+          state.cart = saved;
+          renderCart();
+        }
+      }
+    });
+
+    // 3. beforeunload (десктоп)
     window.addEventListener('beforeunload', () => {
-      if (state.unsubProducts) state.unsubProducts();
+      try { saveCartToLS(); } catch (_) {}
+    });
+
+    // 4. pageshow — если вернулись из bfcache (iOS Safari)
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) {
+        console.log('[cash] 📌 pageshow (bfcache) → восстанавливаем корзину');
+        state.cartRestored = false;
+        restoreCartFromLS();
+      }
     });
   }
 
@@ -904,13 +1080,27 @@
   // ИНИЦИАЛИЗАЦИЯ
   // =========================================================
   async function init() {
+    console.log('[cash] 🚀 init() · v10.12');
+    console.log('[cash] 📦 LS ключи:', CART_LS_KEYS.map((k) => k + '=' + (localStorage.getItem(k)?.length || 0) + 'b').join(', '));
+
+    // 🆕 ШАГ 1: мгновенно восстанавливаем корзину из LS
+    // (до любых запросов к Firebase)
+    restoreCartFromLS();
+
     const st = await waitForReady();
     if (!st) { console.warn('[cash] Не дождались businessId'); return; }
 
+    // 🆕 ШАГ 2: подписка на товары
     state.unsubProducts = window.FB.subscribePage('products', ({ items }) => {
       state.products = items.map(stockToCashProduct);
       renderCategories();
       renderProducts();
+
+      // 🆕 ШАГ 3: как только товары пришли — мерджим корзину
+      if (!state.productsLoaded) {
+        state.productsLoaded = true;
+        mergeCartWithProducts();
+      }
     }, {
       pageSize: PRODUCTS_PAGE_SIZE,
       orderByField: 'name',
@@ -921,7 +1111,10 @@
     renderProducts();
     renderCart();
     bindEvents();
-    console.info('[cash] Касса v10.7 подключена · бизнес:', st.businessId);
+    bindGlobalPersistence();
+
+    console.log('[cash] ✓ v10.12 запущена · бизнес:', st.businessId);
+    console.log('[cash] 💡 Отладка: window.__KUT_CART__ покажет текущую корзину');
   }
 
   if (document.readyState === 'loading') {
