@@ -1,16 +1,11 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · v10.3 «Aurora»
-   + Периоды аналитики (Сегодня / Вчера / 7 дней / Месяц)
-   + Модуль «Критические остатки»
-   + Детализация кассы: наличные + карта/перевод
-   + Сквозная центральная кнопка-сканер
-   + Профиль, заявки, роли
-   + Пагинация через subscribePage (не жрёт память телефона)
-   + Кэш-хеш для предотвращения лишних перерисовок
+   КУТ: БИЗНЕС — Ядро системы (app.js) · v11.0 «SaaS»
    
-   ⚠️ v10.3: Шторка (sidebar) управляется из ui-chrome.js —
-   setupSidebar() больше НЕ вешает обработчик на #burger,
-   чтобы не было двойного срабатывания.
+   + Мультифилиалы: businessIds, селектор точки, «Все филиалы»
+   + Агрегация данных по всем точкам владельца
+   + Реагирует на kut:business-changed → перезагрузка
+   + Периоды аналитики (Сегодня / Вчера / 7 дней / Месяц)
+   + Критические остатки, кэш-хеш, пагинация
    ========================================================= */
 
 import './firebase-config.js';
@@ -33,7 +28,7 @@ function todayISO() {
 }
 function nowTimeHHMM() {
   const d = new Date();
-  const z = (n) => String(n).padStart(2, '0');
+  const z = (n) => String(d.getHours()).padStart(2, '0');
   return `${z(d.getHours())}:${z(d.getMinutes())}`;
 }
 function escapeHtml(str) {
@@ -124,7 +119,8 @@ function toast(message, isError) {
 // СОСТОЯНИЕ
 // =========================================================
 const state = {
-  businessId: null,
+  businessId: null,       // активный (или первый, если «все»)
+  businessIds: [],        // 🆕 все доступные
   profile: null,
   products: [],
   sales: [],
@@ -132,6 +128,9 @@ const state = {
   staff: [],
   requests: [],
   unsubRequests: null,
+  unsubProducts: null,    // 🆕
+  unsubSales: null,       // 🆕
+  unsubDebts: null,       // 🆕
   period: 'month',
 };
 
@@ -336,7 +335,10 @@ function renderAnalytics() {
   if (elCard) elCard.textContent = fmt(Math.round(rev.card)) + ' KGS';
 
   const period = document.getElementById('analytics-period');
-  if (period) period.textContent = PERIOD_LABELS[state.period] || '';
+  if (period) {
+    const suffix = window.FB.isAllBusinessesMode() ? ' · все филиалы' : '';
+    period.textContent = (PERIOD_LABELS[state.period] || '') + suffix;
+  }
 
   renderWeekChart();
 }
@@ -388,13 +390,18 @@ function renderCriticalStock() {
   }
 
   const visible = critical.slice(0, 8);
+  const showBiz = window.FB.isAllBusinessesMode();
+
   list.innerHTML = visible.map((p) => {
     const qty = Number(p.qty) || 0;
     const isZero = qty <= 0;
     const unit = escapeHtml(p.unit || 'шт');
+    const bizLabel = showBiz && p._bizId
+      ? ` <small style="opacity:.5;font-size:10px">· ${escapeHtml(shortBizLabel(p._bizId))}</small>`
+      : '';
     return `
       <li class="critical-stock__item${isZero ? ' is-zero' : ''}">
-        <span class="critical-stock__name">${escapeHtml(p.name || 'Без названия')}</span>
+        <span class="critical-stock__name">${escapeHtml(p.name || 'Без названия')}${bizLabel}</span>
         <span class="critical-stock__qty">
           <strong>${fmt(qty)}</strong>
           <small>${unit}</small>
@@ -408,6 +415,13 @@ function renderCriticalStock() {
         и ещё ${critical.length - visible.length}…
       </li>`);
   }
+}
+
+// 🆕 Короткое имя бизнеса по его ID (напр. "Точка a1b2")
+function shortBizLabel(bizId) {
+  const metas = window.FB.getBusinessesMeta();
+  const meta = metas.find((m) => m.id === bizId);
+  return meta?.name || ('Точка ' + String(bizId || '').slice(-4));
 }
 
 function renderDashboard() {
@@ -443,7 +457,9 @@ function renderDashboard() {
   renderAnalytics();
   renderCriticalStock();
 
-  const isManager = state.profile?.role === 'owner' || state.profile?.role === 'manager';
+  const isManager = state.profile?.role === 'owner'
+    || state.profile?.role === 'manager'
+    || state.profile?.role === 'super_admin';
   if (isManager) {
     const sec = document.getElementById('staff-section');
     if (sec) sec.hidden = false;
@@ -492,7 +508,7 @@ function setupPeriodFilter() {
 }
 
 // =========================================================
-// ✅ КЭШ-ХЕШ: не перерисовываем список без изменений
+// КЭШ-ХЕШ
 // =========================================================
 let _lastSalesHash = '';
 function _hashSales(arr) {
@@ -519,19 +535,24 @@ function renderRecentSales() {
     return;
   }
 
+  const showBiz = window.FB.isAllBusinessesMode();
+
   container.innerHTML = sales.map((s) => {
     const itemsCount = Array.isArray(s.items)
       ? s.items.reduce((n, i) => n + (Number(i.quantity != null ? i.quantity : i.qty) || 0), 0) : 0;
     const emoji = methodEmoji(s.paymentMethod);
     const title = methodTitle(s.paymentMethod, s.customer);
     const cashierLabel = s.cashierName ? ` · 🧑‍💼 ${escapeHtml(s.cashierName)}` : '';
+    const bizLabel = showBiz && s._bizId
+      ? ` · 🏪 ${escapeHtml(shortBizLabel(s._bizId))}`
+      : '';
     const amountCls = s.paymentMethod === 'debt' ? ' sale-row__amount--debt' : '';
     return `
       <div class="sale-row">
         <div class="sale-row__avatar">${emoji}</div>
         <div class="sale-row__info">
           <div class="sale-row__title">${escapeHtml(title)}</div>
-          <div class="sale-row__meta">${formatSaleDate(s.createdAt)} · ${itemsCount} поз.${cashierLabel}</div>
+          <div class="sale-row__meta">${formatSaleDate(s.createdAt)} · ${itemsCount} поз.${cashierLabel}${bizLabel}</div>
         </div>
         <div class="sale-row__amount${amountCls}">${fmtMoney(sumOfSale(s))}</div>
       </div>`;
@@ -668,14 +689,9 @@ function handleAutoScanParam() {
 }
 
 // =========================================================
-// САЙДБАР
-// ⚠️ v10.3: управление шторкой полностью ушло в ui-chrome.js
-// (capture-фаза + stopImmediatePropagation). Здесь — заглушка,
-// чтобы не было двойного обработчика на #burger.
+// САЙДБАР — заглушка (управление в ui-chrome.js)
 // =========================================================
 function setupSidebar() {
-  // Всё управление шторкой — в ui-chrome.js (v10.3+).
-  // Ничего не делаем.
   return;
 }
 
@@ -691,12 +707,18 @@ function mountProfileBlock() {
   const roleCls = roleClass(p.role);
   const initials = getInitials(name);
 
+  const bizCount = (state.businessIds || []).length;
+  const bizLine = bizCount > 1
+    ? `<span class="sidebar-profile__role" style="color:rgba(228,197,106,.9)">${bizCount} филиалов</span>`
+    : '';
+
   slot.innerHTML = `
     <button class="sidebar-profile" id="sidebarProfileBtn" type="button" aria-label="Открыть профиль">
       <span class="sidebar-profile__avatar sidebar-profile__avatar--${roleCls}">${escapeHtml(initials)}</span>
       <span class="sidebar-profile__info">
         <span class="sidebar-profile__name">${escapeHtml(name)}</span>
         <span class="sidebar-profile__role">${escapeHtml(role)}</span>
+        ${bizLine}
       </span>
       <span class="sidebar-profile__chevron" aria-hidden="true">›</span>
     </button>
@@ -784,31 +806,36 @@ function injectProfileStyles() {
     }
     .kut-modal__dialog {
       position: relative; width: 100%; max-width: 500px;
-      background: #fff; border-radius: 22px; padding: 22px;
+      background: var(--kut-surface, #fff);
+      border-radius: 22px; padding: 22px;
       box-shadow: 0 18px 48px rgba(16,32,25,.28);
       max-height: 92dvh; overflow-y: auto;
       animation: kutPopIn .22s cubic-bezier(.2,.9,.3,1.2);
+      color: var(--kut-text-1, #14211C);
     }
-    .kut-modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: #14211C; }
-    .kut-modal__subtitle { margin: 0 0 18px; color: #64776E; font-size: 13px; line-height: 1.4; }
+    .kut-modal__dialog h3 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: var(--kut-text-1, #14211C); }
+    .kut-modal__subtitle { margin: 0 0 18px; color: var(--kut-text-3, #64776E); font-size: 13px; line-height: 1.4; }
     @keyframes kutFadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes kutPopIn { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
     .kut-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-    .kut-field label { font-size: 13px; font-weight: 600; color: #14211C; }
+    .kut-field label { font-size: 13px; font-weight: 600; color: var(--kut-text-1, #14211C); }
     .kut-field label .kut-req { color: #C0392B; margin-left: 2px; }
     .kut-field input {
-      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1.5px solid #E3EAE6;
-      background: #fff; font-family: inherit; font-size: 15px; color: #14211C; outline: none;
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1.5px solid var(--kut-border, #E3EAE6);
+      background: var(--kut-surface-2, #fff);
+      font-family: inherit; font-size: 15px;
+      color: var(--kut-text-1, #14211C); outline: none;
       transition: border-color .18s ease, box-shadow .18s ease;
     }
-    .kut-field input:focus { border-color: #005F40; box-shadow: 0 0 0 4px rgba(0,95,64,.12); }
+    .kut-field input:focus { border-color: #B8952A; box-shadow: 0 0 0 4px rgba(184,149,42,.12); }
     .kut-field input.is-invalid { border-color: #C0392B; box-shadow: 0 0 0 4px rgba(192,57,43,.12); }
-    .kut-field__hint { font-size: 12px; color: #64776E; min-height: 14px; }
+    .kut-field__hint { font-size: 12px; color: var(--kut-text-3, #64776E); min-height: 14px; }
     .kut-field__hint.is-error { color: #C0392B; font-weight: 500; }
-    .kut-requests { margin-top: 20px; padding-top: 16px; border-top: 1px solid #E3EAE6; }
+    .kut-requests { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--kut-border, #E3EAE6); }
     .kut-requests h4 {
       margin: 0 0 10px; font-size: 13px; font-weight: 800;
-      text-transform: uppercase; letter-spacing: .5px; color: #005F40;
+      text-transform: uppercase; letter-spacing: .5px; color: #B8952A;
       display: flex; align-items: center; gap: 8px;
     }
     .kut-requests__badge {
@@ -818,16 +845,17 @@ function injectProfileStyles() {
       border-radius: 999px; font-size: 11px; font-weight: 800;
     }
     .kut-request {
-      background: #FBFDFC; border: 1px solid #E3EAE6;
+      background: var(--kut-surface-2, #FBFDFC);
+      border: 1px solid var(--kut-border, #E3EAE6);
       border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
     }
     .kut-request:last-child { margin-bottom: 0; }
     .kut-request__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-    .kut-request__name { font-weight: 700; font-size: 14px; color: #14211C; }
-    .kut-request__date { font-size: 11px; color: #64776E; font-variant-numeric: tabular-nums; }
-    .kut-request__diff { font-size: 12px; color: #64776E; line-height: 1.6; margin-bottom: 10px; }
-    .kut-request__diff b { color: #14211C; }
-    .kut-request__arrow { color: #005F40; font-weight: 700; margin: 0 6px; }
+    .kut-request__name { font-weight: 700; font-size: 14px; color: var(--kut-text-1, #14211C); }
+    .kut-request__date { font-size: 11px; color: var(--kut-text-3, #64776E); font-variant-numeric: tabular-nums; }
+    .kut-request__diff { font-size: 12px; color: var(--kut-text-3, #64776E); line-height: 1.6; margin-bottom: 10px; }
+    .kut-request__diff b { color: var(--kut-text-1, #14211C); }
+    .kut-request__arrow { color: #B8952A; font-weight: 700; margin: 0 6px; }
     .kut-request__actions { display: flex; gap: 8px; }
     .kut-request__actions button {
       flex: 1; padding: 9px 12px; border-radius: 10px; border: 1px solid transparent;
@@ -837,17 +865,21 @@ function injectProfileStyles() {
     .kut-btn-approve:hover { background: #003F2A; }
     .kut-btn-reject { background: transparent; color: #C0392B; border-color: rgba(192,57,43,.30) !important; }
     .kut-btn-reject:hover { background: rgba(192,57,43,.08); border-color: #C0392B !important; }
-    .kut-requests__empty { font-size: 13px; color: #64776E; padding: 10px 0; text-align: center; }
+    .kut-requests__empty { font-size: 13px; color: var(--kut-text-3, #64776E); padding: 10px 0; text-align: center; }
     .kut-actions { display: flex; gap: 10px; margin-top: 20px; }
     .kut-actions button {
       flex: 1; padding: 13px 16px; border-radius: 12px; border: 1px solid transparent;
       font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
     }
-    .kut-btn-primary { background: #005F40; color: #fff; }
-    .kut-btn-primary:hover { background: #003F2A; }
+    .kut-btn-primary { background: linear-gradient(135deg, #D4AF37, #8B6914); color: #FFFFFF; }
+    .kut-btn-primary:hover { filter: brightness(1.05); }
     .kut-btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-    .kut-btn-ghost { background: transparent; color: #14211C; border-color: #E3EAE6 !important; }
-    .kut-btn-ghost:hover { background: #E6F1ED; border-color: #005F40 !important; color: #005F40; }
+    .kut-btn-ghost {
+      background: transparent;
+      color: var(--kut-text-1, #14211C);
+      border-color: var(--kut-border-strong, #E3EAE6) !important;
+    }
+    .kut-btn-ghost:hover { background: var(--kut-gold-bg, #E6F1ED); border-color: #B8952A !important; color: #8B6914; }
     .kut-info-box {
       padding: 10px 12px; background: #FFF8E1;
       border: 1px solid #E3C97A; border-radius: 10px;
@@ -1040,10 +1072,15 @@ async function saveProfile(event) {
       toast('Профиль обновлён');
       closeProfileModal();
     } else {
-      if (!state.businessId) { toast('Нет привязанного бизнеса', true); return; }
-      await addDoc(collection(db, 'businesses', state.businessId, 'requests'), {
+      // Заявка от сотрудника — идёт в первый доступный бизнес
+      const bizId = window.FB.getWriteBusinessId() || window.FB.getBusinessId();
+      if (!bizId) { toast('Нет привязанного бизнеса', true); return; }
+
+      await addDoc(collection(db, 'businesses', bizId, 'requests'), {
         uid: p.uid, role: p.role, email: p.email || '',
-        oldData, newData, status: 'pending', createdAt: serverTimestamp(),
+        oldData, newData, status: 'pending',
+        businessId: bizId,
+        createdAt: serverTimestamp(),
       });
       if (infoEl) {
         infoEl.hidden = false;
@@ -1096,7 +1133,7 @@ function renderRequests(listEl, countEl) {
     return `
       <div class="kut-request" data-request-id="${escapeHtml(r.id)}">
         <div class="kut-request__head">
-          <div class="kut-request__name">${escapeHtml(name)} <span style="color:#64776E; font-weight:500; font-size:12px;">· ${escapeHtml(role)}</span></div>
+          <div class="kut-request__name">${escapeHtml(name)} <span style="opacity:.6; font-weight:500; font-size:12px;">· ${escapeHtml(role)}</span></div>
           <div class="kut-request__date">${dateStr}</div>
         </div>
         <div class="kut-request__diff">
@@ -1118,6 +1155,9 @@ function renderRequests(listEl, countEl) {
 
       try {
         const { db, doc, deleteDoc, updateDoc, serverTimestamp } = window.FB;
+        const bizId = window.FB.getWriteBusinessId() || window.FB.getBusinessId();
+        if (!bizId) throw new Error('no_biz');
+
         if (act === 'approve') {
           const req = state.requests.find((r) => r.id === reqId);
           if (!req) throw new Error('Заявка не найдена');
@@ -1126,10 +1166,10 @@ function renderRequests(listEl, countEl) {
             phone: req.newData.phone,
             updatedAt: serverTimestamp(),
           });
-          await deleteDoc(doc(db, 'businesses', state.businessId, 'requests', reqId));
+          await deleteDoc(doc(db, 'businesses', bizId, 'requests', reqId));
           toast('Заявка одобрена');
         } else {
-          await deleteDoc(doc(db, 'businesses', state.businessId, 'requests', reqId));
+          await deleteDoc(doc(db, 'businesses', bizId, 'requests', reqId));
           toast('Заявка отклонена');
         }
       } catch (err) {
@@ -1142,17 +1182,18 @@ function renderRequests(listEl, countEl) {
 }
 
 function subscribeRequests() {
-  if (!state.businessId) return;
+  const bizId = window.FB.getWriteBusinessId() || window.FB.getBusinessId();
+  if (!bizId) return;
   if (state.profile?.role !== 'owner') return;
 
   try {
     const { db, collection, query, where, onSnapshot } = window.FB;
     const q = query(
-      collection(db, 'businesses', state.businessId, 'requests'),
+      collection(db, 'businesses', bizId, 'requests'),
       where('status', '==', 'pending')
     );
     state.unsubRequests = onSnapshot(q, (snap) => {
-      state.requests = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      state.requests = snap.docs.map((d) => ({ id: d.id, businessId: bizId, ...d.data() }));
       const modal = document.getElementById('kutProfileModal');
       if (modal && !modal.hidden) {
         const listEl = modal.querySelector('#kutRequestsList');
@@ -1182,12 +1223,21 @@ async function tryClaimStaffInvite(profile, user) {
     const staff = snap.data();
     if (!staff.businessId) return null;
     if (staff.active === false) return null;
+
+    // 🆕 добавляем бизнес в массив
+    const existingIds = Array.isArray(profile.businessIds) ? profile.businessIds.slice() : [];
+    const newIds = existingIds.includes(staff.businessId)
+      ? existingIds
+      : [...existingIds, staff.businessId];
+
     await updateDoc(doc(db, 'users', user.uid), {
+      businessIds: newIds,
       businessId: staff.businessId,
       updatedAt: serverTimestamp(),
     });
     await updateDoc(staffRef, { uid: user.uid, claimedAt: serverTimestamp() });
-    return { ...profile, businessId: staff.businessId };
+
+    return { ...profile, businessIds: newIds, businessId: staff.businessId };
   } catch (err) {
     console.error('[KUT] tryClaimStaffInvite failed:', err);
     return null;
@@ -1207,20 +1257,61 @@ const getProducts = () => state.products || [];
 const getSales    = () => state.sales || [];
 const getDebts    = () => state.debts || [];
 
+// 🆕 Загрузка всех данных (все филиалы или один)
 async function reloadAll() {
-  if (!state.businessId) return;
-  const [productsPage, salesPage, debtsPage] = await Promise.all([
-    window.FB.getPage('products', { pageSize: 200, orderByField: 'name', orderDirection: 'asc' }),
-    window.FB.getPage('sales',    { pageSize: 100, orderByField: 'createdAt', orderDirection: 'desc' }),
-    window.FB.getPage('debts',    { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' }),
+  const bizIds = window.FB.getEffectiveBusinessIds();
+  if (!bizIds || bizIds.length === 0) return;
+
+  const [products, sales, debts] = await Promise.all([
+    window.FB.getCollectionMulti(bizIds, 'products',
+      { pageSize: 200, orderByField: 'name', orderDirection: 'asc' }),
+    window.FB.getCollectionMulti(bizIds, 'sales',
+      { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' }),
+    window.FB.getCollectionMulti(bizIds, 'debts',
+      { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' }),
   ]);
-  state.products = productsPage.items;
-  state.sales    = salesPage.items;
-  state.debts    = debtsPage.items;
+
+  state.products = products;
+  state.sales    = sales;
+  state.debts    = debts;
+
+  console.info('[KUT] reloadAll ·', bizIds.length, 'филиал(ов) ·',
+               products.length, 'товаров ·', sales.length, 'продаж ·', debts.length, 'долгов');
+}
+
+// 🆕 Подписка на все данные (реагирует на смену филиала)
+function subscribeAllData() {
+  if (state.unsubProducts) { try { state.unsubProducts(); } catch (_) {} }
+  if (state.unsubSales)    { try { state.unsubSales();    } catch (_) {} }
+  if (state.unsubDebts)    { try { state.unsubDebts();    } catch (_) {} }
+
+  const bizIds = window.FB.getEffectiveBusinessIds();
+  if (!bizIds || bizIds.length === 0) return;
+
+  state.unsubProducts = window.FB.subscribeMulti(bizIds, 'products',
+    (items) => { state.products = items; renderDashboard(); },
+    { pageSize: 200, orderByField: 'name', orderDirection: 'asc' });
+
+  state.unsubSales = window.FB.subscribeMulti(bizIds, 'sales',
+    (items) => { state.sales = items; renderDashboard(); },
+    { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' });
+
+  state.unsubDebts = window.FB.subscribeMulti(bizIds, 'debts',
+    (items) => { state.debts = items; renderDashboard(); },
+    { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' });
+
+  console.info('[KUT] subscribeAllData ·', bizIds.length, 'филиал(ов)');
 }
 
 async function registerSale({ cart, total, paymentMethod, customer, customerPhone, cashier }) {
-  if (!state.businessId) return { ok: false, error: 'no_business' };
+  // 🆕 Берём конкретный бизнес — куда писать продажу
+  const bizId = window.FB.getWriteBusinessId();
+  if (!bizId) {
+    const msg = window.FB.getBusinessIds().length > 1
+      ? 'Выберите конкретный филиал для продажи'
+      : 'Нет привязанного бизнеса';
+    return { ok: false, error: 'no_business', message: msg };
+  }
 
   for (const item of cart) {
     const p = state.products.find((x) => x.id === (item.productId || item.id));
@@ -1234,7 +1325,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
     }
   }
 
-  const bizId = state.businessId;
   const { db, collection, doc, writeBatch, serverTimestamp } = window.FB;
 
   const staffInfo = cashier || {
@@ -1274,6 +1364,7 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       cashierUid:  staffInfo.uid,
       cashierName: staffInfo.name,
       cashierRole: staffInfo.role,
+      businessId: bizId,    // 🆕
       createdAt: serverTimestamp(),
     });
 
@@ -1282,13 +1373,19 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       if (!stockProd) continue;
       const newQty = Math.max(0, (Number(stockProd.qty) || 0) - item.quantity);
       const pRef = doc(db, 'businesses', bizId, 'products', item.productId);
-      batch.update(pRef, { qty: Number(newQty.toFixed(2)), updatedAt: serverTimestamp() });
+      batch.update(pRef, {
+        qty: Number(newQty.toFixed(2)),
+        businessId: bizId,   // 🆕
+        updatedAt: serverTimestamp(),
+      });
     }
 
     if (paymentMethod === 'debt') {
       const debtRef = doc(collection(db, 'businesses', bizId, 'debts'));
       const debtAmount = Number(total) || 0;
       batch.set(debtRef, {
+        customerName: String(customer || '').trim(),
+        customerPhone: customerPhone ? normalizePhone(customerPhone) : '',
         name: String(customer || '').trim(),
         phone: customerPhone ? normalizePhone(customerPhone) : '',
         initialAmount: debtAmount,
@@ -1302,9 +1399,7 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
         source: 'cash',
         cashierUid: staffInfo.uid,
         cashierName: staffInfo.name,
-        customerName: String(customer || '').trim(),
-        customerPhone: customerPhone ? normalizePhone(customerPhone) : '',
-        totalDebt: debtAmount,
+        businessId: bizId,    // 🆕
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -1324,7 +1419,7 @@ window.KUT = {
   keys: KEYS,
   fmt, fmtMoney, uid, todayISO, normalizePhone, escapeHtml, toast, toDate,
   getProducts, getSales, getDebts,
-  registerSale, reloadAll,
+  registerSale, reloadAll, subscribeAllData,
   aggregateRevenue, aggregateProfit, aggregateStock, aggregateDebts, aggregateStaff, aggregateWeekChart,
   renderDashboard,
   getState: () => state,
@@ -1344,14 +1439,22 @@ async function boot() {
     alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
     await window.FB.logout(); return;
   }
-  if (profile.role === 'super_admin') { window.location.href = './admin.html'; return; }
+  if (profile.role === 'super_admin' && !profile.businessIds?.length) {
+    window.location.href = './admin.html'; return;
+  }
 
   state.profile = profile;
-  state.businessId = profile.businessId;
+  state.businessIds = window.FB.getBusinessIds();
+  state.businessId = window.FB.getBusinessId();
 
-  if (!state.businessId && profile.role === 'cashier') {
+  // Если нет бизнесов и это кассир — пытаемся привязать по приглашению
+  if (state.businessIds.length === 0 && profile.role === 'cashier') {
     const claimed = await tryClaimStaffInvite(profile, user);
-    if (claimed) { state.profile = claimed; state.businessId = claimed.businessId; }
+    if (claimed) {
+      state.profile = claimed;
+      state.businessIds = window.FB.getBusinessIds();
+      state.businessId = window.FB.getBusinessId();
+    }
   }
 
   renderRoleBadge(state.profile);
@@ -1362,7 +1465,6 @@ async function boot() {
     if (navStaff) navStaff.hidden = false;
   }
 
-  // ⚠️ setupSidebar() теперь пустая — шторка управляется из ui-chrome.js
   setupSidebar();
   injectProfileStyles();
   mountProfileBlock();
@@ -1383,7 +1485,7 @@ async function boot() {
     window.FB.logout();
   });
 
-  if (!state.businessId) {
+  if (state.businessIds.length === 0) {
     const box = document.querySelector('.main-content') || document.querySelector('.wrap') || document.querySelector('.pos');
     if (box) {
       box.insertAdjacentHTML('afterbegin',
@@ -1396,45 +1498,59 @@ async function boot() {
   await reloadAll();
   renderDashboard();
 
-  // 🚀 ПАГИНИРОВАННЫЕ ПОДПИСКИ — ограничивают память телефона
-  window.FB.subscribePage('products',
-    ({ items }) => { state.products = items; renderDashboard(); },
-    { pageSize: 200, orderByField: 'name', orderDirection: 'asc' });
+  // 🆕 Подписки на все филиалы
+  subscribeAllData();
 
-  window.FB.subscribePage('sales',
-    ({ items }) => { state.sales = items; renderDashboard(); },
-    { pageSize: 100, orderByField: 'createdAt', orderDirection: 'desc' });
-
-  window.FB.subscribePage('debts',
-    ({ items }) => { state.debts = items; renderDashboard(); },
-    { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' });
-
+  // Подписка на staff — только в конкретном филиале
   if (isManager) {
-    try {
-      const { db, collection, query, where, onSnapshot, limit } = window.FB;
-      const q = query(
-        collection(db, 'staff'),
-        where('businessId', '==', state.businessId),
-        limit(200)
-      );
-      onSnapshot(q, (snap) => {
-        state.staff = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        renderDashboard();
-      }, (err) => console.warn('[KUT] staff subscribe error:', err));
-    } catch (err) {
-      console.warn('[KUT] staff subscribe init:', err);
+    const staffBizId = window.FB.getWriteBusinessId() || window.FB.getBusinessId();
+    if (staffBizId) {
+      try {
+        const { db, collection, query, where, onSnapshot, limit } = window.FB;
+        const q = query(
+          collection(db, 'staff'),
+          where('businessId', '==', staffBizId),
+          limit(200)
+        );
+        onSnapshot(q, (snap) => {
+          state.staff = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          renderDashboard();
+        }, (err) => console.warn('[KUT] staff subscribe error:', err));
+      } catch (err) {
+        console.warn('[KUT] staff subscribe init:', err);
+      }
     }
   }
 
   subscribeRequests();
 
+  // 🆕 Реагируем на смену филиала — перезагрузка + переподписка
+  window.addEventListener('kut:business-changed', async (e) => {
+    console.info('[KUT app] Филиал изменён →', e.detail?.businessId || 'все филиалы');
+    _lastSalesHash = '';
+    state.businessId = window.FB.getBusinessId();
+
+    try {
+      await reloadAll();
+      renderDashboard();
+      subscribeAllData();
+    } catch (err) {
+      console.warn('[KUT app] reload on business-changed failed:', err);
+    }
+  });
+
   window.addEventListener('kut:lang', () => renderDashboard());
 
   window.addEventListener('beforeunload', () => {
     if (state.unsubRequests) state.unsubRequests();
+    if (state.unsubProducts) { try { state.unsubProducts(); } catch (_) {} }
+    if (state.unsubSales)    { try { state.unsubSales();    } catch (_) {} }
+    if (state.unsubDebts)    { try { state.unsubDebts();    } catch (_) {} }
   });
 
-  console.info('[KUT] Ядро v10.3 готово · бизнес:', state.businessId, '· роль:', profile.role, '· период:', state.period);
+  console.info('[KUT] Ядро v11.0 «SaaS» · филиалов:', state.businessIds.length,
+               '· активный:', state.businessId || 'все',
+               '· роль:', profile.role);
 }
 
 if (document.readyState === 'loading') {
