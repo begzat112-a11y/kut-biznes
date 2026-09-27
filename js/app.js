@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · v10.0 «Aurora»
+   КУТ: БИЗНЕС — Ядро системы (app.js) · v10.3 «Aurora»
    + Периоды аналитики (Сегодня / Вчера / 7 дней / Месяц)
    + Модуль «Критические остатки»
    + Детализация кассы: наличные + карта/перевод
@@ -7,6 +7,10 @@
    + Профиль, заявки, роли
    + Пагинация через subscribePage (не жрёт память телефона)
    + Кэш-хеш для предотвращения лишних перерисовок
+   
+   ⚠️ v10.3: Шторка (sidebar) управляется из ui-chrome.js —
+   setupSidebar() больше НЕ вешает обработчик на #burger,
+   чтобы не было двойного срабатывания.
    ========================================================= */
 
 import './firebase-config.js';
@@ -128,7 +132,7 @@ const state = {
   staff: [],
   requests: [],
   unsubRequests: null,
-  period: 'month', // today | yesterday | week | month
+  period: 'month',
 };
 
 // =========================================================
@@ -506,7 +510,6 @@ function renderRecentSales() {
       return tb - ta;
     }).slice(0, 20);
 
-  // 🚀 Если данные не изменились — вообще не трогаем DOM
   const h = _hashSales(sales);
   if (h === _lastSalesHash) return;
   _lastSalesHash = h;
@@ -623,7 +626,6 @@ function setupBottomNavScan() {
         if (addBtn) addBtn.click();
       }
       setTimeout(() => {
-        // Приоритет: универсальный KUTScanner
         if (window.KUTScanner && typeof window.KUTScanner.open === 'function') {
           window.KUTScanner.open((code) => {
             const fBarcode = document.getElementById('fBarcode');
@@ -667,34 +669,14 @@ function handleAutoScanParam() {
 
 // =========================================================
 // САЙДБАР
+// ⚠️ v10.3: управление шторкой полностью ушло в ui-chrome.js
+// (capture-фаза + stopImmediatePropagation). Здесь — заглушка,
+// чтобы не было двойного обработчика на #burger.
 // =========================================================
 function setupSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('overlay');
-  const burger = document.getElementById('burger');
-  if (!sidebar || !burger) return;
-  if (burger.dataset.wired === '1') return;
-  burger.dataset.wired = '1';
-
-  const open = () => {
-    sidebar.classList.add('is-open');
-    if (overlay) overlay.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
-  };
-  const close = () => {
-    sidebar.classList.remove('is-open');
-    if (overlay) overlay.classList.remove('is-open');
-    document.body.style.overflow = '';
-  };
-  burger.addEventListener('click', () => {
-    sidebar.classList.contains('is-open') ? close() : open();
-  });
-  if (overlay) overlay.addEventListener('click', close);
-  sidebar.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sidebar.classList.contains('is-open')) close();
-  });
-  window.addEventListener('resize', () => { if (window.innerWidth >= 1000) close(); });
+  // Всё управление шторкой — в ui-chrome.js (v10.3+).
+  // Ничего не делаем.
+  return;
 }
 
 // =========================================================
@@ -1227,7 +1209,6 @@ const getDebts    = () => state.debts || [];
 
 async function reloadAll() {
   if (!state.businessId) return;
-  // Используем пагинацию — не тянем всё сразу
   const [productsPage, salesPage, debtsPage] = await Promise.all([
     window.FB.getPage('products', { pageSize: 200, orderByField: 'name', orderDirection: 'asc' }),
     window.FB.getPage('sales',    { pageSize: 100, orderByField: 'createdAt', orderDirection: 'desc' }),
@@ -1308,7 +1289,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       const debtRef = doc(collection(db, 'businesses', bizId, 'debts'));
       const debtAmount = Number(total) || 0;
       batch.set(debtRef, {
-        // 🆕 Единая схема: name/phone/initialAmount/amount
         name: String(customer || '').trim(),
         phone: customerPhone ? normalizePhone(customerPhone) : '',
         initialAmount: debtAmount,
@@ -1322,7 +1302,6 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
         source: 'cash',
         cashierUid: staffInfo.uid,
         cashierName: staffInfo.name,
-        // Для обратной совместимости со старыми модулями
         customerName: String(customer || '').trim(),
         customerPhone: customerPhone ? normalizePhone(customerPhone) : '',
         totalDebt: debtAmount,
@@ -1383,6 +1362,7 @@ async function boot() {
     if (navStaff) navStaff.hidden = false;
   }
 
+  // ⚠️ setupSidebar() теперь пустая — шторка управляется из ui-chrome.js
   setupSidebar();
   injectProfileStyles();
   mountProfileBlock();
@@ -1454,7 +1434,7 @@ async function boot() {
     if (state.unsubRequests) state.unsubRequests();
   });
 
-  console.info('[KUT] Ядро v10 готово · бизнес:', state.businessId, '· роль:', profile.role, '· период:', state.period);
+  console.info('[KUT] Ядро v10.3 готово · бизнес:', state.businessId, '· роль:', profile.role, '· период:', state.period);
 }
 
 if (document.readyState === 'loading') {
