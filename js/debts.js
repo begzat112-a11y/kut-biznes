@@ -299,7 +299,6 @@ export async function initDebtsModule() {
   function openAddModal() {
     closeAllModals();
 
-    // Полная очистка полей
     const form = document.getElementById('addForm');
     if (form) form.reset();
 
@@ -315,7 +314,6 @@ export async function initDebtsModule() {
   }
 
   function cancelAdd() {
-    // Очистка полей
     const form = document.getElementById('addForm');
     if (form) form.reset();
 
@@ -333,7 +331,6 @@ export async function initDebtsModule() {
     event.preventDefault();
     event.stopPropagation();
 
-    // Сброс предыдущих ошибок
     clearFormErrors();
 
     let hasError = false;
@@ -365,7 +362,7 @@ export async function initDebtsModule() {
       hasError = true;
     }
 
-    // ❌ Ошибки — блокируем отправку
+    // ❌ Есть ошибки — блокируем
     if (hasError) {
       const firstInvalid = document.querySelector('#addForm .is-invalid');
       if (firstInvalid) {
@@ -376,7 +373,7 @@ export async function initDebtsModule() {
       return;
     }
 
-    // ---------- Сохранение в Firestore ----------
+    // ---------- Сохранение ----------
     const note = (el.fNote?.value || '').trim();
     const today = new Date().toISOString().slice(0, 10);
 
@@ -391,7 +388,7 @@ export async function initDebtsModule() {
         customerName:  name,
         customerPhone: phoneRaw,
 
-        // Новая схема (совместимость)
+        // Новая схема
         name:          name,
         phone:         phoneRaw,
         initialAmount: amountNum,
@@ -689,7 +686,7 @@ export async function initDebtsModule() {
     setFieldError(el.payAmount, '');
   });
 
-  // Закрытие модалок по крестику/фону
+  // Закрытие модалок
   document.addEventListener('click', (e) => {
     if (e.target.matches('[data-close]')) {
       const modal = e.target.closest('.modal');
@@ -707,7 +704,7 @@ export async function initDebtsModule() {
     else closeAllModals();
   });
 
-  // Live-валидация — убираем ошибку при вводе
+  // Live-валидация
   [el.fName, el.fPhone, el.fAmount].forEach((i) => {
     i?.addEventListener('input', () => {
       if (i.classList.contains('is-invalid')) setFieldError(i, '');
