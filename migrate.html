@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0D1418">
+  <title>Миграция мультифилиалы — КУТ: БИЗНЕС</title>
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0D1418;
+      color: #E8EDF0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0 0 8px;
+      color: #E4C56A;
+    }
+
+    .lead {
+      color: rgba(232,237,240,.72);
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+
+    .lead b { color: #E4C56A; }
+
+    .card {
+      background: #141C22;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 16px;
+      margin: 12px 0;
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #E8EDF0;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 18px;
+      min-height: 48px;
+      width: 100%;
+      background: linear-gradient(135deg, #E4C56A 0%, #C9A64B 100%);
+      color: #0D1418;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: filter .15s ease, transform .12s ease;
+    }
+
+    button:hover { filter: brightness(1.05); }
+    button:active { transform: scale(.98); }
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      filter: grayscale(.5);
+    }
+
+    button.danger {
+      background: rgba(242,107,107,.14);
+      color: #F26B6B;
+      border: 1px solid rgba(242,107,107,.36);
+      margin-top: 8px;
+    }
+
+    button.danger:hover { background: rgba(242,107,107,.20); }
+
+    .log {
+      background: #0A1115;
+      border-radius: 10px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      max-height: 420px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #B9F5CE;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .log .err  { color: #F26B6B; font-weight: 600; }
+    .log .ok   { color: #7FE4B5; font-weight: 600; }
+    .log .warn { color: #E4C56A; font-weight: 600; }
+    .log .info { color: rgba(232,237,240,.65); }
+
+    .stat {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .stat__item {
+      background: rgba(255,255,255,.04);
+      padding: 10px 12px;
+      border-radius: 10px;
+    }
+
+    .stat__label {
+      font-size: 10px;
+      color: rgba(232,237,240,.5);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 2px;
+    }
+
+    .stat__value {
+      font-size: 22px;
+      font-weight: 800;
+      color: #E4C56A;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .status-pill.ok   { background: rgba(127,228,181,.14); color: #7FE4B5; }
+    .status-pill.err  { background: rgba(242,107,107,.14); color: #F26B6B; }
+    .status-pill.warn { background: rgba(228,197,106,.14); color: #E4C56A; }
+    .status-pill.wait { background: rgba(255,255,255,.06); color: rgba(232,237,240,.65); }
+    .status-pill__dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: rgba(232,237,240,.4);
+      font-size: 11px;
+      padding: 20px 0 12px;
+      line-height: 1.5;
+    }
+
+    a.link {
+      color: #E4C56A;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    a.link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <h1>🔧 Миграция мультифилиалы v11</h1>
+  <p class="lead">
+    Одноразовый скрипт. Делает две вещи:
+    <br>• <b>users.businessId</b> → <b>users.businessIds: [id]</b>
+    <br>• В документы <b>products / sales / debts / warehouse_logs</b> добавляет поле <b>businessId</b>
+  </p>
+
+  <div class="card">
+    <div class="status-pill wait" id="statusPill">
+      <span class="status-pill__dot"></span>
+      <span id="statusText">Ожидание запуска</span>
+    </div>
+
+    <button id="migrateBtn" type="button">▶ Запустить миграцию</button>
+    <button id="clearFlagBtn" type="button" class="danger">🗑 Сбросить флаг (запустить снова)</button>
+  </div>
+
+  <div class="card">
+    <h2>Статистика</h2>
+    <div class="stat">
+      <div class="stat__item">
+        <div class="stat__label">Пользователей</div>
+        <div class="stat__value" id="stUsers">—</div>
+      </div>
+      <div class="stat__item">
+        <div class="stat__label">Бизнесов</div>
+        <div class="stat__value" id="stBiz">—</div>
+      </div>
+      <div class="stat__item">
+        <div class="stat__label">Обновлено</div>
+        <div class="stat__value" id="stDocs">0</div>
+      </div>
+      <div class="stat__item">
+        <div class="stat__label">Ошибок</div>
+        <div class="stat__value" id="stErrors">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Лог</h2>
+    <div class="log" id="log">Готов к запуску. Открой консоль для деталей.</div>
+  </div>
+
+  <div class="footer-note">
+    После успешной миграции → опубликуй новые Firestore Rules.<br>
+    <a href="./index.html" class="link">← Вернуться в приложение</a>
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import {
+    getAuth,
+    onAuthStateChanged,
+  } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import {
+    getFirestore,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    updateDoc,
+  } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // =========================================================
+  // FIREBASE CONFIG
+  // =========================================================
+  const firebaseConfig = {
+    apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
+    authDomain:        "kut-biznes.firebaseapp.com",
+    projectId:         "kut-biznes",
+    storageBucket:     "kut-biznes.firebasestorage.app",
+    messagingSenderId: "699153181693",
+    appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  const FLAG_KEY = 'kut_migration_v11_done';
+
+  const $ = (s) => document.querySelector(s);
+
+  let totalUpdated = 0;
+  let totalErrors  = 0;
+
+  // =========================================================
+  // УТИЛИТЫ
+  // =========================================================
+  function log(text, cls) {
+    const el = $('#log');
+    if (!el) return;
+    const span = document.createElement('span');
+    if (cls) span.className = cls;
+    span.textContent = text + '\n';
+    el.appendChild(span);
+    el.scrollTop = el.scrollHeight;
+    try { console.log('[migration]', text); } catch (_) {}
+  }
+
+  function resetLog() {
+    const el = $('#log');
+    if (el) el.innerHTML = '';
+  }
+
+  function setStatus(kind, text) {
+    const pill = $('#statusPill');
+    const txt  = $('#statusText');
+    if (!pill || !txt) return;
+    pill.className = 'status-pill ' + kind;
+    txt.textContent = text;
+  }
+
+  function updateStats() {
+    const a = $('#stDocs');
+    const b = $('#stErrors');
+    if (a) a.textContent = String(totalUpdated);
+    if (b) b.textContent = String(totalErrors);
+  }
+
+  // =========================================================
+  // ОЖИДАНИЕ АВТОРИЗАЦИИ
+  // =========================================================
+  function waitForUser() {
+    return new Promise((resolve) => {
+      const unsub = onAuthStateChanged(auth, (user) => {
+        resolve(user);
+        unsub();
+      });
+    });
+  }
+
+  // =========================================================
+  // МИГРАЦИЯ
+  // =========================================================
+  async function migrate() {
+    resetLog();
+    totalUpdated = 0;
+    totalErrors  = 0;
+    updateStats();
+
+    setStatus('wait', 'Авторизация...');
+
+    const user = await waitForUser();
+    if (!user) {
+      log('❌ Пользователь не авторизован.', 'err');
+      log('👉 Сначала войди через login.html, потом вернись сюда.', 'warn');
+      setStatus('err', 'Не авторизован');
+      return;
+    }
+
+    log('👤 Пользователь: ' + user.email + ' / ' + user.uid, 'ok');
+
+    // Проверяем роль
+    let userData;
+    try {
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      if (!userSnap.exists()) {
+        log('❌ Профиль не найден в users/' + user.uid, 'err');
+        setStatus('err', 'Профиль не найден');
+        return;
+      }
+      userData = userSnap.data();
+    } catch (e) {
+      log('❌ Ошибка чтения профиля: ' + (e.code || e.message), 'err');
+      setStatus('err', 'Ошибка чтения');
+      return;
+    }
+
+    log('🎭 Роль: ' + (userData.role || '—'), 'info');
+
+    const allowedRoles = ['owner', 'super_admin', 'manager'];
+    if (!allowedRoles.includes(userData.role)) {
+      log('❌ Миграцию может запускать только владелец, менеджер или super_admin.', 'err');
+      setStatus('err', 'Недостаточно прав');
+      return;
+    }
+
+    // =========================================================
+    // ШАГ 1. users: businessId → businessIds
+    // =========================================================
+    setStatus('wait', 'Обновляем users...');
+    log('\n📌 Шаг 1. Обновляем users...', 'warn');
+
+    let usersSnap;
+    try {
+      usersSnap = await getDocs(collection(db, 'users'));
+    } catch (e) {
+      log('❌ Не удалось прочитать users: ' + (e.code || e.message), 'err');
+      setStatus('err', 'Ошибка чтения users');
+      return;
+    }
+
+    const stUsersEl = $('#stUsers');
+    if (stUsersEl) stUsersEl.textContent = String(usersSnap.size);
+
+    let usersProcessed = 0;
+
+    for (const userDoc of usersSnap.docs) {
+      const data = userDoc.data();
+      const hasNew = Array.isArray(data.businessIds) && data.businessIds.length > 0;
+      const hasOld = typeof data.businessId === 'string' && data.businessId.length > 0;
+
+      if (hasNew) {
+        usersProcessed++;
+        continue;
+      }
+
+      if (hasOld) {
+        try {
+          await updateDoc(doc(db, 'users', userDoc.id), {
+            businessIds: [data.businessId],
+          });
+          totalUpdated++;
+          usersProcessed++;
+          log(`   ✓ ${userDoc.id}: businessIds = [${data.businessId}]`, 'ok');
+        } catch (e) {
+          totalErrors++;
+          log(`   ✗ ${userDoc.id}: ${e.code || e.message}`, 'err');
+        }
+      } else {
+        log(`   — ${userDoc.id}: нет businessId`, 'info');
+      }
+
+      updateStats();
+    }
+
+    log(`   Обновлено users: ${usersProcessed} / ${usersSnap.size}`, 'ok');
+
+    // =========================================================
+    // ШАГ 2. Проходим по бизнесам и коллекциям
+    // =========================================================
+    setStatus('wait', 'Обновляем документы...');
+    log('\n📌 Шаг 2. Проходим по бизнесам и коллекциям...', 'warn');
+
+    let bizSnap;
+    try {
+      bizSnap = await getDocs(collection(db, 'businesses'));
+    } catch (e) {
+      log('❌ Не удалось прочитать businesses: ' + (e.code || e.message), 'err');
+      setStatus('err', 'Ошибка чтения businesses');
+      return;
+    }
+
+    const stBizEl = $('#stBiz');
+    if (stBizEl) stBizEl.textContent = String(bizSnap.size);
+
+    const collectionsToMigrate = ['products', 'sales', 'debts', 'warehouse_logs'];
+
+    for (const bizDoc of bizSnap.docs) {
+      const bizId = bizDoc.id;
+      const bizName = bizDoc.data().name || '—';
+      log(`\n🏪 Бизнес: ${bizId} (${bizName})`, 'info');
+
+      for (const colName of collectionsToMigrate) {
+        let colSnap;
+        try {
+          colSnap = await getDocs(collection(db, 'businesses', bizId, colName));
+        } catch (e) {
+          log(`   ✗ Ошибка чтения ${colName}: ${e.code || e.message}`, 'err');
+          totalErrors++;
+          updateStats();
+          continue;
+        }
+
+        if (colSnap.size === 0) {
+          log(`   📂 ${colName}: пусто`);
+          continue;
+        }
+
+        let colUpdated = 0;
+
+        for (const docSnap of colSnap.docs) {
+          const data = docSnap.data();
+          if (data.businessId === bizId) continue;
+
+          try {
+            await updateDoc(docSnap.ref, { businessId: bizId });
+            totalUpdated++;
+            colUpdated++;
+            updateStats();
+          } catch (e) {
+            totalErrors++;
+            updateStats();
+            log(`      ✗ ${docSnap.id}: ${e.code || e.message}`, 'err');
+          }
+        }
+
+        log(`   📂 ${colName}: ${colSnap.size} документов, обновлено ${colUpdated}`);
+      }
+    }
+
+    // =========================================================
+    // ГОТОВО
+    // =========================================================
+    log('\n🎉 Миграция завершена!', 'ok');
+    log(`   Всего обновлено документов: ${totalUpdated}`, 'ok');
+    log(`   Ошибок: ${totalErrors}`, totalErrors > 0 ? 'err' : 'ok');
+
+    if (totalErrors === 0) {
+      setStatus('ok', 'Миграция завершена ✓');
+    } else {
+      setStatus('warn', 'Завершена с ошибками');
+    }
+
+    try { localStorage.setItem(FLAG_KEY, '1'); } catch (_) {}
+  }
+
+  // =========================================================
+  // UI — КНОПКИ
+  // =========================================================
+  const migrateBtn   = $('#migrateBtn');
+  const clearFlagBtn = $('#clearFlagBtn');
+
+  if (migrateBtn) {
+    migrateBtn.addEventListener('click', async () => {
+      const btn = migrateBtn;
+      btn.disabled = true;
+      btn.textContent = '⏳ Миграция...';
+      try {
+        await migrate();
+      } catch (e) {
+        log('❌ Фатальная ошибка: ' + (e.message || e), 'err');
+        setStatus('err', 'Фатальная ошибка');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '▶ Запустить миграцию';
+      }
+    });
+  }
+
+  if (clearFlagBtn) {
+    clearFlagBtn.addEventListener('click', () => {
+      try { localStorage.removeItem(FLAG_KEY); } catch (_) {}
+      log('🗑 Флаг сброшен. Можно запускать снова.', 'warn');
+      setStatus('wait', 'Ожидание запуска');
+    });
+  }
+
+  // =========================================================
+  // АВТОСТАРТ
+  // =========================================================
+  window.addEventListener('load', async () => {
+    const done = (() => {
+      try { return localStorage.getItem(FLAG_KEY); }
+      catch (_) { return null; }
+    })();
+
+    if (done === '1') {
+      log('✅ Миграция уже выполнялась ранее.', 'warn');
+      log('Нажми «Сбросить флаг» для повторного запуска.', 'info');
+      setStatus('ok', 'Уже выполнена');
+      return;
+    }
+
+    setTimeout(async () => {
+      const user = await waitForUser();
+      if (user) {
+        log('👤 Авторизован: ' + (user.email || user.uid), 'ok');
+        log('💡 Нажми кнопку «Запустить миграцию»', 'warn');
+        setStatus('wait', 'Готов к запуску');
+      } else {
+        log('❌ Не авторизован.', 'err');
+        log('👉 Открой login.html и войди, потом вернись.', 'warn');
+        setStatus('err', 'Требуется вход');
+      }
+    }, 600);
+  });
+
+  console.info('[KUT migration v11] готов');
+</script>
+
+</body>
+</html>
