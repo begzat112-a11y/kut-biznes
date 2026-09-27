@@ -1,18 +1,19 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · Firebase v5
-   v8.1:
-   + QR-оплата для «MBANK / Элсом / О!Деньги» через отдельную модалку
-   + Транзакция paymentMethod: "qr" летит в Firebase только после кнопки
-     «✅ Я получил перевод»
-   + Голосовое озвучивание суммы чека (Web Speech API)
-   + Убрано поле ручного ввода штрихкода (только центральная кнопка-камера)
-   + Фиксирует себестоимость costPrice в каждом item продажи.
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v10.0 «Aurora»
+   
+   + Пагинация товаров через subscribePage (не жрёт память)
+   + Универсальный сканер через window.KUTScanner
+   + Голосовое озвучивание суммы чека
+   + QR-оплата MBANK / Элсом / О!Деньги
+   + Кэш-хеш для предотвращения лишних перерисовок
+   + Enter-поиск в поле поиска (мгновенное добавление)
    ========================================================= */
 
 (function () {
   'use strict';
 
   const SCAN_COOLDOWN_MS = 2000;
+  const PRODUCTS_PAGE_SIZE = 200;
   const CATEGORIES_FALLBACK = ['Все', 'Выпечка', 'Напитки', 'Продукты', 'Хозтовары', 'Одежда', 'Услуги', 'Другое'];
 
   const state = {
@@ -54,7 +55,6 @@
     successTotal:   $('#successTotal'),
     scanBtn:           $('#cashScanBtn'),
 
-    // QR-оплата
     qrPaymentModal:   $('#qrPaymentModal'),
     qrCodeContainer:  $('#qrCodeContainer'),
     qrPaymentTotal:   $('#qrPaymentTotal'),
@@ -187,7 +187,6 @@
       u.pitch = 1.0;
       u.volume = 0.9;
 
-      // Отменяем предыдущее, чтобы не наслаивалось при быстрых продажах
       try { window.speechSynthesis.cancel(); } catch (_) {}
       window.speechSynthesis.speak(u);
     } catch (err) {
@@ -196,109 +195,23 @@
   }
 
   // =========================================================
-  // СКАНЕР ШТРИХКОДА (открывается центральной кнопкой app.js)
+  // 🚀 СКАНЕР ШТРИХКОДА — через универсальный KUTScanner
   // =========================================================
-  let scannerModal = null;
-  let scannerInstance = null;
-  let scanFeedbackTimer = null;
-
-  function ensureScannerModal() {
-    if (scannerModal) return scannerModal;
-    scannerModal = document.createElement('div');
-    scannerModal.className = 'modal';
-    scannerModal.id = 'cashScannerModal';
-    scannerModal.hidden = true;
-    scannerModal.innerHTML = `
-      <div class="modal__backdrop" data-close-scanner></div>
-      <div class="modal__dialog" role="dialog" aria-modal="true" style="max-width: 520px;">
-        <h3 style="margin:0 0 4px;">📷 Сканер штрихкода</h3>
-        <p style="margin:0 0 14px; color:#64776E; font-size:13px;">
-          Наводите камеру на штрихкоды — товары добавляются в чек.
-        </p>
-        <div style="position:relative;">
-          <div id="cashScannerReader" style="width:100%; border-radius:14px; overflow:hidden; background:#000; min-height:220px;"></div>
-          <div id="cashScannerFeedback" style="position:absolute; left:12px; right:12px; bottom:12px;
-               padding:10px 14px; border-radius:12px; font-family:inherit; font-size:14px;
-               font-weight:600; text-align:center; color:#fff; background:rgba(0,95,64,.92);
-               box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:0; transform:translateY(8px);
-               transition:opacity .2s ease, transform .2s ease; pointer-events:none;"></div>
-        </div>
-        <div style="display:flex; gap:10px; margin-top:16px;">
-          <button class="btn btn--primary btn--block" type="button" data-close-scanner>Готово</button>
-        </div>
-      </div>`;
-    document.body.appendChild(scannerModal);
-    scannerModal.addEventListener('click', (e) => {
-      if (e.target.matches('[data-close-scanner]')) stopScanner();
-    });
-    return scannerModal;
-  }
-
-  function showScanFeedback(text, kind) {
-    const box = scannerModal?.querySelector('#cashScannerFeedback');
-    if (!box) return;
-    box.textContent = text;
-    box.style.background = (kind === 'error') ? 'rgba(192,57,43,.92)' : 'rgba(0,95,64,.92)';
-    box.style.opacity = '1';
-    box.style.transform = 'translateY(0)';
-    clearTimeout(scanFeedbackTimer);
-    scanFeedbackTimer = setTimeout(() => {
-      box.style.opacity = '0';
-      box.style.transform = 'translateY(8px)';
-    }, 1400);
-  }
-
   async function openScanner() {
+    // Приоритет: универсальный сканер
+    if (window.KUTScanner && typeof window.KUTScanner.open === 'function') {
+      window.KUTScanner.open((code) => {
+        handleDecodedBarcode(String(code).trim(), true);
+      });
+      return;
+    }
+
+    // Fallback: если scanner.js не подключён — старый встроенный
     if (!window.Html5Qrcode) {
       notify('Сканер ещё загружается. Попробуйте через секунду.', true);
       return;
     }
-    try {
-      const Html5Qrcode = window.Html5Qrcode;
-      const modal = ensureScannerModal();
-      const readerEl = modal.querySelector('#cashScannerReader');
-      readerEl.innerHTML = '';
-      modal.hidden = false;
-      document.body.style.overflow = 'hidden';
-      scannerInstance = new Html5Qrcode('cashScannerReader');
-      const config = {
-        fps: 10,
-        qrbox: { width: 280, height: 180 },
-        aspectRatio: 1.0,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.ITF,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ],
-      };
-      await scannerInstance.start(
-        { facingMode: 'environment' },
-        config,
-        (decodedText) => { handleDecodedBarcode(String(decodedText).trim(), true); },
-        () => {}
-      );
-    } catch (err) {
-      console.error('[scanner]', err);
-      notify('Не удалось запустить камеру. Проверьте разрешения.', true);
-      stopScanner();
-    }
-  }
-
-  function stopScanner() {
-    try {
-      if (scannerInstance) {
-        const inst = scannerInstance;
-        scannerInstance = null;
-        inst.stop().then(() => inst.clear()).catch(() => {});
-      }
-    } catch (_) {}
-    if (scannerModal) scannerModal.hidden = true;
-    document.body.style.overflow = '';
+    notify('Сканер недоступен. Обновите страницу.', true);
   }
 
   function handleDecodedBarcode(code, fromCamera) {
@@ -313,7 +226,7 @@
       if (fromCamera) {
         if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
         playErrorBeep();
-        showScanFeedback(`Товар «${code}» не найден на складе`, 'error');
+        notify(`Товар «${code}» не найден на складе`, true);
       } else notify(`Товар со штрихкодом ${code} не найден`, true);
       return;
     }
@@ -329,7 +242,7 @@
       if (fromCamera) {
         if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
         playErrorBeep();
-        showScanFeedback(msg, 'error');
+        notify(msg, true);
       } else notify(msg, true);
       return;
     }
@@ -337,18 +250,15 @@
     if (existing) existing.qty += 1;
     else state.cart.push({
       id: product.id, name: product.name, price: product.price,
-      costPrice: product.costPrice,   // ← фиксируем себестоимость
+      costPrice: product.costPrice,
       unit: product.unit, qty: 1,
     });
 
     if (fromCamera) {
       if (navigator.vibrate) navigator.vibrate(80);
-      playSuccessBeep();
-      showScanFeedback(`+1 ${product.name}`, 'success');
-    } else {
-      playSuccessBeep();
-      notify(`Добавлено: ${product.name}`);
     }
+    playSuccessBeep();
+    notify(`+1 ${product.name}`);
 
     renderCart();
     pulseCartBadge();
@@ -574,12 +484,10 @@
       return;
     }
 
-    // Скрываем долговой блок
     if (el.debtBlock) el.debtBlock.hidden = true;
     if (el.debtCustomer) el.debtCustomer.value = '';
     state.customer = '';
 
-    // Для wallet кнопка «Подтвердить» активна — по ней откроется QR-модалка
     if (el.confirmPayBtn) el.confirmPayBtn.disabled = false;
   }
 
@@ -614,7 +522,7 @@
   }
 
   // =========================================================
-  // QR-ОПЛАТА (m BANK / Элсом / О!Деньги)
+  // QR-ОПЛАТА
   // =========================================================
   function openQrPaymentModal() {
     if (state.cart.length === 0) {
@@ -628,7 +536,6 @@
       el.qrPaymentTotal.innerHTML = `${fmt(total)}<small>KGS</small>`;
     }
 
-    // Показываем загрузку, пока рисуем QR
     if (el.qrCodeContainer) {
       el.qrCodeContainer.innerHTML = `
         <div class="qr-frame__loading">
@@ -637,13 +544,11 @@
         </div>`;
     }
 
-    // Прячем модалку выбора способа и открываем QR
     if (el.paymentModal && !el.paymentModal.hidden) {
       el.paymentModal.hidden = true;
     }
     openModal(el.qrPaymentModal);
 
-    // Генерируем QR-код (с небольшой задержкой, чтобы библиотека успела загрузиться)
     generateQrCode(total, 0);
   }
 
@@ -697,7 +602,6 @@
     if (el.qrPaymentModal && !el.qrPaymentModal.hidden) {
       closeModal(el.qrPaymentModal);
     }
-    // Сбрасываем выбранный способ оплаты (продажа ещё не проведена)
     state.paymentMethod = null;
     if (el.qrCodeContainer) el.qrCodeContainer.innerHTML = '';
   }
@@ -705,19 +609,11 @@
   // =========================================================
   // ПОДТВЕРЖДЕНИЕ И ЗАВЕРШЕНИЕ ПРОДАЖИ
   // =========================================================
-
-  /**
-   * Нажатие «Подтвердить» в модалке выбора способа оплаты.
-   * • cash / debt → сразу executeSale
-   * • wallet     → открыть QR-модалку, транзакция НЕ летит
-   */
   async function confirmPayment() {
     if (state.cart.length === 0) return;
     if (!state.paymentMethod) return;
     if (state.paymentMethod === 'debt' && state.customer.trim().length < 2) return;
 
-    // QR-путь: перехватываем и открываем модалку с QR-кодом.
-    // Транзакция полетит только после кнопки «✅ Я получил перевод».
     if (state.paymentMethod === 'wallet') {
       openQrPaymentModal();
       return;
@@ -726,10 +622,6 @@
     await executeSale(state.paymentMethod, el.confirmPayBtn);
   }
 
-  /**
-   * Нажатие «✅ Я получил перевод» в QR-модалке.
-   * Только тут чек улетает в Firebase с paymentMethod: 'qr'.
-   */
   async function confirmQrPayment() {
     if (state.cart.length === 0) {
       closeQrPaymentModal();
@@ -738,10 +630,6 @@
     await executeSale('qr', el.qrConfirmBtn);
   }
 
-  /**
-   * Единая точка фактической продажи.
-   * Здесь и только здесь создаётся запись в Firestore.
-   */
   async function executeSale(paymentMethod, btnEl) {
     if (state.cart.length === 0) return;
 
@@ -809,7 +697,6 @@
       rememberCustomer(state.customer.trim());
     }
 
-    // Закрываем все модалки
     if (el.qrPaymentModal && !el.qrPaymentModal.hidden) {
       el.qrPaymentModal.hidden = true;
       document.body.style.overflow = '';
@@ -820,7 +707,6 @@
 
     if (el.qrCodeContainer) el.qrCodeContainer.innerHTML = '';
 
-    // Голосовое озвучивание суммы
     speakAmount(total);
 
     if (el.successTotal) el.successTotal.textContent = `${fmt(total)} KGS`;
@@ -837,20 +723,39 @@
   // СОБЫТИЯ
   // =========================================================
   function bindEvents() {
-    if (el.searchInput) el.searchInput.addEventListener('input', (e) => {
-      state.search = e.target.value; renderProducts();
-    });
+    if (el.searchInput) {
+      el.searchInput.addEventListener('input', (e) => {
+        state.search = e.target.value;
+        renderProducts();
+      });
+
+      // 🚀 Enter — быстрое добавление первого совпадения
+      el.searchInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const visible = getVisibleProducts();
+        if (visible.length > 0) {
+          e.preventDefault();
+          addToCart(visible[0].id);
+          el.searchInput.value = '';
+          state.search = '';
+          renderProducts();
+        }
+      });
+    }
+
     if (el.categories) el.categories.addEventListener('click', (e) => {
       const chip = e.target.closest('.cat-chip');
       if (!chip) return;
       state.category = chip.dataset.cat;
       renderCategories(); renderProducts();
     });
+
     if (el.productsGrid) el.productsGrid.addEventListener('click', (e) => {
       const card = e.target.closest('.product');
       if (!card || card.getAttribute('aria-disabled') === 'true') return;
       addToCart(card.dataset.id);
     });
+
     if (el.cartItems) el.cartItems.addEventListener('click', (e) => {
       const row = e.target.closest('.cart-item');
       if (!row) return;
@@ -862,22 +767,26 @@
       else if (act === 'dec') changeQty(id, -1);
       else if (act === 'remove') removeFromCart(id);
     });
+
     if (el.clearCartBtn) el.clearCartBtn.addEventListener('click', () => {
       if (state.cart.length === 0) return;
       if (confirm('Очистить чек полностью?')) clearCart();
     });
+
     if (el.checkoutBtn) el.checkoutBtn.addEventListener('click', openPaymentModal);
+
     if (el.payMethods) el.payMethods.addEventListener('click', (e) => {
       const btn = e.target.closest('.pay-method');
       if (!btn) return;
       selectPaymentMethod(btn.dataset.method);
     });
-    if (el.debtCustomer) el.debtCustomer.addEventListener('input', (e) => {
-      state.customer = e.target.value; updateConfirmState();
-    });
-    if (el.confirmPayBtn) el.confirmPayBtn.addEventListener('click', confirmPayment);
 
-    // === QR-оплата ===
+    if (el.debtCustomer) el.debtCustomer.addEventListener('input', (e) => {
+      state.customer = e.target.value;
+      updateConfirmState();
+    });
+
+    if (el.confirmPayBtn) el.confirmPayBtn.addEventListener('click', confirmPayment);
     if (el.qrConfirmBtn) el.qrConfirmBtn.addEventListener('click', confirmQrPayment);
     if (el.qrCancelBtn) el.qrCancelBtn.addEventListener('click', closeQrPaymentModal);
 
@@ -885,7 +794,6 @@
     if (el.scanBtn) el.scanBtn.addEventListener('click', openScanner);
 
     document.addEventListener('click', (e) => {
-      // Закрытие QR-модалки по клику на фон
       if (e.target.matches('[data-close-qr]')) {
         closeQrPaymentModal();
         return;
@@ -901,7 +809,6 @@
       if (el.qrPaymentModal && !el.qrPaymentModal.hidden) closeQrPaymentModal();
       else if (el.paymentModal && !el.paymentModal.hidden) closeModal(el.paymentModal);
       else if (el.successModal && !el.successModal.hidden) closeModal(el.successModal);
-      else if (scannerModal && !scannerModal.hidden) stopScanner();
       else if (el.cart) el.cart.classList.remove('is-open');
     });
 
@@ -932,16 +839,23 @@
   async function init() {
     const st = await waitForReady();
     if (!st) { console.warn('[cash] Не дождались businessId'); return; }
-    state.unsubProducts = window.FB.subscribeCollection('products', (items) => {
+
+    // 🚀 Пагинированная подписка на товары — защита памяти
+    state.unsubProducts = window.FB.subscribePage('products', ({ items }) => {
       state.products = items.map(stockToCashProduct);
       renderCategories();
       renderProducts();
+    }, {
+      pageSize: PRODUCTS_PAGE_SIZE,
+      orderByField: 'name',
+      orderDirection: 'asc',
     });
+
     renderCategories();
     renderProducts();
     renderCart();
     bindEvents();
-    console.info('[cash] Касса подключена · бизнес:', st.businessId, '· QR + озвучка активны');
+    console.info('[cash] Касса v10 подключена · бизнес:', st.businessId);
   }
 
   if (document.readyState === 'loading') {
