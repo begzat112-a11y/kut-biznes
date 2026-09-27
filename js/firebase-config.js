@@ -1,11 +1,13 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Configuration v11.0 «SaaS»
+   КУТ: БИЗНЕС — Firebase Configuration v11.1 «SaaS»
    
    + Мультифилиалы: businessIds: [] в users
    + Селектор текущего бизнеса (localStorage)
    + Чтение/подписка сразу по нескольким бизнесам
    + Запись businessId во все новые документы
    + super_admin видит все бизнесы платформы
+   + 🔁 Обратная совместимость: getPage / subscribePage / loadMore
+     (для старых модулей cash.js / stock.js / debts.js / staff.js)
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -66,9 +68,9 @@ try {
       tabManager: persistentMultipleTabManager(),
     }),
   });
-  console.info('[KUT FB v11] IndexedDB persistence активен');
+  console.info('[KUT FB v11.1] IndexedDB persistence активен');
 } catch (err) {
-  console.warn('[KUT FB v11] persistence fallback:', err?.message);
+  console.warn('[KUT FB v11.1] persistence fallback:', err?.message);
   const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   db = getFirestore(app);
 }
@@ -89,7 +91,7 @@ const KG_PHONE_CODE = '+996';
 const OTP_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_PAGE_SIZE = 50;
 
-// 🆕 Ключ localStorage для выбранной точки
+// Ключ localStorage для выбранной точки
 const BIZ_LS_KEY = 'kut_current_business';
 
 // =========================================================
@@ -122,45 +124,29 @@ function makeBusinessId() {
 }
 
 // =========================================================
-// 🆕 МУЛЬТИБИЗНЕС — ЯДРО
+// МУЛЬТИБИЗНЕС — ЯДРО
 // =========================================================
 
-/**
- * Возвращает ВСЕ доступные пользователю businessIds.
- * super_admin — все бизнесы платформы (но через отдельный метод).
- */
 function getBusinessIds() {
   const p = currentProfile;
   if (!p) return [];
 
-  // super_admin — все бизнесы
   if (p.role === 'super_admin') {
-    if (Array.isArray(p.businessIds) && p.businessIds.length > 0) {
-      return p.businessIds.slice();
-    }
-    if (Array.isArray(p.allBusinessIds) && p.allBusinessIds.length > 0) {
-      return p.allBusinessIds.slice();
-    }
+    if (Array.isArray(p.businessIds) && p.businessIds.length > 0) return p.businessIds.slice();
+    if (Array.isArray(p.allBusinessIds) && p.allBusinessIds.length > 0) return p.allBusinessIds.slice();
     return [];
   }
 
-  // Новая схема
   if (Array.isArray(p.businessIds) && p.businessIds.length > 0) {
     return p.businessIds.slice();
   }
 
-  // Fallback на старую схему
   if (p.businessId && typeof p.businessId === 'string') {
     return [p.businessId];
   }
   return [];
 }
 
-/**
- * Возвращает эффективный список для чтения:
- * - если выбран конкретный филиал → [этот]
- * - если null (все филиалы) → все доступные
- */
 function getEffectiveBusinessIds() {
   const all = getBusinessIds();
   if (currentBusinessId && all.includes(currentBusinessId)) {
@@ -169,11 +155,6 @@ function getEffectiveBusinessIds() {
   return all;
 }
 
-/**
- * Для операций записи (addItem и т.д.) — нужен ОДИН конкретный bizId.
- * Если выбран филиал — он. Если нет — первый доступный.
- * Если в режиме «Все филиалы» и точек >1 — возвращает null (запись запрещена).
- */
 function getWriteBusinessId() {
   const ids = getBusinessIds();
   if (ids.length === 0) return null;
@@ -182,18 +163,11 @@ function getWriteBusinessId() {
     return currentBusinessId;
   }
 
-  // В режиме «Все филиалы» с несколькими точками — запретить запись
   if (ids.length > 1) return null;
 
-  // Одна точка — писать в неё
   return ids[0];
 }
 
-/**
- * Универсальный доступ — возвращает ID для старых вызовов.
- * Для обратной совместимости: если один бизнес — вернёт его,
- * если несколько — вернёт выбранный или первый.
- */
 function getBusinessId() {
   const ids = getBusinessIds();
   if (ids.length === 0) return null;
@@ -202,17 +176,13 @@ function getBusinessId() {
 }
 
 function getSelectedBusinessId() {
-  return currentBusinessId; // null = все
+  return currentBusinessId;
 }
 
 function isAllBusinessesMode() {
   return currentBusinessId === null && getBusinessIds().length > 1;
 }
 
-/**
- * Устанавливает выбранный филиал.
- * @param {string|null} id — bizId или null/«all» для всех
- */
 function setSelectedBusinessId(id) {
   if (!id || id === 'all' || id === '__all__') {
     currentBusinessId = null;
@@ -235,10 +205,6 @@ function setSelectedBusinessId(id) {
   return true;
 }
 
-/**
- * Восстанавливает выбранный филиал из localStorage
- * (после того как профиль загружен).
- */
 function restoreSelectedBusinessId() {
   try {
     const saved = localStorage.getItem(BIZ_LS_KEY);
@@ -259,9 +225,6 @@ function restoreSelectedBusinessId() {
   }
 }
 
-/**
- * Загружает метаданные бизнесов (названия) для селектора.
- */
 async function loadBusinessesMeta(ids) {
   ids = ids || getBusinessIds();
   const result = [];
@@ -278,9 +241,7 @@ async function loadBusinessesMeta(ids) {
     }
   }));
 
-  // Сортируем по name
   result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'));
-
   businessMetas = result;
   return result;
 }
@@ -315,7 +276,6 @@ function waitForAuth() {
       currentUser = user;
       currentProfile = user ? await fetchProfile(user.uid) : null;
 
-      // 🆕 восстановить выбранный филиал
       if (currentProfile) {
         restoreSelectedBusinessId();
       } else {
@@ -364,8 +324,8 @@ async function registerOwner({ email, password, displayName, companyName }) {
   await setDoc(doc(db, 'users', uid), {
     email, displayName, phone: '',
     role: 'owner',
-    businessIds: [businessId],   // 🆕 массив
-    businessId: businessId,      // для совместимости
+    businessIds: [businessId],
+    businessId: businessId,
     active: true,
     createdAt: serverTimestamp(),
   });
@@ -475,8 +435,8 @@ async function verifyWhatsAppOtp(rawPhone, code) {
     await setDoc(doc(db, 'users', uid), {
       email: fakeEmail, displayName: '', phone,
       role: 'cashier',
-      businessIds: [],       // 🆕
-      businessId: '',        // для совместимости
+      businessIds: [],
+      businessId: '',
       active: true,
       createdAt: serverTimestamp(),
     });
@@ -490,7 +450,7 @@ async function verifyWhatsAppOtp(rawPhone, code) {
 }
 
 // =========================================================
-// FIRESTORE — ОДНА КОЛЛЕКЦИЯ
+// FIRESTORE — БАЗОВЫЕ CRUD
 // =========================================================
 async function getCollection(name) {
   const bizId = getBusinessId();
@@ -535,16 +495,191 @@ function subscribeCollection(name, callback, opts = {}) {
 }
 
 // =========================================================
-// 🆕 FIRESTORE — МУЛЬТИБИЗНЕС (чтение по нескольким точкам)
+// 🔁 ОБРАТНАЯ СОВМЕСТИМОСТЬ — getPage / subscribePage / loadMore
+//    (для старых модулей cash.js / stock.js / debts.js / staff.js)
 // =========================================================
 
 /**
- * Одноразовое чтение из нескольких бизнесов.
- * @param {string[]} bizIds — массив ID бизнесов
- * @param {string} name — имя коллекции
- * @param {object} opts — { pageSize, orderByField, orderDirection }
- * @returns {Promise<Array>} — плоский массив с _bizId
+ * Постраничная загрузка из ТЕКУЩЕГО филиала (или первого, если «все»).
+ * Возвращает { items, lastDoc, hasMore }.
  */
+async function getPage(name, opts = {}) {
+  const bizIds = getEffectiveBusinessIds();
+  if (!bizIds || bizIds.length === 0) {
+    return { items: [], lastDoc: null, hasMore: false };
+  }
+
+  // Если один филиал — простой путь
+  if (bizIds.length === 1) {
+    const bizId = bizIds[0];
+    const {
+      pageSize = DEFAULT_PAGE_SIZE,
+      orderByField = 'createdAt',
+      orderDirection = 'desc',
+      startAfterDoc = null,
+      filters = [],
+    } = opts;
+
+    const ref = collection(db, 'businesses', bizId, name);
+    const constraints = [];
+    for (const f of filters) constraints.push(where(f.field, f.op, f.value));
+    if (orderByField) constraints.push(orderBy(orderByField, orderDirection));
+    if (startAfterDoc) constraints.push(startAfter(startAfterDoc));
+    constraints.push(limit(pageSize));
+
+    try {
+      const snap = await getDocs(query(ref, ...constraints));
+      return {
+        items: snap.docs.map((d) => ({
+          id: d.id,
+          businessId: bizId,
+          _bizId: bizId,
+          _doc: d,
+          ...d.data(),
+        })),
+        lastDoc: snap.docs[snap.docs.length - 1] || null,
+        hasMore: snap.docs.length === pageSize,
+      };
+    } catch (err) {
+      console.error('[KUT FB] getPage failed:', name, err?.code);
+      return { items: [], lastDoc: null, hasMore: false, error: err };
+    }
+  }
+
+  // Если несколько (режим «Все филиалы») — собираем со всех
+  const {
+    pageSize = DEFAULT_PAGE_SIZE,
+    orderByField = 'createdAt',
+    orderDirection = 'desc',
+  } = opts;
+
+  const all = await getCollectionMulti(bizIds, name, {
+    pageSize,
+    orderByField,
+    orderDirection,
+  });
+
+  // Сортируем вручную по orderByField (Firestore не даёт сортировать через несколько parent-коллекций)
+  if (orderByField) {
+    all.sort((a, b) => {
+      const av = toDate(a[orderByField])?.getTime() || 0;
+      const bv = toDate(b[orderByField])?.getTime() || 0;
+      return orderDirection === 'desc' ? bv - av : av - bv;
+    });
+  }
+
+  return {
+    items: all,
+    lastDoc: null,
+    hasMore: false,
+  };
+}
+
+/**
+ * Realtime-подписка. Если один филиал — subscribeCollection.
+ * Если несколько — subscribeMulti.
+ */
+function subscribePage(name, callback, opts = {}) {
+  const bizIds = getEffectiveBusinessIds();
+  if (!bizIds || bizIds.length === 0) {
+    callback({ items: [], hasMore: false });
+    return () => {};
+  }
+
+  // Один филиал — простая подписка
+  if (bizIds.length === 1) {
+    const bizId = bizIds[0];
+    const {
+      pageSize = DEFAULT_PAGE_SIZE,
+      orderByField = 'createdAt',
+      orderDirection = 'desc',
+      filters = [],
+    } = opts;
+
+    const ref = collection(db, 'businesses', bizId, name);
+    const constraints = [];
+    for (const f of filters) constraints.push(where(f.field, f.op, f.value));
+    if (orderByField) constraints.push(orderBy(orderByField, orderDirection));
+    constraints.push(limit(pageSize));
+
+    return onSnapshot(query(ref, ...constraints), (snap) => {
+      const items = snap.docs.map((d) => ({
+        id: d.id,
+        businessId: bizId,
+        _bizId: bizId,
+        _doc: d,
+        ...d.data(),
+      }));
+      callback({
+        items,
+        lastDoc: snap.docs[snap.docs.length - 1] || null,
+        hasMore: snap.docs.length === pageSize,
+      });
+    }, (err) => {
+      console.error('[KUT FB] subscribePage error:', name, err?.code);
+      callback({ items: [], hasMore: false, error: err });
+    });
+  }
+
+  // Несколько филиалов — мультиподписка
+  const {
+    pageSize = DEFAULT_PAGE_SIZE,
+    orderByField = 'createdAt',
+    orderDirection = 'desc',
+  } = opts;
+
+  const unsubMulti = subscribeMulti(bizIds, name, (items) => {
+    // Сортируем вручную
+    if (orderByField) {
+      items.sort((a, b) => {
+        const av = toDate(a[orderByField])?.getTime() || 0;
+        const bv = toDate(b[orderByField])?.getTime() || 0;
+        return orderDirection === 'desc' ? bv - av : av - bv;
+      });
+    }
+    callback({ items, hasMore: false });
+  }, { pageSize, orderByField, orderDirection });
+
+  return unsubMulti;
+}
+
+/**
+ * Догрузка следующих N записей после курсора.
+ */
+async function loadMore(name, lastDoc, opts = {}) {
+  const bizId = getBusinessId();
+  if (!bizId || !lastDoc) return { items: [], lastDoc: null, hasMore: false };
+
+  const {
+    pageSize = DEFAULT_PAGE_SIZE,
+    orderByField = 'createdAt',
+    orderDirection = 'desc',
+  } = opts;
+
+  const ref = collection(db, 'businesses', bizId, name);
+  try {
+    const q = query(
+      ref,
+      orderBy(orderByField, orderDirection),
+      startAfter(lastDoc),
+      limit(pageSize)
+    );
+    const snap = await getDocs(q);
+    return {
+      items: snap.docs.map((d) => ({ id: d.id, businessId: bizId, ...d.data() })),
+      lastDoc: snap.docs[snap.docs.length - 1] || null,
+      hasMore: snap.docs.length === pageSize,
+    };
+  } catch (err) {
+    console.error('[KUT FB] loadMore failed:', name, err?.code);
+    return { items: [], lastDoc: null, hasMore: false };
+  }
+}
+
+// =========================================================
+// FIRESTORE — МУЛЬТИБИЗНЕС
+// =========================================================
+
 async function getCollectionMulti(bizIds, name, opts = {}) {
   if (!Array.isArray(bizIds) || bizIds.length === 0) return [];
 
@@ -580,11 +715,6 @@ async function getCollectionMulti(bizIds, name, opts = {}) {
   return results;
 }
 
-/**
- * Realtime-подписка на несколько бизнесов.
- * Возвращает функцию отписки.
- * Каждый item содержит _bizId — в какой точке он лежит.
- */
 function subscribeMulti(bizIds, name, callback, opts = {}) {
   if (!Array.isArray(bizIds) || bizIds.length === 0) {
     callback([]);
@@ -655,14 +785,13 @@ async function addItem(name, data) {
   }
   return addDoc(collection(db, 'businesses', bizId, name), {
     ...data,
-    businessId: bizId,   // 🆕
+    businessId: bizId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 }
 
 async function updateItem(name, id, data) {
-  // Пробуем обновить в текущем бизнесе
   const bizId = getWriteBusinessId() || getBusinessId();
   if (!bizId) throw new Error('NO_BUSINESS');
   return updateDoc(doc(db, 'businesses', bizId, name, id), {
@@ -671,10 +800,6 @@ async function updateItem(name, id, data) {
   });
 }
 
-/**
- * 🆕 Обновление документа в КОНКРЕТНОМ бизнесе
- * (нужно когда обновляем из режима «все филиалы» — берём _bizId).
- */
 async function updateItemInBiz(bizId, name, id, data) {
   if (!bizId) throw new Error('NO_BIZ');
   return updateDoc(doc(db, 'businesses', bizId, name, id), {
@@ -689,9 +814,6 @@ async function deleteItem(name, id) {
   return deleteDoc(doc(db, 'businesses', bizId, name, id));
 }
 
-/**
- * 🆕 Удаление в конкретном бизнесе (по _bizId).
- */
 async function deleteItemInBiz(bizId, name, id) {
   if (!bizId) throw new Error('NO_BIZ');
   return deleteDoc(doc(db, 'businesses', bizId, name, id));
@@ -726,7 +848,7 @@ window.FB = {
 
   enablePersistence,
 
-  // 🆕 Мультибизнес
+  // Мультибизнес
   getBusinessIds,
   getEffectiveBusinessIds,
   getWriteBusinessId,
@@ -741,6 +863,9 @@ window.FB = {
   // Чтение/подписка
   getCollection, subscribeCollection,
   getCollectionMulti, subscribeMulti,
+
+  // 🔁 Обратная совместимость
+  getPage, subscribePage, loadMore,
 
   // Запись
   addItem, updateItem, deleteItem,
@@ -775,6 +900,7 @@ export {
 
   getCollection, subscribeCollection,
   getCollectionMulti, subscribeMulti,
+  getPage, subscribePage, loadMore,
 
   addItem, updateItem, deleteItem,
   updateItemInBiz, deleteItemInBiz,
@@ -788,4 +914,4 @@ export {
   normalizePhone, toDate,
 };
 
-console.info('[KUT FB v11.0 «SaaS»] · проект:', firebaseConfig.projectId, '· мультифилиалы ✓');
+console.info('[KUT FB v11.1 «SaaS»] · проект:', firebaseConfig.projectId, '· мультифилиалы + обратная совместимость');
