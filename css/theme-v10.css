@@ -1,0 +1,1020 @@
+/* =========================================================
+   КУТ: БИЗНЕС — Design System v10.0 «Aurora»
+   
+   День (по умолчанию, :root) → «Pearl Sage»
+   Ночь (html[data-theme="dark"] / body.dark-mode) → «Petrol Ink»
+   
+   Все компоненты используют только переменные --kut-*.
+   Никаких хардкодных цветов.
+   ========================================================= */
+
+/* =========================================================
+   1. ТОКЕНЫ — ДЕНЬ (:root, по умолчанию)
+   ========================================================= */
+:root {
+  /* Canvas & Surface ------------------------------------- */
+  --kut-canvas:            #F2F5F3;   /* перламутровый шалфей */
+  --kut-canvas-1:          #E6EFEA;   /* градиент верх */
+  --kut-canvas-2:          #EDF3EF;   /* градиент низ */
+  --kut-canvas-radial:     #E8F0EC;   /* верхний радиальный */
+
+  --kut-surface:           #FFFFFF;   /* карточки */
+  --kut-surface-2:         #FAFCFB;   /* вторичные панели */
+  --kut-surface-elevated:  #FFFFFF;   /* hover/active */
+  --kut-surface-sunken:    #EDF2EE;   /* вложенные блоки */
+
+  /* Hairlines --------------------------------------------- */
+  --kut-border:            rgba(15, 30, 25, 0.08);
+  --kut-border-strong:     rgba(15, 30, 25, 0.16);
+  --kut-border-hairline:   rgba(15, 30, 25, 0.045);
+
+  /* Text -------------------------------------------------- */
+  --kut-text-1:            #0F1A15;   /* глубокие чернила — AAA */
+  --kut-text-2:            #4A5C54;
+  --kut-text-3:            #7A8783;
+  --kut-text-muted:        #A4B0AB;
+  --kut-text-inverse:      #FFFFFF;
+  --kut-text-on-gold:      #0F1A15;
+
+  /* Brand gold ------------------------------------------- */
+  --kut-gold:              #B8952A;
+  --kut-gold-bright:       #D4AF37;
+  --kut-gold-deep:         #8B6914;
+  --kut-gold-bg:           rgba(184, 149, 42, 0.10);
+  --kut-gold-border:       rgba(184, 149, 42, 0.26);
+  --kut-gold-gradient:     linear-gradient(135deg, #D4AF37 0%, #8B6914 100%);
+
+  /* Success — Нефрит / Jade ------------------------------ */
+  --kut-success:           #0F7F4D;
+  --kut-success-bright:    #0FA060;
+  --kut-success-bg:        rgba(15, 127, 77, 0.10);
+  --kut-success-border:    rgba(15, 127, 77, 0.22);
+
+  /* Danger — Рубин / Ruby -------------------------------- */
+  --kut-danger:            #C0392B;
+  --kut-danger-bright:     #E04B38;
+  --kut-danger-bg:         rgba(192, 57, 43, 0.08);
+  --kut-danger-border:     rgba(192, 57, 43, 0.22);
+
+  /* Warning — Янтарь / Amber ----------------------------- */
+  --kut-warning:           #B87117;
+  --kut-warning-bg:        rgba(184, 113, 23, 0.10);
+  --kut-warning-border:    rgba(184, 113, 23, 0.22);
+
+  /* Info — Индиго ---------------------------------------- */
+  --kut-info:              #3E5BA8;
+  --kut-info-bg:           rgba(62, 91, 168, 0.10);
+
+  /* Shadows — мягкие, размытые, без чёрных контуров ------ */
+  --kut-shadow-sm:         0 1px 2px rgba(15, 30, 25, 0.04),
+                           0 2px 6px rgba(15, 30, 25, 0.04);
+  --kut-shadow-md:         0 4px 12px rgba(15, 30, 25, 0.06),
+                           0 12px 32px rgba(15, 30, 25, 0.05);
+  --kut-shadow-lg:         0 12px 36px rgba(15, 30, 25, 0.10),
+                           0 24px 60px rgba(15, 30, 25, 0.06);
+
+  /* Sidebar (всегда тёмный, чтобы не зависеть от темы) --- */
+  --kut-sidebar-bg:        linear-gradient(180deg, #0C251C 0%, #08180F 100%);
+  --kut-sidebar-text:      #EDF5F1;
+  --kut-sidebar-text-dim:  rgba(237, 245, 241, 0.55);
+  --kut-sidebar-active:    linear-gradient(90deg, rgba(212,175,55,.14), rgba(212,175,55,.02));
+
+  /* Bottom-nav ------------------------------------------- */
+  --kut-nav-bg:            rgba(255, 255, 255, 0.94);
+  --kut-nav-border:        rgba(15, 30, 25, 0.10);
+  --kut-nav-shadow:        0 -10px 34px rgba(15, 30, 25, 0.08);
+  --kut-nav-text:          #7A8783;
+  --kut-nav-text-active:   #8B6914;
+
+  /* Analytics (всегда тёмный — это фича) ----------------- */
+  --kut-analytics-bg:      radial-gradient(600px 260px at 15% 0%, rgba(212,175,55,.14), transparent 60%),
+                           linear-gradient(150deg, #0F2C22 0%, #071410 100%);
+  --kut-analytics-border:  rgba(255, 255, 255, 0.09);
+  --kut-analytics-text:    #EDF5F1;
+  --kut-analytics-dim:     rgba(237, 245, 241, 0.65);
+  --kut-analytics-gold:    #FFD86B;
+  --kut-analytics-jade:    #7FE4A5;
+
+  /* Radius & motion -------------------------------------- */
+  --kut-r-sm:              10px;
+  --kut-r:                 14px;
+  --kut-r-lg:              20px;
+  --kut-r-xl:              24px;
+  --kut-r-pill:            999px;
+
+  --kut-t-fast:            0.15s ease;
+  --kut-t:                 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --kut-t-slow:            0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Fonts ------------------------------------------------ */
+  --kut-font:              'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --kut-font-mono:         ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* =========================================================
+   2. ТОКЕНЫ — НОЧЬ «Petrol Ink»
+   Применяется через html[data-theme="dark"] или body.dark-mode
+   ========================================================= */
+html[data-theme="dark"],
+body.dark-mode {
+  --kut-canvas:            #0D1418;
+  --kut-canvas-1:          #0F1A1F;
+  --kut-canvas-2:          #0A1115;
+  --kut-canvas-radial:     #12201F;
+
+  --kut-surface:           #141C22;
+  --kut-surface-2:         #18222A;
+  --kut-surface-elevated:  #1C262E;
+  --kut-surface-sunken:    #0A1115;
+
+  --kut-border:            rgba(255, 255, 255, 0.07);
+  --kut-border-strong:     rgba(255, 255, 255, 0.16);
+  --kut-border-hairline:   rgba(255, 255, 255, 0.035);
+
+  --kut-text-1:            #E8EDF0;
+  --kut-text-2:            rgba(232, 237, 240, 0.68);
+  --kut-text-3:            rgba(232, 237, 240, 0.44);
+  --kut-text-muted:        rgba(232, 237, 240, 0.26);
+  --kut-text-inverse:      #0F1A15;
+  --kut-text-on-gold:      #0F1A15;
+
+  --kut-gold:              #E4C56A;
+  --kut-gold-bright:       #F0D772;
+  --kut-gold-deep:         #C9A64B;
+  --kut-gold-bg:           rgba(228, 197, 106, 0.12);
+  --kut-gold-border:       rgba(228, 197, 106, 0.30);
+  --kut-gold-gradient:     linear-gradient(135deg, #E4C56A 0%, #C9A64B 100%);
+
+  --kut-success:           #5DD39E;
+  --kut-success-bright:    #7FE4B5;
+  --kut-success-bg:        rgba(93, 211, 158, 0.12);
+  --kut-success-border:    rgba(93, 211, 158, 0.26);
+
+  --kut-danger:            #F26B6B;
+  --kut-danger-bright:     #FF8080;
+  --kut-danger-bg:         rgba(242, 107, 107, 0.12);
+  --kut-danger-border:     rgba(242, 107, 107, 0.28);
+
+  --kut-warning:           #E5A23F;
+  --kut-warning-bg:        rgba(229, 162, 63, 0.12);
+  --kut-warning-border:    rgba(229, 162, 63, 0.26);
+
+  --kut-info:              #7DA6F0;
+  --kut-info-bg:           rgba(125, 166, 240, 0.12);
+
+  --kut-shadow-sm:         0 1px 2px rgba(0, 0, 0, 0.35);
+  --kut-shadow-md:         0 4px 16px rgba(0, 0, 0, 0.32);
+  --kut-shadow-lg:         0 18px 48px rgba(0, 0, 0, 0.55);
+
+  --kut-nav-bg:            rgba(13, 20, 24, 0.86);
+  --kut-nav-border:        rgba(255, 255, 255, 0.08);
+  --kut-nav-shadow:        0 -10px 34px rgba(0, 0, 0, 0.32);
+  --kut-nav-text:          rgba(232, 237, 240, 0.42);
+  --kut-nav-text-active:   #E4C56A;
+}
+
+/* =========================================================
+   3. БАЗА
+   ========================================================= */
+html, body {
+  transition: background-color var(--kut-t-slow), color var(--kut-t-slow);
+}
+
+body {
+  font-family: var(--kut-font);
+  background:
+    radial-gradient(1200px 800px at 50% -10%, var(--kut-canvas-radial) 0%, transparent 60%),
+    radial-gradient(900px 700px at 100% 100%, var(--kut-canvas-2) 0%, transparent 55%),
+    linear-gradient(180deg, var(--kut-canvas-1) 0%, var(--kut-canvas-2) 100%) !important;
+  background-attachment: fixed !important;
+  color: var(--kut-text-1) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Числа — всегда табличные, крупные, глубокие */
+.kut-num,
+.analytics__value,
+.cart__sum strong,
+.debt-card__amount,
+.sale-row__amount,
+.qty-value,
+.price,
+.stat__value,
+.debt-hero__value,
+.detail-total-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.4px;
+}
+
+/* Валюта «KGS» — всегда тише, чем сумма */
+.kut-num small,
+.widget__value small,
+.analytics__value small,
+.cart__sum strong small,
+.debt-card__amount small,
+.debt-hero__value small,
+.stat__value small,
+.qty-value small {
+  font-size: 0.55em;
+  font-weight: 600;
+  opacity: 0.55;
+  letter-spacing: 0.2px;
+  margin-left: 4px;
+}
+
+/* =========================================================
+   4. SIDEBAR (всегда тёмный — независимо от темы)
+   ========================================================= */
+.sidebar {
+  background: var(--kut-sidebar-bg) !important;
+  color: var(--kut-sidebar-text) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 20px 0 60px rgba(0, 0, 0, 0.30) !important;
+}
+
+.sidebar__brand-row {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.brand__text strong { color: var(--kut-sidebar-text) !important; }
+.brand__text small  { color: var(--kut-sidebar-text-dim) !important; }
+
+.brand__mark {
+  background: var(--kut-gold-gradient) !important;
+  color: var(--kut-text-on-gold) !important;
+  box-shadow: 0 6px 16px rgba(212, 175, 55, 0.35) !important;
+}
+
+.nav-link {
+  color: rgba(237, 245, 241, 0.78) !important;
+  transition: background var(--kut-t-fast), color var(--kut-t-fast) !important;
+}
+.nav-link:hover { background: rgba(255, 255, 255, 0.06) !important; color: #fff !important; }
+.nav-link.active {
+  background: var(--kut-sidebar-active) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 var(--kut-gold-bright) !important;
+}
+.nav-link__badge {
+  background: var(--kut-danger) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(242, 107, 107, 0.45) !important;
+}
+
+.sidebar__cta {
+  background: var(--kut-gold-gradient) !important;
+  color: var(--kut-text-on-gold) !important;
+  box-shadow: 0 10px 26px rgba(212, 175, 55, 0.32) !important;
+}
+.sidebar__cta__icon { background: rgba(0, 0, 0, 0.14) !important; }
+.sidebar__footer {
+  color: rgba(237, 245, 241, 0.30) !important;
+  border-top-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* =========================================================
+   5. КНОПКА ТЕМЫ — Segmented Control внутри сайдбара
+   ========================================================= */
+.sidebar-theme-slot {
+  display: block;
+  margin: 12px 0 4px;
+}
+
+.theme-segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.theme-segmented__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--kut-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(237, 245, 241, 0.55);
+  cursor: pointer;
+  transition: background var(--kut-t-fast), color var(--kut-t-fast), transform 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.theme-segmented__btn:hover { color: rgba(237, 245, 241, 0.85); }
+.theme-segmented__btn:active { transform: scale(0.97); }
+
+.theme-segmented__btn.is-active {
+  background: var(--kut-gold-gradient);
+  color: var(--kut-text-on-gold);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.32);
+}
+
+.theme-segmented__icon { font-size: 15px; line-height: 1; }
+
+/* Совместимость со старой круглой кнопкой (скрыть) */
+.sidebar-theme,
+.sidebar-theme-toggle,
+.theme-toggle {
+  display: none !important;
+}
+
+/* =========================================================
+   6. MOBILE BAR (Шапка)
+   ========================================================= */
+.mobile-bar {
+  background: var(--kut-nav-bg) !important;
+  border-bottom: 1px solid var(--kut-nav-border) !important;
+  color: var(--kut-text-1) !important;
+  box-shadow: 0 6px 22px rgba(15, 30, 25, 0.04);
+}
+body.dark-mode .mobile-bar,
+html[data-theme="dark"] .mobile-bar {
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.24);
+}
+
+.mobile-bar__title { color: var(--kut-text-1) !important; }
+
+.burger {
+  background: var(--kut-surface-sunken) !important;
+  border: 1px solid var(--kut-border) !important;
+  color: var(--kut-text-1) !important;
+}
+.burger:active { background: var(--kut-surface-elevated) !important; }
+
+.net-pill {
+  background: var(--kut-success-bg) !important;
+  border-color: var(--kut-success-border) !important;
+  color: var(--kut-success) !important;
+}
+.net-pill__dot { background: var(--kut-success) !important; }
+.net-pill.is-offline {
+  background: var(--kut-danger-bg) !important;
+  border-color: var(--kut-danger-border) !important;
+  color: var(--kut-danger) !important;
+}
+.net-pill.is-offline .net-pill__dot { background: var(--kut-danger) !important; }
+
+/* =========================================================
+   7. BOTTOM NAV
+   ========================================================= */
+.bottom-nav {
+  background: var(--kut-nav-bg) !important;
+  border-top: 1px solid var(--kut-nav-border) !important;
+  box-shadow: var(--kut-nav-shadow) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.bottom-nav__item { color: var(--kut-nav-text) !important; }
+.bottom-nav__item.active {
+  color: var(--kut-nav-text-active) !important;
+  background: var(--kut-gold-bg) !important;
+}
+.bottom-nav__item.active .bottom-nav__icon { filter: none !important; }
+
+.bottom-nav__scan {
+  background: radial-gradient(circle at 35% 30%, var(--kut-gold-bright) 0%, var(--kut-gold-deep) 70%) !important;
+  color: var(--kut-text-on-gold) !important;
+  border: 5px solid var(--kut-canvas) !important;
+  box-shadow: 0 12px 30px rgba(212, 175, 55, 0.42),
+              0 4px 12px rgba(0, 0, 0, 0.24) !important;
+}
+body.dark-mode .bottom-nav__scan,
+html[data-theme="dark"] .bottom-nav__scan {
+  border-color: var(--kut-canvas-2) !important;
+  box-shadow: 0 12px 30px rgba(212, 175, 55, 0.38),
+              0 4px 12px rgba(0, 0, 0, 0.55) !important;
+}
+
+.badge-notify {
+  background: var(--kut-danger) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 2px var(--kut-canvas),
+              0 0 12px rgba(242, 107, 107, 0.55) !important;
+}
+
+/* =========================================================
+   8. КАРТОЧКИ — ПАРЯЩИЕ ПОВЕРХНОСТИ
+   ========================================================= */
+.stock-card,
+.staff-card,
+.debt-card,
+.cart,
+.recent,
+.wh-section,
+.stat,
+.toolbar,
+.critical-stock {
+  background: var(--kut-surface) !important;
+  border: 1px solid var(--kut-border) !important;
+  box-shadow: var(--kut-shadow-md) !important;
+  color: var(--kut-text-1) !important;
+  transition: background var(--kut-t), border-color var(--kut-t), box-shadow var(--kut-t);
+}
+
+/* Товары на Кассе — не чистый белый, слегка градиент */
+.product {
+  background: linear-gradient(180deg, var(--kut-surface) 0%, var(--kut-surface-2) 100%) !important;
+  border: 1px solid var(--kut-border) !important;
+  box-shadow: var(--kut-shadow-sm) !important;
+  color: var(--kut-text-1) !important;
+}
+.product:hover {
+  border-color: var(--kut-border-strong) !important;
+  box-shadow: var(--kut-shadow-md) !important;
+  transform: translateY(-1px);
+}
+.product:active { transform: scale(0.98); }
+.product__name { color: var(--kut-text-1) !important; }
+
+.product__price {
+  color: var(--kut-gold-deep) !important;
+  font-weight: 800 !important;
+  text-shadow: none;
+}
+html[data-theme="dark"] .product__price,
+body.dark-mode .product__price {
+  color: var(--kut-gold) !important;
+}
+
+.product__emoji {
+  background: var(--kut-gold-bg) !important;
+}
+
+/* Статистика на Складе/Сотрудниках */
+.stat__icon {
+  background: var(--kut-gold-bg) !important;
+  color: var(--kut-gold-deep) !important;
+}
+html[data-theme="dark"] .stat__icon,
+body.dark-mode .stat__icon {
+  color: var(--kut-gold) !important;
+}
+.stat--warn .stat__icon {
+  background: var(--kut-danger-bg) !important;
+  color: var(--kut-danger) !important;
+}
+.stat--green .stat__icon {
+  background: var(--kut-success-bg) !important;
+  color: var(--kut-success) !important;
+}
+.stat__label { color: var(--kut-text-3) !important; }
+.stat__value { color: var(--kut-text-1) !important; }
+
+/* =========================================================
+   9. АНАЛИТИКА — ВСЕГДА ТЁМНАЯ (фича, а не баг)
+   ========================================================= */
+.analytics,
+html[data-theme="light"] .analytics,
+[data-theme="dark"] .analytics,
+body.dark-mode .analytics {
+  background: var(--kut-analytics-bg) !important;
+  border: 1px solid var(--kut-analytics-border) !important;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42) !important;
+  color: var(--kut-analytics-text) !important;
+  border-radius: var(--kut-r-xl) !important;
+}
+
+.analytics__title { color: var(--kut-analytics-gold) !important; }
+.analytics__period { color: var(--kut-analytics-dim) !important; }
+
+.revenue-hero {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+}
+.revenue-hero__label { color: var(--kut-analytics-dim) !important; }
+.revenue-hero__value {
+  color: var(--kut-analytics-gold) !important;
+  text-shadow: 0 0 24px rgba(212, 175, 55, 0.30);
+}
+.revenue-hero__value small { color: var(--kut-analytics-dim) !important; }
+
+.mini {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+.mini__label { color: var(--kut-analytics-dim) !important; }
+.mini__value { color: #FFFFFF !important; }
+
+.kpi--profit {
+  background: linear-gradient(145deg, rgba(93, 211, 158, 0.14), rgba(93, 211, 158, 0.02)) !important;
+  border-color: rgba(93, 211, 158, 0.24) !important;
+}
+.kpi--profit .kpi__label { color: var(--kut-analytics-dim) !important; }
+.kpi--profit .kpi__value {
+  color: var(--kut-analytics-jade) !important;
+  text-shadow: 0 0 22px rgba(93, 211, 158, 0.30);
+}
+.kpi--muted {
+  background: rgba(255, 255, 255, 0.025) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+.kpi--muted .kpi__value { color: rgba(255, 255, 255, 0.88) !important; }
+
+.chart-wrap {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+.chart-wrap__title { color: var(--kut-analytics-dim) !important; }
+.chart-wrap__total { color: var(--kut-analytics-gold) !important; }
+.chart__label { color: var(--kut-analytics-dim) !important; }
+
+/* =========================================================
+   10. ТАБЛИЦЫ — убираем hover, который заливал белым
+   ========================================================= */
+.stock-table tbody tr,
+.staff-table tbody tr {
+  transition: background var(--kut-t-fast);
+}
+
+html[data-theme="light"] .stock-table tbody tr:hover,
+html[data-theme="light"] .staff-table tbody tr:hover {
+  background: var(--kut-surface-sunken) !important;
+}
+
+html[data-theme="dark"] .stock-table tbody tr:hover,
+body.dark-mode .stock-table tbody tr:hover,
+html[data-theme="dark"] .staff-table tbody tr:hover,
+body.dark-mode .staff-table tbody tr:hover {
+  background: var(--kut-surface-elevated) !important;
+}
+
+/* На тач-устройствах полностью убиваем hover — ничего не «прилипает» */
+@media (hover: none) and (pointer: coarse) {
+  .stock-table tbody tr:hover,
+  .stock-table tbody tr:focus,
+  .stock-table tbody tr:active,
+  .staff-table tbody tr:hover,
+  .staff-table tbody tr:focus,
+  .staff-table tbody tr:active {
+    background: transparent !important;
+  }
+}
+
+.stock-table thead th,
+.staff-table thead th {
+  background: var(--kut-surface-sunken) !important;
+  color: var(--kut-text-3) !important;
+  border-bottom-color: var(--kut-border) !important;
+}
+.stock-table tbody td,
+.staff-table tbody td {
+  color: var(--kut-text-1) !important;
+  border-bottom-color: var(--kut-border-hairline) !important;
+}
+
+.cell-name__title { color: var(--kut-text-1) !important; }
+.cell-name__sub { color: var(--kut-text-3) !important; }
+.cell-name__emoji { background: var(--kut-gold-bg) !important; }
+
+.badge {
+  background: var(--kut-gold-bg) !important;
+  color: var(--kut-gold-deep) !important;
+}
+html[data-theme="dark"] .badge,
+body.dark-mode .badge {
+  color: var(--kut-gold) !important;
+}
+.badge--custom {
+  background: var(--kut-info-bg) !important;
+  color: var(--kut-info) !important;
+}
+
+.price--cost { color: var(--kut-text-3) !important; }
+.price--sale { color: var(--kut-success) !important; font-weight: 800 !important; }
+
+.qty-cell { background: var(--kut-gold-bg) !important; }
+.qty-btn { color: var(--kut-gold-deep) !important; }
+html[data-theme="dark"] .qty-btn,
+body.dark-mode .qty-btn { color: var(--kut-gold) !important; }
+.qty-value { color: var(--kut-text-1) !important; }
+
+/* =========================================================
+   11. КНОПКИ
+   ========================================================= */
+.btn--primary,
+.btn--gold {
+  background: var(--kut-gold-gradient) !important;
+  color: var(--kut-text-on-gold) !important;
+  box-shadow: 0 10px 26px rgba(184, 149, 42, 0.30) !important;
+  font-weight: 700 !important;
+}
+html[data-theme="dark"] .btn--primary,
+html[data-theme="dark"] .btn--gold,
+body.dark-mode .btn--primary,
+body.dark-mode .btn--gold {
+  color: var(--kut-text-on-gold) !important;
+}
+
+.btn--ghost {
+  background: var(--kut-surface) !important;
+  border-color: var(--kut-border-strong) !important;
+  color: var(--kut-text-1) !important;
+}
+.btn--ghost:hover {
+  background: var(--kut-surface-sunken) !important;
+  border-color: var(--kut-gold) !important;
+  color: var(--kut-gold-deep) !important;
+}
+html[data-theme="dark"] .btn--ghost:hover,
+body.dark-mode .btn--ghost:hover { color: var(--kut-gold) !important; }
+
+.btn--danger {
+  background: var(--kut-danger-bg) !important;
+  color: var(--kut-danger) !important;
+  border-color: var(--kut-danger-border) !important;
+}
+
+.icon-btn {
+  background: var(--kut-surface) !important;
+  border-color: var(--kut-border) !important;
+  color: var(--kut-text-2) !important;
+}
+.icon-btn:hover {
+  background: var(--kut-gold-bg) !important;
+  border-color: var(--kut-gold-border) !important;
+  color: var(--kut-gold-deep) !important;
+}
+html[data-theme="dark"] .icon-btn:hover,
+body.dark-mode .icon-btn:hover { color: var(--kut-gold) !important; }
+
+.icon-btn--danger:hover {
+  background: var(--kut-danger-bg) !important;
+  border-color: var(--kut-danger-border) !important;
+  color: var(--kut-danger) !important;
+}
+
+/* Чипсы */
+.chip,
+.cat-chip,
+.period-chip {
+  background: var(--kut-surface) !important;
+  border-color: var(--kut-border) !important;
+  color: var(--kut-text-2) !important;
+}
+.chip.is-active,
+.cat-chip.is-active,
+.period-chip.is-active,
+.period-chip.active {
+  background: var(--kut-gold-gradient) !important;
+  color: var(--kut-text-on-gold) !important;
+  border-color: transparent !important;
+  box-shadow: 0 6px 18px rgba(184, 149, 42, 0.28) !important;
+}
+
+/* =========================================================
+   12. INPUTS / SEARCH / FIELDS
+   ========================================================= */
+.search input,
+.field input,
+.field select,
+.field textarea,
+.barcode-row input,
+.custom-category input,
+.debt-block input,
+.country-select,
+.phone-input,
+#searchInput {
+  background: var(--kut-surface-2) !important;
+  border: 1.5px solid var(--kut-border) !important;
+  color: var(--kut-text-1) !important;
+  transition: border-color var(--kut-t-fast), background var(--kut-t-fast), box-shadow var(--kut-t-fast);
+}
+
+.search input::placeholder,
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--kut-text-3) !important;
+}
+
+.search input:focus,
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.barcode-row input:focus {
+  background: var(--kut-surface) !important;
+  border-color: var(--kut-gold) !important;
+  box-shadow: 0 0 0 4px var(--kut-gold-bg) !important;
+  outline: none;
+}
+
+.field input.is-invalid,
+.field select.is-invalid,
+.debts-field__input.is-invalid {
+  border-color: var(--kut-danger) !important;
+  box-shadow: 0 0 0 4px var(--kut-danger-bg) !important;
+}
+
+.field label { color: var(--kut-text-1) !important; }
+.field__hint { color: var(--kut-text-3) !important; }
+.field__hint.is-error { color: var(--kut-danger) !important; }
+
+.input-group__suffix {
+  background: var(--kut-surface-sunken) !important;
+  border-color: var(--kut-border) !important;
+  color: var(--kut-text-3) !important;
+}
+
+/* Search icon */
+.search::before { opacity: 0.55; }
+body.dark-mode .search::before,
+html[data-theme="dark"] .search::before { opacity: 0.45; }
+
+/* =========================================================
+   13. ДОЛГИ (Несие)
+   ========================================================= */
+.debt-hero {
+  background:
+    radial-gradient(420px 200px at 0% 0%, var(--kut-danger-bg), transparent 60%),
+    linear-gradient(150deg, rgba(192, 57, 43, 0.04), rgba(192, 57, 43, 0.01)) !important;
+  border: 1px solid var(--kut-danger-border) !important;
+  box-shadow: 0 10px 34px rgba(192, 57, 43, 0.06) !important;
+}
+html[data-theme="light"] .debt-hero {
+  background:
+    radial-gradient(420px 200px at 0% 0%, rgba(192, 57, 43, 0.08), transparent 60%),
+    linear-gradient(150deg, #FFF7F6 0%, #FDEEEC 100%) !important;
+  border-color: rgba(192, 57, 43, 0.24) !important;
+  box-shadow: 0 8px 24px rgba(192, 57, 43, 0.08) !important;
+}
+html[data-theme="dark"] .debt-hero,
+body.dark-mode .debt-hero {
+  background:
+    radial-gradient(420px 200px at 0% 0%, rgba(242, 107, 107, 0.14), transparent 60%),
+    linear-gradient(150deg, rgba(242, 107, 107, 0.06), rgba(242, 107, 107, 0.015)) !important;
+}
+
+.debt-hero__label {
+  color: var(--kut-danger) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.6px;
+}
+html[data-theme="dark"] .debt-hero__label,
+body.dark-mode .debt-hero__label {
+  color: var(--kut-danger) !important;
+  opacity: 0.85;
+}
+
+.debt-hero__value {
+  color: var(--kut-danger) !important;
+  font-weight: 800 !important;
+  text-shadow: 0 2px 20px rgba(192, 57, 43, 0.15);
+}
+html[data-theme="dark"] .debt-hero__value,
+body.dark-mode .debt-hero__value {
+  color: var(--kut-danger) !important;
+  text-shadow: 0 0 24px rgba(242, 107, 107, 0.35);
+}
+
+.debt-hero__value small { color: var(--kut-danger) !important; opacity: 0.55; }
+.debt-hero__sub span { color: var(--kut-text-3) !important; }
+.debt-hero__sub strong { color: var(--kut-text-1) !important; }
+
+/* Карточка должника */
+.debt-card__avatar {
+  background: var(--kut-gold-gradient) !important;
+  color: var(--kut-text-on-gold) !important;
+  box-shadow: 0 4px 12px rgba(184, 149, 42, 0.26) !important;
+}
+.debt-card__name { color: var(--kut-text-1) !important; }
+.debt-card__meta { color: var(--kut-text-3) !important; }
+.debt-card__amount {
+  color: var(--kut-danger) !important;
+  font-weight: 800 !important;
+}
+.debt-card__amount small { color: var(--kut-text-3) !important; opacity: 0.7; }
+.debt-card__amount.is-paid {
+  color: var(--kut-text-3) !important;
+  text-decoration: line-through;
+}
+.debt-card__badge {
+  background: var(--kut-danger-bg) !important;
+  color: var(--kut-danger) !important;
+}
+
+/* Табы Активные / Архив */
+.debt-tabs { background: var(--kut-surface-sunken) !important; border-color: var(--kut-border) !important; }
+.debt-tab { color: var(--kut-text-3) !important; }
+.debt-tab.is-active {
+  background: var(--kut-gold-gradient) !important;
+  color: var(--kut-text-on-gold) !important;
+  box-shadow: 0 6px 18px rgba(184, 149, 42, 0.28) !important;
+}
+.debt-tab__badge { background: var(--kut-surface) !important; color: var(--kut-text-2) !important; }
+.debt-tab.is-active .debt-tab__badge {
+  background: rgba(0, 0, 0, 0.15) !important;
+  color: var(--kut-text-on-gold) !important;
+}
+
+/* =========================================================
+   14. РОЛЬ-БЕЙДЖ
+   ========================================================= */
+.role-badge {
+  background: var(--kut-surface-sunken) !important;
+  border-color: var(--kut-border) !important;
+  color: var(--kut-text-2) !important;
+}
+.role-badge--owner {
+  background: var(--kut-gold-bg) !important;
+  border-color: var(--kut-gold-border) !important;
+  color: var(--kut-gold-deep) !important;
+}
+html[data-theme="dark"] .role-badge--owner,
+body.dark-mode .role-badge--owner { color: var(--kut-gold) !important; }
+
+/* Роли в таблицах */
+.role-badge--cashier {
+  background: var(--kut-success-bg) !important;
+  color: var(--kut-success) !important;
+}
+.role-badge--manager {
+  background: var(--kut-warning-bg) !important;
+  color: var(--kut-warning) !important;
+}
+
+/* Бейджи статусов */
+.badge--active   { background: var(--kut-success-bg) !important; color: var(--kut-success) !important; }
+.badge--pending  { background: var(--kut-warning-bg) !important; color: var(--kut-warning) !important; }
+.badge--blocked  { background: var(--kut-danger-bg)  !important; color: var(--kut-danger)  !important; }
+
+/* =========================================================
+   15. RECENT SALES
+   ========================================================= */
+.sale-row__avatar { background: var(--kut-gold-bg) !important; }
+.sale-row__title { color: var(--kut-text-1) !important; }
+.sale-row__meta { color: var(--kut-text-3) !important; }
+.sale-row__amount { color: var(--kut-success) !important; font-weight: 800 !important; }
+.sale-row__amount--debt { color: var(--kut-danger) !important; }
+.recent__head { border-bottom-color: var(--kut-border-hairline) !important; }
+.recent__head h2 { color: var(--kut-text-1) !important; }
+.recent__head a { color: var(--kut-gold-deep) !important; }
+html[data-theme="dark"] .recent__head a,
+body.dark-mode .recent__head a { color: var(--kut-gold) !important; }
+
+.recent__empty { color: var(--kut-text-3) !important; }
+
+/* =========================================================
+   16. КРИТИЧЕСКИЕ ОСТАТКИ
+   ========================================================= */
+.critical-stock {
+  background:
+    radial-gradient(420px 200px at 0% 0%, var(--kut-danger-bg), transparent 60%),
+    linear-gradient(150deg, rgba(192, 57, 43, 0.03), rgba(192, 57, 43, 0.01)) !important;
+  border-color: var(--kut-danger-border) !important;
+}
+html[data-theme="light"] .critical-stock {
+  background: radial-gradient(420px 200px at 0% 0%, rgba(192, 57, 43, 0.06), transparent 60%), #FFFFFF !important;
+  border-color: rgba(192, 57, 43, 0.18) !important;
+}
+.critical-stock__title strong { color: var(--kut-danger) !important; }
+.critical-stock__title small { color: var(--kut-text-3) !important; }
+.critical-stock__name { color: var(--kut-text-1) !important; }
+.critical-stock__qty {
+  background: var(--kut-danger-bg) !important;
+  border-color: var(--kut-danger-border) !important;
+  color: var(--kut-danger) !important;
+}
+.critical-stock__item.is-zero .critical-stock__qty {
+  background: var(--kut-danger) !important;
+  color: #FFFFFF !important;
+}
+.critical-stock__link {
+  background: var(--kut-danger-bg) !important;
+  border-color: var(--kut-danger-border) !important;
+  color: var(--kut-danger) !important;
+}
+
+/* =========================================================
+   17. МОДАЛКИ
+   ========================================================= */
+.modal__backdrop {
+  background: rgba(15, 30, 25, 0.42) !important;
+  backdrop-filter: blur(8px) !important;
+}
+body.dark-mode .modal__backdrop,
+html[data-theme="dark"] .modal__backdrop { background: rgba(0, 0, 0, 0.65) !important; }
+
+.modal__dialog {
+  background: var(--kut-surface) !important;
+  border: 1px solid var(--kut-border) !important;
+  color: var(--kut-text-1) !important;
+  box-shadow: var(--kut-shadow-lg) !important;
+}
+.modal__dialog h3 { color: var(--kut-text-1) !important; }
+.modal__subtitle { color: var(--kut-text-3) !important; }
+
+/* Pay methods */
+.pay-method {
+  background: var(--kut-surface-2) !important;
+  border-color: var(--kut-border) !important;
+  color: var(--kut-text-1) !important;
+}
+.pay-method__icon { background: var(--kut-gold-bg) !important; }
+.pay-method.is-active {
+  border-color: var(--kut-gold) !important;
+  background: var(--kut-gold-bg) !important;
+  box-shadow: 0 0 0 3px var(--kut-gold-bg) !important;
+}
+
+.debt-block {
+  background: var(--kut-gold-bg) !important;
+  border-color: var(--kut-gold-border) !important;
+}
+.debt-block label { color: var(--kut-text-1) !important; }
+.debt-block .hint { color: var(--kut-text-3) !important; }
+
+/* =========================================================
+   18. СКЛАДСКОЙ ЖУРНАЛ
+   ========================================================= */
+.wh-head__title { color: var(--kut-text-1) !important; }
+.wh-head__sub { color: var(--kut-text-3) !important; }
+.wh-chip {
+  background: var(--kut-surface-sunken) !important;
+  border-color: var(--kut-border) !important;
+  color: var(--kut-text-2) !important;
+}
+.wh-chip.is-active {
+  background: var(--kut-gold-gradient) !important;
+  color: var(--kut-text-on-gold) !important;
+  border-color: transparent !important;
+}
+.wh-row__name { color: var(--kut-text-1) !important; }
+.wh-row__worker { color: var(--kut-text-3) !important; }
+.wh-row__time { color: var(--kut-text-2) !important; }
+.wh-row__qty--in { color: var(--kut-success) !important; }
+.wh-row__qty--out { color: var(--kut-danger) !important; }
+.wh-row__sum { color: var(--kut-text-3) !important; }
+.wh-day__label { color: var(--kut-text-3) !important; }
+.wh-load-more__btn {
+  background: var(--kut-surface-sunken) !important;
+  border-color: var(--kut-border) !important;
+  color: var(--kut-text-2) !important;
+}
+.wh-load-more__btn:hover:not(:disabled) {
+  background: var(--kut-gold-bg) !important;
+  border-color: var(--kut-gold-border) !important;
+  color: var(--kut-gold-deep) !important;
+}
+html[data-theme="dark"] .wh-load-more__btn:hover:not(:disabled),
+body.dark-mode .wh-load-more__btn:hover:not(:disabled) { color: var(--kut-gold) !important; }
+
+/* =========================================================
+   19. ТОСТ
+   ========================================================= */
+.kut-toast,
+.toast {
+  background: var(--kut-surface-elevated) !important;
+  color: var(--kut-text-1) !important;
+  border: 1px solid var(--kut-border-strong) !important;
+  box-shadow: var(--kut-shadow-lg) !important;
+}
+.kut-toast--error,
+.toast--error {
+  background: var(--kut-danger) !important;
+  color: #FFFFFF !important;
+  border-color: transparent !important;
+}
+
+/* =========================================================
+   20. OVERLAY
+   ========================================================= */
+.overlay {
+  background: rgba(15, 30, 25, 0.42) !important;
+  backdrop-filter: blur(6px) !important;
+}
+body.dark-mode .overlay,
+html[data-theme="dark"] .overlay { background: rgba(0, 0, 0, 0.65) !important; }
+
+/* =========================================================
+   21. TAP HIGHLIGHT + SELECTION
+   ========================================================= */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--kut-gold);
+  color: var(--kut-text-on-gold);
+}
+
+/* =========================================================
+   22. ПЛАВНЫЙ ПЕРЕХОД ТЕМЫ
+   ========================================================= */
+html.kut-theme-transition *,
+html.kut-theme-transition *::before,
+html.kut-theme-transition *::after {
+  transition: background-color 0.3s ease,
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease !important;
+  transition-delay: 0s !important;
+}
