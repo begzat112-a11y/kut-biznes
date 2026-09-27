@@ -1,17 +1,13 @@
 /* =========================================================
-   debts.js v3.0 — «Несие (Долги)» — Firebase v10
+   КУТ: БИЗНЕС — Модуль «Несие (Долги)» v10.6 «Aurora»
    
-   Работает с СУЩЕСТВУЮЩЕЙ разметкой debts.html:
-   #statTotal, #statCount, #statOverdue
-   #searchInput
-   #tabActive, #tabArchive
-   #debtsList, #debtsEmpty
-   #addModal, #detailModal, #payModal, #deleteModal
-   
-   + Пагинация через FB.getPage / subscribePage
-   + Телефон СТРОГО обязателен (required, type=tel)
-   + Защита от двойного рендера
-   + Поддержка частичного погашения и «Ещё в долг»
+   • Телефон клиента — СТРОГО ОБЯЗАТЕЛЬНОЕ поле (type=tel, required)
+   • Симметрия полей Имя / Телефон (одинаковая высота, стиль)
+   • Красная рамка при ошибке валидации
+   • Очистка полей при закрытии модалки
+   • Запись customerPhone + customerName в Firestore
+   • Realtime через onSnapshot c limit(100)
+   • Пагинация и частичное погашение
    ========================================================= */
 
 export async function initDebtsModule() {
@@ -47,10 +43,11 @@ export async function initDebtsModule() {
     addModal:     $('#addModal'),
     addForm:      $('#addForm'),
     fName:        $('#fName'),
-    fPhone:       $('#fPhone'),
+    fPhone:       $('#debtor-phone'),
     fAmount:      $('#fAmount'),
     fNote:        $('#fNote'),
     addSaveBtn:   $('#addSaveBtn'),
+    addCancelBtn: $('#addCancelBtn'),
 
     // Detail modal
     detailModal:  $('#detailModal'),
@@ -80,7 +77,7 @@ export async function initDebtsModule() {
 
   // ---------- AUTH GUARD ----------
   if (!user || !profile) {
-    if (el.list) el.list.innerHTML = `<div class="debts-empty"><h3>Вы не авторизованы</h3><p><a href="./login.html" style="color:var(--v9-gold-soft)">Войти</a></p></div>`;
+    if (el.list) el.list.innerHTML = `<div class="debts-empty"><h3>Вы не авторизованы</h3><p><a href="./login.html" style="color:var(--kut-gold)">Войти</a></p></div>`;
     return;
   }
   const businessId = window.FB.getBusinessId();
@@ -91,12 +88,11 @@ export async function initDebtsModule() {
 
   // ---------- STATE ----------
   const state = {
-    all: [],            // текущий буфер (active или archive)
+    all: [],
     tab: 'active',
     search: '',
     detailId: null,
-    mode: null,         // 'pay' | 'take'
-    editingId: null,
+    mode: null,       // 'pay' | 'take'
     unsub: null,
   };
 
@@ -118,13 +114,48 @@ export async function initDebtsModule() {
     else console.log('[debts]', msg);
   }
 
+  // ---------- ВАЛИДАЦИЯ ТЕЛЕФОНА ----------
+  const PHONE_REGEX = /^\+?[0-9\s\-()]{9,20}$/;
+  const digitsOnly = (s) => String(s || '').replace(/\D/g, '');
+
+  function setFieldError(input, message) {
+    if (!input) return;
+    const hint = document.querySelector(`.field__hint[data-for="${input.id}"]`);
+
+    if (message) {
+      input.classList.add('is-invalid');
+      input.setAttribute('aria-invalid', 'true');
+      if (hint) {
+        hint.textContent = message;
+        hint.classList.add('is-error');
+      }
+    } else {
+      input.classList.remove('is-invalid');
+      input.removeAttribute('aria-invalid');
+      if (hint) {
+        if (input.id === 'debtor-phone') {
+          hint.textContent = 'На этот номер отправим напоминание в WhatsApp.';
+        } else {
+          hint.textContent = '';
+        }
+        hint.classList.remove('is-error');
+      }
+    }
+  }
+
+  function clearFormErrors() {
+    ['fName', 'debtor-phone', 'fAmount'].forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) setFieldError(input, '');
+    });
+  }
+
   // ---------- SCHEMA ----------
-  // Поддержка старого (customerName/totalDebt/timestamp) и нового формата.
   function getDebtName(d) {
-    return d.name || d.customerName || '—';
+    return d.customerName || d.name || '—';
   }
   function getDebtPhone(d) {
-    return d.phone || d.customerPhone || '';
+    return d.customerPhone || d.phone || '';
   }
   function getDebtInitial(d) {
     return Number(d.initialAmount ?? d.totalDebt ?? d.amount) || 0;
@@ -137,9 +168,6 @@ export async function initDebtsModule() {
     if (d.status === 'paid') return 'paid';
     return getDebtCurrent(d) <= 0 ? 'paid' : 'active';
   }
-  function getDebtDate(d) {
-    return d.date || d.timestamp || d.createdAt;
-  }
   function getDebtPayments(d) {
     return Array.isArray(d.payments) ? d.payments : [];
   }
@@ -150,7 +178,7 @@ export async function initDebtsModule() {
     return (Date.now() - created.getTime()) / 86400000 > 30;
   }
 
-  // ---------- RENDER: HERO ----------
+  // ---------- RENDER ----------
   function renderStats(list) {
     const active = list.filter((d) => getDebtStatus(d) === 'active');
     const total  = active.reduce((s, d) => s + getDebtCurrent(d), 0);
@@ -161,7 +189,6 @@ export async function initDebtsModule() {
     if (el.statOverdue) el.statOverdue.textContent = String(overdue);
   }
 
-  // ---------- RENDER: TABS ----------
   function renderTabs() {
     const all = state.all;
     const activeCount = all.filter((d) => getDebtStatus(d) === 'active').length;
@@ -174,7 +201,6 @@ export async function initDebtsModule() {
     el.tabArchive?.classList.toggle('is-active', state.tab === 'archive');
   }
 
-  // ---------- RENDER: LIST ----------
   function getVisibleList() {
     const q = state.search.trim().toLowerCase();
     const wanted = state.tab === 'active' ? 'active' : 'paid';
@@ -267,102 +293,143 @@ export async function initDebtsModule() {
     [el.addModal, el.detailModal, el.payModal, el.deleteModal].forEach((m) => closeModal(m));
   }
 
-  // ---------- VALIDATION ----------
-  const PHONE_REGEX = /^\+?[0-9\s\-()]{9,20}$/;
-  const digitsOnly = (s) => (s || '').replace(/\D/g, '');
-
-  function setFieldError(input, msg) {
-    if (!input) return;
-    const hint = document.querySelector(`.field__hint[data-for="${input.id}"]`);
-    input.classList.toggle('is-invalid', Boolean(msg));
-    if (hint) {
-      hint.textContent = msg || '';
-      hint.classList.toggle('is-error', Boolean(msg));
-    }
-  }
-
-  function validateAddForm() {
-    let ok = true;
-
-    // Name — обязательное
-    const name = el.fName.value.trim();
-    if (!name) { setFieldError(el.fName, 'Введите имя клиента'); ok = false; }
-    else if (name.length < 2) { setFieldError(el.fName, 'Имя слишком короткое'); ok = false; }
-    else setFieldError(el.fName, '');
-
-    // ✅ PHONE — СТРОГО ОБЯЗАТЕЛЬНО
-    const phone = el.fPhone.value.trim();
-    if (!phone) { setFieldError(el.fPhone, 'Введите номер телефона (обязательно)'); ok = false; }
-    else if (!PHONE_REGEX.test(phone) || digitsOnly(phone).length < 9) {
-      setFieldError(el.fPhone, 'Некорректный номер. Пример: +996 700 123 456'); ok = false;
-    } else setFieldError(el.fPhone, '');
-
-    // Amount
-    const amountRaw = el.fAmount.value.trim();
-    const amountNum = Number(amountRaw);
-    if (!amountRaw) { setFieldError(el.fAmount, 'Введите сумму долга'); ok = false; }
-    else if (!Number.isFinite(amountNum) || amountNum <= 0) {
-      setFieldError(el.fAmount, 'Сумма должна быть больше нуля'); ok = false;
-    } else setFieldError(el.fAmount, '');
-
-    return ok;
-  }
-
-  // ---------- ADD ----------
+  // =========================================================
+  // МОДАЛКА ДОБАВЛЕНИЯ — ОТКРЫТИЕ / ОТМЕНА / ОТПРАВКА
+  // =========================================================
   function openAddModal() {
     closeAllModals();
-    el.addForm?.reset();
-    [el.fName, el.fPhone, el.fAmount, el.fNote].forEach((i) => {
-      if (i) { i.classList.remove('is-invalid'); }
+
+    // Полная очистка полей
+    const form = document.getElementById('addForm');
+    if (form) form.reset();
+
+    ['fName', 'debtor-phone', 'fAmount', 'fNote'].forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) input.value = '';
     });
-    document.querySelectorAll('#addModal .field__hint').forEach((h) => {
-      if (h.dataset.for === 'fPhone') h.textContent = 'На этот номер отправим напоминание в WhatsApp.';
-      else h.textContent = '';
-      h.classList.remove('is-error');
-    });
+
+    clearFormErrors();
+
     openModal(el.addModal);
-    setTimeout(() => el.fName?.focus(), 250);
+    setTimeout(() => el.fName && el.fName.focus(), 250);
   }
 
-  async function submitAdd(e) {
-    e.preventDefault();
-    if (!validateAddForm()) return;
+  function cancelAdd() {
+    // Очистка полей
+    const form = document.getElementById('addForm');
+    if (form) form.reset();
 
-    const name = el.fName.value.trim();
-    const phone = el.fPhone.value.trim();
-    const amount = Number(el.fAmount.value);
-    const note = el.fNote?.value.trim() || '';
+    ['fName', 'debtor-phone', 'fAmount', 'fNote'].forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) input.value = '';
+    });
+
+    clearFormErrors();
+    closeModal(el.addModal);
+  }
+
+  async function submitAdd(event) {
+    // 🚀 ВСЕГДА предотвращаем нативное поведение
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Сброс предыдущих ошибок
+    clearFormErrors();
+
+    let hasError = false;
+
+    // ---------- Имя ----------
+    const name = (el.fName?.value || '').trim();
+    if (!name) {
+      setFieldError(el.fName, 'Введите имя клиента');
+      hasError = true;
+    } else if (name.length < 2) {
+      setFieldError(el.fName, 'Имя слишком короткое');
+      hasError = true;
+    }
+
+    // ---------- ТЕЛЕФОН — СТРОГО ОБЯЗАТЕЛЕН ----------
+    const phoneRaw = (el.fPhone?.value || '').trim();
+    if (!phoneRaw) {
+      setFieldError(el.fPhone, 'Введите номер телефона — без него нельзя записать долг');
+      hasError = true;
+    } else if (!PHONE_REGEX.test(phoneRaw) || digitsOnly(phoneRaw).length < 9) {
+      setFieldError(el.fPhone, 'Некорректный номер. Пример: +996 700 123 456');
+      hasError = true;
+    }
+
+    // ---------- Сумма ----------
+    const amountNum = Number(el.fAmount?.value || 0);
+    if (!el.fAmount?.value?.trim() || !Number.isFinite(amountNum) || amountNum <= 0) {
+      setFieldError(el.fAmount, 'Введите сумму больше нуля');
+      hasError = true;
+    }
+
+    // ❌ Ошибки — блокируем отправку
+    if (hasError) {
+      const firstInvalid = document.querySelector('#addForm .is-invalid');
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => firstInvalid.focus(), 200);
+      }
+      toast('Заполните все обязательные поля', true);
+      return;
+    }
+
+    // ---------- Сохранение в Firestore ----------
+    const note = (el.fNote?.value || '').trim();
     const today = new Date().toISOString().slice(0, 10);
 
     el.addSaveBtn.disabled = true;
-    const old = el.addSaveBtn.textContent;
+    const oldText = el.addSaveBtn.textContent;
     el.addSaveBtn.textContent = 'Сохраняем...';
 
     try {
-      await window.FB.addItem('debts', {
-        name,
-        phone,
-        initialAmount: amount,
-        amount,
-        date: today,
-        dueDate: '',
-        note,
-        status: 'active',
-        payments: [],
-        source: 'manual',
+      // 🚀 Единая схема + customerPhone + customerName
+      const payload = {
+        // Обязательные поля
+        customerName:  name,
+        customerPhone: phoneRaw,
+
+        // Новая схема (совместимость)
+        name:          name,
+        phone:         phoneRaw,
+        initialAmount: amountNum,
+        amount:        amountNum,
+        date:          today,
+        dueDate:       '',
+        note:          note,
+        status:        'active',
+        payments:      [],
+        source:        'manual',
+      };
+
+      await window.FB.addItem('debts', payload);
+
+      // Очистка и закрытие
+      const form = document.getElementById('addForm');
+      if (form) form.reset();
+      ['fName', 'debtor-phone', 'fAmount', 'fNote'].forEach((id) => {
+        const input = document.getElementById(id);
+        if (input) input.value = '';
       });
+      clearFormErrors();
       closeModal(el.addModal);
+
       toast(`Долг «${name}» записан`);
     } catch (err) {
-      console.error('[debts] add error:', err);
+      console.error('[debts] submitAdd failed:', err);
       setFieldError(el.fAmount, 'Не удалось сохранить. Проверьте соединение.');
+      toast('Ошибка сохранения', true);
     } finally {
       el.addSaveBtn.disabled = false;
-      el.addSaveBtn.textContent = old || 'Записать долг';
+      el.addSaveBtn.textContent = oldText || 'Записать долг';
     }
   }
 
-  // ---------- DETAIL ----------
+  // =========================================================
+  // DETAIL
+  // =========================================================
   function openDetail(id) {
     const d = state.all.find((x) => x.id === id);
     if (!d) return;
@@ -380,7 +447,6 @@ export async function initDebtsModule() {
     if (el.detailPhone) el.detailPhone.textContent = phone || '—';
     if (el.detailTotal) el.detailTotal.innerHTML = `${fmt(current)}<small>KGS</small>`;
 
-    // История платежей + изначальное «Взято»
     const payments = getDebtPayments(d);
     let historyHtml = '';
 
@@ -415,7 +481,9 @@ export async function initDebtsModule() {
     openModal(el.detailModal);
   }
 
-  // ---------- PAY ----------
+  // =========================================================
+  // PAY / TAKE
+  // =========================================================
   function openPayModal(mode) {
     const d = state.all.find((x) => x.id === state.detailId);
     if (!d) return;
@@ -437,7 +505,6 @@ export async function initDebtsModule() {
     });
     if (el.payAmount) el.payAmount.classList.remove('is-invalid');
 
-    // Quick amounts
     if (el.quickAmounts && isPay) {
       const cur = getDebtCurrent(d);
       const values = [100, 500, 1000, 2000, cur].filter((v, i, arr) => v > 0 && arr.indexOf(v) === i).slice(0, 5);
@@ -515,7 +582,9 @@ export async function initDebtsModule() {
     }
   }
 
-  // ---------- WHATSAPP ----------
+  // =========================================================
+  // WHATSAPP
+  // =========================================================
   function openWhatsApp() {
     const d = state.all.find((x) => x.id === state.detailId);
     if (!d) return;
@@ -530,7 +599,9 @@ export async function initDebtsModule() {
     window.open(url, '_blank');
   }
 
-  // ---------- DELETE ----------
+  // =========================================================
+  // DELETE
+  // =========================================================
   function openDeleteModal() {
     const d = state.all.find((x) => x.id === state.detailId);
     if (!d) return;
@@ -561,7 +632,9 @@ export async function initDebtsModule() {
     }
   }
 
-  // ---------- SUBSCRIBE (realtime, limit) ----------
+  // =========================================================
+  // SUBSCRIBE
+  // =========================================================
   function subscribeDebts() {
     if (state.unsub) { try { state.unsub(); } catch (_) {} }
 
@@ -575,9 +648,12 @@ export async function initDebtsModule() {
     });
   }
 
-  // ---------- EVENT BINDING ----------
+  // =========================================================
+  // EVENT BINDING
+  // =========================================================
   el.openAddBtn?.addEventListener('click', openAddModal);
   el.emptyAddBtn?.addEventListener('click', openAddModal);
+  el.addCancelBtn?.addEventListener('click', cancelAdd);
   el.addForm?.addEventListener('submit', submitAdd);
 
   el.searchInput?.addEventListener('input', (e) => {
@@ -592,7 +668,6 @@ export async function initDebtsModule() {
     state.tab = 'archive'; renderAll();
   });
 
-  // Делегирование: клик по карточке
   el.list?.addEventListener('click', (e) => {
     const card = e.target.closest('.debt-card');
     if (!card) return;
@@ -614,19 +689,25 @@ export async function initDebtsModule() {
     setFieldError(el.payAmount, '');
   });
 
-  // Закрытие модалок
+  // Закрытие модалок по крестику/фону
   document.addEventListener('click', (e) => {
     if (e.target.matches('[data-close]')) {
-      const m = e.target.closest('.modal');
-      if (m) closeModal(m);
+      const modal = e.target.closest('.modal');
+      if (modal && modal.id === 'addModal') {
+        cancelAdd();
+      } else if (modal) {
+        closeModal(modal);
+      }
     }
   });
+
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    closeAllModals();
+    if (el.addModal && !el.addModal.hidden) cancelAdd();
+    else closeAllModals();
   });
 
-  // Live-валидация
+  // Live-валидация — убираем ошибку при вводе
   [el.fName, el.fPhone, el.fAmount].forEach((i) => {
     i?.addEventListener('input', () => {
       if (i.classList.contains('is-invalid')) setFieldError(i, '');
@@ -640,7 +721,7 @@ export async function initDebtsModule() {
   renderAll();
   subscribeDebts();
 
-  console.log('🟢 Модуль «Несие» v3.0 инициализирован · biz:', businessId);
+  console.log('🟢 Модуль «Несие» v10.6 · телефон обязателен · biz:', businessId);
 }
 
 // =========================================================
