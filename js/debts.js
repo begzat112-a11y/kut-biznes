@@ -1,19 +1,7 @@
 /* =========================================================================
    debts.js — МОНОЛИТНЫЙ МОДУЛЬ «НЕСИЕ (ДОЛГИ)»
-   Путь Firestore: businesses/{businessId}/debts/{debtId}
+   Использует window.FB (firebase-config.js) — путь businesses/{bizId}/debts
    ========================================================================= */
-
-import { db, auth } from './firebase-config.js';
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  serverTimestamp,
-  getDocs,
-  where
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* ================= 1. HTML ================= */
 const DEBTS_HTML = `
@@ -254,48 +242,16 @@ const escapeHTML = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-/* ================= 5. ПОИСК businessId ================= */
-let _cachedBusinessId = null;
-
-async function resolveBusinessId() {
-  if (_cachedBusinessId) return _cachedBusinessId;
-
-  // 1. Пытаемся взять из localStorage (если приложение где-то его сохраняет)
-  const keys = ['businessId', 'bizId', 'currentBusinessId', 'kut_businessId'];
-  for (const k of keys) {
-    const v = localStorage.getItem(k);
-    if (v) {
-      _cachedBusinessId = v;
-      console.log('🟢 businessId из localStorage[' + k + ']:', v);
-      return v;
-    }
-  }
-
-  // 2. Ищем бизнес по ownerUid текущего пользователя
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error('Пользователь не авторизован. Сначала войдите в систему.');
-  }
-
-  const bizQ = query(
-    collection(db, 'businesses'),
-    where('ownerUid', '==', user.uid)
-  );
-  const snap = await getDocs(bizQ);
-
-  if (snap.empty) {
-    throw new Error('Не найден бизнес для пользователя ' + user.uid);
-  }
-
-  const bizDoc = snap.docs[0];
-  _cachedBusinessId = bizDoc.id;
-  localStorage.setItem('businessId', bizDoc.id);
-  console.log('🟢 businessId найден по ownerUid:', bizDoc.id);
-  return bizDoc.id;
-}
-
-/* ================= 6. ИНИЦИАЛИЗАЦИЯ ================= */
+/* ================= 5. ИНИЦИАЛИЗАЦИЯ ================= */
 export async function initDebtsModule() {
+  // Ждём, пока firebase-config отдаст пользователя и профиль
+  if (!window.FB) {
+    console.error('❌ window.FB не найден. Проверь, что firebase-config.js загружен раньше debts.js');
+    return;
+  }
+
+  const { user, profile } = await window.FB.waitForAuth();
+
   injectDebtsStyles();
   injectDebtsHTML();
 
@@ -310,21 +266,25 @@ export async function initDebtsModule() {
   const totalEl     = document.getElementById('debtsTotal');
   const listEl      = document.getElementById('debtsList');
 
-  /* ---------- Получаем businessId ---------- */
-  let businessId;
-  try {
-    businessId = await resolveBusinessId();
-  } catch (err) {
-    console.error('❌ Не удалось определить businessId:', err);
+  // Проверка авторизации
+  if (!user || !profile) {
     listEl.innerHTML = `<div class="debts-empty">
-      ${escapeHTML(err.message)}<br>
-      Войдите в систему заново.
+      Вы не авторизованы.<br>
+      <a href="./login.html" style="color:var(--pine-accent)">Войти в систему</a>
     </div>`;
     openBtn.disabled = true;
     return;
   }
 
-  const debtsCollection = collection(db, 'businesses', businessId, 'debts');
+  const businessId = window.FB.getBusinessId();
+  if (!businessId) {
+    listEl.innerHTML = `<div class="debts-empty">
+      У вашего профиля нет привязки к бизнесу.<br>
+      Обратитесь к администратору.
+    </div>`;
+    openBtn.disabled = true;
+    return;
+  }
 
   /* ---------- ОШИБКИ ПОЛЕЙ ---------- */
   function setFieldError(input, message) {
@@ -410,16 +370,17 @@ export async function initDebtsModule() {
     if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
   });
 
-  /* ---------- СОХРАНЕНИЕ ---------- */
+  /* ---------- СОХРАНЕНИЕ (через FB.addItem) ---------- */
   async function addNewDebt(name, phone, amount) {
     const payload = {
       customerName:  String(name).trim(),
       customerPhone: String(phone).trim(),
       totalDebt:     Number(amount),
-      timestamp:     serverTimestamp()
+      timestamp:     window.FB.serverTimestamp()
     };
-    const docRef = await addDoc(debtsCollection, payload);
-    return docRef.id;
+    // FB.addItem сам пишет в businesses/{bizId}/debts
+    const ref = await window.FB.addItem('debts', payload);
+    return ref.id;
   }
 
   form.addEventListener('submit', async (e) => {
@@ -441,7 +402,7 @@ export async function initDebtsModule() {
       resetForm();
       closeModal();
     } catch (err) {
-      console.error('❌ Ошибка:', err);
+      console.error('❌ Ошибка сохранения:', err);
       setFieldError(amountInput, 'Не удалось сохранить. Проверьте соединение.');
       confirmBtn.disabled = false;
       confirmBtn.textContent = 'Подтвердить';
@@ -455,54 +416,57 @@ export async function initDebtsModule() {
     card.dataset.id = id;
     card.innerHTML = `
       <div class="debt-card__main">
-        <div class="debt-card__name">${escapeHTML(data.customerName || 'Без имени')}</div>
-        <div class="debt-card__phone">${escapeHTML(data.customerPhone || '')}</div>
+        <div class="debt-card__name">${escapeHTML(data.customerName || data.name || 'Без имени')}</div>
+        <div class="debt-card__phone">${escapeHTML(data.customerPhone || data.phone || '')}</div>
       </div>
-      <div class="debt-card__amount">${formatKGS(data.totalDebt)}</div>
+      <div class="debts-card__amount debt-card__amount">${formatKGS(data.totalDebt ?? data.amount)}</div>
     `;
     return card;
   }
 
-  /* ---------- СЛУШАЕМ КОЛЛЕКЦИЮ ---------- */
+  /* ---------- СОРТИРОВКА ПО timestamp/createdAt (клиентская) ---------- */
+  function tsOf(data) {
+    const t = data.timestamp || data.createdAt;
+    if (!t) return 0;
+    if (typeof t.toDate === 'function') return t.toDate().getTime();
+    if (t.seconds) return t.seconds * 1000;
+    const d = new Date(t);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  /* ---------- ПОДПИСКА (через FB.subscribeCollection) ---------- */
   function loadDebts() {
-    const q = query(debtsCollection, orderBy('timestamp', 'desc'));
-    onSnapshot(q,
-      (snapshot) => {
-        let total = 0;
-        const cards = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          total += Number(data.totalDebt) || 0;
-          cards.push(renderDebtCard(docSnap.id, data));
-        });
-        totalEl.textContent = formatKGS(total);
-        listEl.innerHTML = '';
-        if (cards.length === 0) {
-          const empty = document.createElement('div');
-          empty.className = 'debts-empty';
-          empty.textContent = 'Пока нет должников';
-          listEl.appendChild(empty);
-        } else {
-          const frag = document.createDocumentFragment();
-          cards.forEach((c) => frag.appendChild(c));
-          listEl.appendChild(frag);
-        }
-      },
-      (err) => {
-        console.error('❌ onSnapshot:', err);
-        listEl.innerHTML = `<div class="debts-empty">
-          Не удалось загрузить список.<br>
-          ${escapeHTML(err.message || '')}
-        </div>`;
+    // FB.subscribeCollection сам слушает businesses/{bizId}/debts
+    window.FB.subscribeCollection('debts', (items) => {
+      // items = [{ id, ...data }, ...]
+      items.sort((a, b) => tsOf(b) - tsOf(a));
+
+      let total = 0;
+      items.forEach((it) => {
+        total += Number(it.totalDebt ?? it.amount) || 0;
+      });
+
+      totalEl.textContent = formatKGS(total);
+      listEl.innerHTML = '';
+
+      if (items.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'debts-empty';
+        empty.textContent = 'Пока нет должников';
+        listEl.appendChild(empty);
+      } else {
+        const frag = document.createDocumentFragment();
+        items.forEach((it) => frag.appendChild(renderDebtCard(it.id, it)));
+        listEl.appendChild(frag);
       }
-    );
+    });
   }
 
   loadDebts();
   console.log('🟢 Модуль «Несие (Долги)» инициализирован. businessId =', businessId);
 }
 
-/* ================= 7. АВТОЗАПУСК ================= */
+/* ================= 6. АВТОЗАПУСК ================= */
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     initDebtsModule().catch((e) => console.error(e));
