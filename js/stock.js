@@ -1,11 +1,16 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · v10.0
+   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · v11.0 «Square»
    
    + Пагинация через subscribePage (не жрёт память)
    + Складской журнал (warehouse_logs) — автотриггеры при +/−
    + Своя категория через «Другое»
    + Категории подтягиваются из существующих товаров
    + Универсальный сканер через window.KUTScanner
+
+   🆕 v11.0 SQUARE:
+   • Автопоиск существующего товара по штрихкоду
+   • Если найден — переключение в режим редактирования
+   • Firestore lookup как fallback
    ========================================================= */
 
 (function () {
@@ -184,17 +189,72 @@
 
   // =========================================================
   // 🚀 СКАНЕР ШТРИХКОДА — через универсальный KUTScanner
+  // 🆕 Автопоиск существующего товара по штрихкоду
   // =========================================================
+  function calcMargin(costRaw, saleRaw) {
+    const cost = Number(costRaw) || 0;
+    const sale = Number(saleRaw) || 0;
+    const margin = Number((sale - cost).toFixed(2));
+    const markupPct = cost > 0 ? Number((((sale - cost) / cost) * 100).toFixed(1)) : 0;
+    return { margin, markupPct };
+  }
+
   async function openScanner() {
-    if (window.KUTScanner && typeof window.KUTScanner.open === 'function') {
-      window.KUTScanner.open((code) => {
-        if (el.fBarcode) el.fBarcode.value = code;
-        if (navigator.vibrate) navigator.vibrate(80);
-        showToast('Штрихкод считан: ' + code);
-      });
+    if (!window.KUTScanner || typeof window.KUTScanner.open !== 'function') {
+      showToast('Сканер ещё загружается. Обновите страницу.', true);
       return;
     }
-    showToast('Сканер ещё загружается. Обновите страницу.', true);
+
+    window.KUTScanner.open(async (code) => {
+      const trimmed = String(code || '').trim();
+      if (!trimmed) return;
+
+      // Пишем код в поле
+      if (el.fBarcode) el.fBarcode.value = trimmed;
+      if (navigator.vibrate) navigator.vibrate(80);
+
+      // 🆕 Ищем товар с таким штрихкодом
+      const st = window.KUT?.getState?.();
+      let existing = (st?.products || []).find(
+        (p) => String(p.barcode) === trimmed
+      );
+
+      // 🆕 Если не нашли локально — Firestore lookup
+      if (!existing && window.FB?.db) {
+        const bizId = st?.businessId || window.FB?.getBusinessId?.();
+        if (bizId) {
+          try {
+            const { db, collection, query, where, limit, getDocs } = window.FB;
+            const snap = await getDocs(query(
+              collection(db, 'businesses', bizId, 'products'),
+              where('barcode', '==', trimmed),
+              limit(1)
+            ));
+            if (!snap.empty) {
+              const docSnap = snap.docs[0];
+              existing = { id: docSnap.id, ...docSnap.data() };
+              console.log('[stock] ✓ Товар найден в Firestore:', existing.name);
+            }
+          } catch (err) {
+            console.warn('[stock] barcode lookup failed:', err);
+          }
+        }
+      }
+
+      // 🆕 Найден — переключаемся в режим редактирования
+      if (existing) {
+        closeModal(el.productModal);
+        setTimeout(() => {
+          openEditModal(existing.id);
+          showToast(`Товар «${existing.name}» найден — редактирование`);
+        }, 220);
+        return;
+      }
+
+      // 🆕 Не найден — остаёмся в форме создания
+      showToast(`Штрихкод ${trimmed} добавлен в форму`);
+      if (el.fBarcode) el.fBarcode.focus();
+    });
   }
 
   // =========================================================
@@ -262,7 +322,8 @@
       const cost = Number(p.costPrice) || 0;
       const sale = Number(p.salePrice) || 0;
       const profit = sale - cost;
-      const profitLabel = `${profit > 0 ? '+' : ''}${fmt(profit)} KGS`;
+      const markupPct = cost > 0 ? Math.round((profit / cost) * 100) : 0;
+      const profitLabel = `${profit > 0 ? '+' : ''}${fmt(profit)} KGS · ${markupPct}%`;
       const barcode = p.barcode ? escapeHtml(p.barcode) : '—';
       const editActions = state.canEdit ? `
         <button class="icon-btn" type="button" data-act="edit" title="Редактировать">✏️</button>
@@ -458,6 +519,7 @@
       qty: Number(el.fQty.value) || 0,
       costPrice: Number(el.fCost.value) || 0,
       salePrice: Number(el.fSale.value) || 0,
+      ...calcMargin(el.fCost.value, el.fSale.value),
       barcode,
     };
 
@@ -704,7 +766,7 @@
     });
 
     bindEvents();
-    console.info('[stock] Склад v10 подключён · роль:', role, '· canEdit:', state.canEdit);
+    console.info('[stock] Склад v11.0 SQUARE · роль:', role, '· canEdit:', state.canEdit);
   }
 
   if (document.readyState === 'loading') {
