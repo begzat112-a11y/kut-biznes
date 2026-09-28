@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Core v14 «Google + Telegram (client)»
+   КУТ: БИЗНЕС — Firebase Core v14.1 «Google + Telegram (client)»
    
    • Вход: Google (popup/redirect) + Telegram (без Cloud Functions)
    • Telegram: производный пароль от Telegram ID → Email/Password Auth
@@ -342,10 +342,6 @@ async function signInWithGoogle() {
 /* =========================================================
    TELEGRAM AUTH (клиентская версия)
    ========================================================= */
-
-/**
- * SHA-256 от строки — возвращает hex.
- */
 async function sha256Hex(input) {
   const buf = new TextEncoder().encode(input);
   const hash = await crypto.subtle.digest('SHA-256', buf);
@@ -354,25 +350,14 @@ async function sha256Hex(input) {
     .join('');
 }
 
-/**
- * Производный пароль от Telegram ID + секрет.
- * Стабилен: один и тот же Telegram ID всегда даёт один пароль.
- */
 async function deriveTgPassword(telegramId) {
   return sha256Hex(`${telegramId}_${TG_SALT}_KUT`);
 }
 
-/**
- * Производный email от Telegram ID.
- * Firebase требует уникальный email — берём фиктивный домен.
- */
 function deriveTgEmail(telegramId) {
   return `tg_${telegramId}@kut-biznes.app`;
 }
 
-/**
- * Вход через Telegram (виджет onTelegramAuth)
- */
 async function signInWithTelegram(tgUser) {
   if (!tgUser || !tgUser.id) {
     const err = new Error('Некорректные данные Telegram');
@@ -380,7 +365,6 @@ async function signInWithTelegram(tgUser) {
     throw err;
   }
 
-  // Свежесть: не старше 24 часов
   const now = Math.floor(Date.now() / 1000);
   const authTs = Number(tgUser.auth_date) || 0;
   if (authTs && Math.abs(now - authTs) > 86400) {
@@ -406,12 +390,10 @@ async function signInWithTelegram(tgUser) {
     photoURL: tgUser.photo_url || '',
   };
 
-  // 1. Пробуем войти
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     return await finishSignIn(cred.user, extra);
   } catch (e) {
-    // 2. Если не найден или неверный пароль — создаём
     if (
       e.code === 'auth/user-not-found' ||
       e.code === 'auth/invalid-credential' ||
@@ -774,5 +756,5 @@ export {
   query, where, orderBy, limit, startAfter, serverTimestamp, onSnapshot,
   writeBatch, collectionGroup,
   normalizePhone, toDate,
-  TELEGRAM_BOT_NAME,
+  // TELEGRAM_BOT_NAME уже экспортирован выше через `export const` — здесь НЕ дублируем!
 };
