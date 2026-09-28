@@ -1,11 +1,14 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Core v13 «Google + Telegram»
+   КУТ: БИЗНЕС — Firebase Core v14 «Google + Telegram (client)»
    
-   • Вход: Google (popup/redirect) + Telegram (Cloud Function)
-   • Первый вход через Google: автосоздание бизнеса (businessId = uid)
-   • Первый вход через Telegram: CF сам создаёт user + business
+   • Вход: Google (popup/redirect) + Telegram (без Cloud Functions)
+   • Telegram: производный пароль от Telegram ID → Email/Password Auth
+   • Первый вход: автосоздание бизнеса (businessId = uid)
    • Firestore: persistentLocalCache + multi-tab
    • Все подписки onSnapshot учитываются и снимаются
+   
+   ⚠️ ВАЖНО: для Telegram-входа включи в Firebase Console:
+      Authentication → Sign-in method → Email/Password → Enable
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -17,6 +20,8 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signInWithCustomToken,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import {
@@ -54,12 +59,15 @@ const firebaseConfig = {
   measurementId:     'G-VTZ49G265B',
 };
 
-/* ---------- TELEGRAM CLOUD FUNCTION URL ---------- */
-export const TELEGRAM_CF_URL =
-  'https://us-central1-kut-biznes.cloudfunctions.net/telegramAuth';
-
 /* ---------- TELEGRAM BOT NAME (без @) ---------- */
 export const TELEGRAM_BOT_NAME = 'NexusBizIDBot';
+
+/* ---------- TELEGRAM SALT ----------
+   Секрет для производного пароля.
+   ⚠️ НЕ меняй после релиза — иначе существующие
+      Telegram-пользователи не смогут войти.
+   ------------------------------------ */
+const TG_SALT = 'KUT_BIZ_2026_a7f3e9c2d4b8_x9K3_pL8q_R2f';
 
 /* ---------- INIT ---------- */
 const app  = initializeApp(firebaseConfig);
@@ -220,7 +228,7 @@ async function enablePersistence() {
 }
 
 /* =========================================================
-   GOOGLE AUTH
+   ОБЩАЯ ЛОГИКА ПРОФИЛЯ
    ========================================================= */
 async function fetchProfile(uid) {
   try {
@@ -232,47 +240,65 @@ async function fetchProfile(uid) {
   }
 }
 
-async function ensureCompany(user) {
+async function ensureCompany(user, extra) {
   const uid = user.uid;
   let profile = await fetchProfile(uid);
   if (profile) return profile;
 
   const batch = writeBatch(db);
-  const name = user.displayName || (user.email ? user.email.split('@')[0] : 'Владелец');
+  const provider = extra?.provider || 'google';
+  const displayName = extra?.displayName
+    || user.displayName
+    || (user.email ? user.email.split('@')[0] : 'Владелец');
+  const photoURL = extra?.photoURL || user.photoURL || '';
 
-  batch.set(doc(db, 'users', uid), {
+  const userDoc = {
     uid,
     email: user.email || '',
-    displayName: user.displayName || '',
-    photoURL: user.photoURL || '',
+    displayName,
+    photoURL,
     phone: '',
     role: 'owner',
     businessId: uid,
     businessIds: [uid],
     active: true,
-    authProvider: 'google',
+    authProvider: provider,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  if (extra?.telegramId) {
+    userDoc.telegramId = String(extra.telegramId);
+    userDoc.telegramUsername = extra.telegramUsername || '';
+  }
+
+  batch.set(doc(db, 'users', uid), userDoc);
+
   batch.set(doc(db, 'businesses', uid), {
-    name: 'Компания · ' + name,
+    name: 'Компания · ' + displayName,
     ownerUid: uid,
     ownerEmail: user.email || '',
     status: 'active',
     active: true,
     createdAt: serverTimestamp(),
   });
+
   await batch.commit();
 
   profile = await fetchProfile(uid);
   return profile || {
-    uid, role: 'owner', businessId: uid, businessIds: [uid], active: true,
-    email: user.email || '', displayName: user.displayName || '',
+    uid,
+    role: 'owner',
+    businessId: uid,
+    businessIds: [uid],
+    active: true,
+    email: user.email || '',
+    displayName,
   };
 }
 
-async function finishSignIn(user) {
-  const profile = await ensureCompany(user);
+async function finishSignIn(user, extra) {
+  const profile = await ensureCompany(user, extra);
   if (profile.active === false) {
     await signOut(auth);
     const err = new Error('ACCOUNT_DISABLED');
@@ -285,6 +311,9 @@ async function finishSignIn(user) {
   return { user, profile };
 }
 
+/* =========================================================
+   GOOGLE AUTH
+   ========================================================= */
 function makeProvider() {
   const p = new GoogleAuthProvider();
   p.setCustomParameters({ prompt: 'select_account' });
@@ -295,7 +324,7 @@ async function signInWithGoogle() {
   const provider = makeProvider();
   try {
     const cred = await signInWithPopup(auth, provider);
-    return await finishSignIn(cred.user);
+    return await finishSignIn(cred.user, { provider: 'google' });
   } catch (err) {
     const fallback = [
       'auth/popup-blocked',
@@ -311,50 +340,108 @@ async function signInWithGoogle() {
 }
 
 /* =========================================================
-   TELEGRAM AUTH (через Cloud Function)
+   TELEGRAM AUTH (клиентская версия)
    ========================================================= */
 
+/**
+ * SHA-256 от строки — возвращает hex.
+ */
+async function sha256Hex(input) {
+  const buf = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Производный пароль от Telegram ID + секрет.
+ * Стабилен: один и тот же Telegram ID всегда даёт один пароль.
+ */
+async function deriveTgPassword(telegramId) {
+  return sha256Hex(`${telegramId}_${TG_SALT}_KUT`);
+}
+
+/**
+ * Производный email от Telegram ID.
+ * Firebase требует уникальный email — берём фиктивный домен.
+ */
+function deriveTgEmail(telegramId) {
+  return `tg_${telegramId}@kut-biznes.app`;
+}
+
+/**
+ * Вход через Telegram (виджет onTelegramAuth)
+ */
 async function signInWithTelegram(tgUser) {
-  if (!tgUser || !tgUser.id || !tgUser.hash) {
+  if (!tgUser || !tgUser.id) {
     const err = new Error('Некорректные данные Telegram');
     err.code = 'telegram/bad_data';
     throw err;
   }
 
-  // 1. Отправляем в CF
-  const res = await fetch(TELEGRAM_CF_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(tgUser),
-  });
-
-  if (!res.ok) {
-    let payload = null;
-    try { payload = await res.json(); } catch (_) {}
-    const code = payload?.error || 'telegram/cf_error';
-    const err = new Error('Telegram auth failed: ' + code);
-    err.code = code;
+  // Свежесть: не старше 24 часов
+  const now = Math.floor(Date.now() / 1000);
+  const authTs = Number(tgUser.auth_date) || 0;
+  if (authTs && Math.abs(now - authTs) > 86400) {
+    const err = new Error('Данные Telegram устарели');
+    err.code = 'telegram/expired';
     throw err;
   }
 
-  const { token } = await res.json();
-  if (!token) {
-    const err = new Error('CF не вернула custom token');
-    err.code = 'telegram/no_token';
-    throw err;
-  }
+  const telegramId = String(tgUser.id);
+  const email = deriveTgEmail(telegramId);
+  const password = await deriveTgPassword(telegramId);
 
-  // 2. Логинимся в Firebase
-  const cred = await signInWithCustomToken(auth, token);
-  return await finishSignIn(cred.user);
+  const displayName =
+    [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') ||
+    tgUser.username ||
+    'Пользователь Telegram';
+
+  const extra = {
+    provider: 'telegram',
+    telegramId,
+    telegramUsername: tgUser.username || '',
+    displayName,
+    photoURL: tgUser.photo_url || '',
+  };
+
+  // 1. Пробуем войти
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    return await finishSignIn(cred.user, extra);
+  } catch (e) {
+    // 2. Если не найден или неверный пароль — создаём
+    if (
+      e.code === 'auth/user-not-found' ||
+      e.code === 'auth/invalid-credential' ||
+      e.code === 'auth/invalid-login-credentials'
+    ) {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        return await finishSignIn(cred.user, extra);
+      } catch (createErr) {
+        // Если email уже занят — значит, что-то не так с паролем
+        if (createErr.code === 'auth/email-already-in-use') {
+          const err = new Error('Аккаунт уже существует, но пароль не подошёл');
+          err.code = 'telegram/password_mismatch';
+          throw err;
+        }
+        throw createErr;
+      }
+    }
+    throw e;
+  }
 }
 
 /* =========================================================
-   REDIRECT / LOGOUT
+   REDIRECT / LOGOUT / WAIT
    ========================================================= */
 async function handleRedirectResult() {
   const cred = await getRedirectResult(auth);
-  return cred && cred.user ? finishSignIn(cred.user) : null;
+  return cred && cred.user
+    ? finishSignIn(cred.user, { provider: 'google' })
+    : null;
 }
 
 function waitForAuth() {
@@ -669,7 +756,7 @@ window.FB = {
 
   normalizePhone, toDate,
 
-  TELEGRAM_CF_URL, TELEGRAM_BOT_NAME,
+  TELEGRAM_BOT_NAME,
 };
 
 export {
@@ -688,5 +775,5 @@ export {
   query, where, orderBy, limit, startAfter, serverTimestamp, onSnapshot,
   writeBatch, collectionGroup,
   normalizePhone, toDate,
-  TELEGRAM_CF_URL, TELEGRAM_BOT_NAME,
+  TELEGRAM_BOT_NAME,
 };
