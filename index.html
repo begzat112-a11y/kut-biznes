@@ -2,422 +2,283 @@
 <html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0F172A">
-  <title>Главная — КУТ: БИЗНЕС</title>
+  <title>Вход — КУТ: БИЗНЕС</title>
 
   <script>
-    (function () {
-      try {
-        var t = localStorage.getItem('kut_theme');
-        if (t !== 'light' && t !== 'dark') {
-          t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
-        }
-        document.documentElement.setAttribute('data-theme', t);
-      } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
-    })();
+    try {
+      var t = localStorage.getItem('kut_theme');
+      if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
   </script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/theme.css">
-
   <style>
-    :root { --sidebar-w: 260px; }
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; overflow-x: hidden; max-width: 100%; width: 100%; }
+    body { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
+    .login {
+      width: 100%;
+      max-width: 420px;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .login__logo {
+      width: 72px; height: 72px;
+      margin: 0 auto 16px;
+      border-radius: 20px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #fff; font-size: 32px; font-weight: 800;
+      box-shadow: 0 12px 32px rgba(16,185,129,.35);
+    }
+    .login h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
+    .login p { margin: 0 0 28px; color: var(--text-muted); font-size: 14px; line-height: 1.5; }
 
-    .layout { display: grid; grid-template-columns: 1fr; min-height: 100dvh; width: 100%; max-width: 100%; }
-    .layout > div { min-width: 0; max-width: 100%; overflow-x: hidden; }
-    @media (min-width: 1000px) { .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); } }
+    .auth-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 54px;
+      padding: 0 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-2);
+      color: var(--text);
+      font: 600 15px/1 inherit;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform .1s, opacity .2s, background .18s;
+      text-decoration: none;
+    }
+    .auth-btn:active { transform: scale(.98); }
+    .auth-btn:disabled { opacity: .55; cursor: progress; }
+    .auth-btn + .auth-btn { margin-top: 12px; }
 
-    .sidebar { padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; position: fixed; top: 0; left: 0; bottom: 0; width: 82%; max-width: 320px; z-index: 90; transform: translateX(-105%); transition: transform .28s cubic-bezier(.2,.8,.2,1); overflow-y: auto; background: linear-gradient(180deg, #0C251C 0%, #08180F 100%); border-right: 1px solid rgba(255,255,255,.09); box-shadow: 20px 0 60px rgba(0,0,0,.30); color: #EDF5F1; }
-    .sidebar.is-open { transform: translateX(0); }
-    @media (min-width: 1000px) { .sidebar { transform: none; width: var(--sidebar-w); max-width: none; position: sticky; top: 0; height: 100dvh; } }
+    .auth-btn--google {
+      background: #FFFFFF;
+      color: #1F2937;
+      border-color: #E5E7EB;
+    }
+    [data-theme="dark"] .auth-btn--google {
+      background: #1E293B;
+      color: #F1F5F9;
+      border-color: rgba(255,255,255,.10);
+    }
 
-    .sidebar__brand-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 8px; padding: 6px 6px 14px; border-bottom: 1px solid rgba(255,255,255,.10); min-width: 0; }
-    .sidebar__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #EDF5F1; flex: 1; min-width: 0; }
-    .brand__mark { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex-shrink: 0; box-shadow: 0 6px 16px rgba(212,175,55,.35); }
-    .brand__text strong { display: block; font-size: 15px; color: #EDF5F1; }
-    .brand__text small { display: block; font-size: 11px; color: rgba(237,245,241,.5); margin-top: 2px; }
+    .auth-btn--telegram {
+      background: linear-gradient(135deg, #229ED9, #1C8DC2);
+      color: #FFFFFF;
+      border-color: transparent;
+      box-shadow: 0 8px 24px rgba(34,158,217,.35);
+    }
+    [data-theme="dark"] .auth-btn--telegram {
+      background: linear-gradient(135deg, #229ED9, #1C8DC2);
+    }
 
-    .sidebar__nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-    .nav-link { display: flex; align-items: center; gap: 12px; padding: 14px; min-height: 48px; border-radius: 12px; text-decoration: none; font-size: 15px; font-weight: 500; color: rgba(237,245,241,.78); }
-    .nav-link:hover, .nav-link.active { background: rgba(255,255,255,.08); color: #fff; }
-    .nav-link.active { box-shadow: inset 3px 0 0 #D4AF37; background: linear-gradient(90deg, rgba(212,175,55,.14), rgba(212,175,55,.02)); }
-    .nav-link__icon { width: 26px; display: grid; place-items: center; font-size: 18px; }
-    .nav-link__badge { margin-left: auto; background: #FF5C5C; color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
-    .sidebar__cta { margin-top: auto; padding: 14px 16px; border-radius: 16px; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; box-shadow: 0 10px 26px rgba(212,175,55,.35); }
-    .sidebar__cta__icon { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(0,0,0,.12); border-radius: 12px; font-size: 20px; flex-shrink: 0; }
-    .sidebar__cta__text strong { display: block; font-size: 14px; }
-    .sidebar__cta__text small { display: block; font-size: 11px; opacity: .75; margin-top: 2px; }
-    .sidebar__footer { color: rgba(237,245,241,.35); font-size: 11px; text-align: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.06); }
+    .auth-btn__icon { width: 22px; height: 22px; flex-shrink: 0; }
 
-    .overlay { position: fixed; inset: 0; background: rgba(4,12,9,.65); backdrop-filter: blur(6px); z-index: 80; opacity: 0; pointer-events: none; transition: opacity .22s ease; }
-    .overlay.is-open { opacity: 1; pointer-events: auto; }
-    @media (min-width: 1000px) { .overlay { display: none; } }
+    .login__divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+    }
+    .login__divider::before,
+    .login__divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border-strong);
+      opacity: .5;
+    }
 
-    .mobile-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; position: sticky; top: 0; z-index: 40; width: 100%; background: rgba(10,31,24,.78); backdrop-filter: blur(22px) saturate(140%); border-bottom: 1px solid rgba(255,255,255,.09); color: #EDF5F1; }
-    .burger { width: 48px; height: 48px; display: grid; place-items: center; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); color: inherit; border-radius: 12px; font-size: 22px; cursor: pointer; flex-shrink: 0; }
-    .mobile-bar__title { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; color: inherit; text-align: center; }
-    .net-pill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(52,211,153,.16); border: 1px solid rgba(52,211,153,.32); color: #34D399; flex-shrink: 0; }
-    .net-pill__dot { width: 7px; height: 7px; border-radius: 50%; background: #34D399; }
-    .net-pill.is-offline { background: rgba(255,92,92,.16); border-color: rgba(255,92,92,.42); color: #FF5C5C; }
-    .net-pill.is-offline .net-pill__dot { background: #FF5C5C; }
+    .login__err {
+      margin-top: 20px;
+      min-height: 20px;
+      color: var(--debt);
+      font-size: 13px;
+      line-height: 1.4;
+    }
 
-    .main-content { min-width: 0; max-width: 100%; overflow-x: hidden; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
-    @media (min-width: 1000px) { .main-content { padding: 26px 32px 34px; gap: 22px; } }
-    @media (max-width: 999px) { body.page-home .main-content { padding-bottom: calc(180px + env(safe-area-inset-bottom)); } }
+    .login__foot {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .login__foot a { color: var(--accent); text-decoration: none; }
 
-    .page-head { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; min-width: 0; }
-    @media (min-width: 720px) { .page-head { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; } }
-    .page-head h1 { margin: 0; font-size: clamp(20px, 5vw, 24px); font-weight: 800; color: inherit; }
-    .page-head p { margin: 4px 0 0; font-size: 14px; color: var(--v9-text-2); }
-    .role-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; width: fit-content; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: var(--v9-text-2); }
-
-    .period-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-    .period-chips::-webkit-scrollbar { display: none; }
-    .period-chip { flex-shrink: 0; min-height: 48px; padding: 12px 18px; border-radius: 999px; border: 1px solid var(--kut-border); background: var(--kut-surface); color: var(--kut-text-2); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap; transition: background .18s ease, color .18s ease, transform .12s ease; }
-    .period-chip:active { transform: scale(.96); }
-
-    .analytics { background: radial-gradient(600px 260px at 15% 0%, rgba(212,175,55,.12), transparent 60%), linear-gradient(150deg, #0F2C22 0%, #071410 100%); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 22px; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42); padding: 20px; position: relative; overflow: hidden; color: #FFFFFF; }
-    .analytics__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; position: relative; z-index: 1; }
-    .analytics__title { margin: 0; font-size: 13px; font-weight: 800; text-transform: uppercase; color: #F0D772; letter-spacing: .5px; }
-    .analytics__period { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.65); white-space: nowrap; }
-
-    .revenue-hero { padding: 16px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); margin-bottom: 12px; }
-    .revenue-hero__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: rgba(255,255,255,.7); margin-bottom: 8px; }
-    .revenue-hero__value { font-size: clamp(28px, 8vw, 34px); font-weight: 800; line-height: 1; letter-spacing: -0.6px; color: #FFD86B; font-variant-numeric: tabular-nums; text-shadow: 0 0 24px rgba(212,175,55,.30); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .revenue-hero__value small { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.6); margin-left: 6px; letter-spacing: 0; text-shadow: none; }
-    .revenue-hero__split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-    .mini { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; min-width: 0; overflow: hidden; }
-    .mini__dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .mini__dot--cash { background: #2ecc71; box-shadow: 0 0 10px rgba(46,204,113,.55); }
-    .mini__dot--card { background: #7DD3FC; box-shadow: 0 0 10px rgba(125,211,252,.55); }
-    .mini__body { min-width: 0; flex: 1; }
-    .mini__label { font-size: 11px; font-weight: 700; letter-spacing: .3px; color: rgba(255,255,255,.62); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mini__value { font-size: 13px; font-weight: 800; color: #FFFFFF; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .kpi { border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; position: relative; }
-    .kpi:last-of-type { margin-bottom: 0; }
-    .kpi__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
-    .kpi__value { font-size: clamp(24px, 6vw, 28px); font-weight: 800; line-height: 1; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .kpi__value small { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.6); margin-left: 5px; letter-spacing: 0; }
-    .kpi--profit { background: linear-gradient(145deg, rgba(46,204,113,.12), rgba(46,204,113,.02)); border: 1px solid rgba(46,204,113,.22); }
-    .kpi--profit .kpi__label { color: rgba(255,255,255,.72); }
-    .kpi--profit .kpi__value { color: #7FE4A5; text-shadow: 0 0 22px rgba(46,204,113,.28); }
-    .kpi--muted { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06); margin-bottom: 14px; }
-    .kpi--muted .kpi__label { color: rgba(255,255,255,.5); font-size: 10px; }
-    .kpi--muted .kpi__value { font-size: clamp(20px, 5vw, 22px); font-weight: 700; color: rgba(255,255,255,.88); text-shadow: none; }
-    .kpi--muted .kpi__value small { color: rgba(255,255,255,.55); }
-
-    .chart-wrap { margin-top: 14px; padding: 14px 12px 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); border-radius: 16px; }
-    .chart-wrap__head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-    .chart-wrap__title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.72); }
-    .chart-wrap__total { font-size: 13px; font-weight: 700; white-space: nowrap; color: #FFD86B; }
-    .chart { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; align-items: end; height: 110px; }
-    .chart__col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; min-width: 0; }
-    .chart__bar { width: 100%; max-width: 34px; min-height: 4px; border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, #F0D772 0%, #B88F1D 100%); box-shadow: 0 4px 14px rgba(212,175,55,.28); position: relative; }
-    .chart__bar.is-today { background: linear-gradient(180deg, #6EF0B6 0%, #17A46F 100%); box-shadow: 0 4px 14px rgba(52,211,153,.36); }
-    .chart__bar-value { font-size: 10px; font-weight: 700; color: #fff; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
-    .chart__label { font-size: 10px; font-weight: 700; text-transform: lowercase; color: rgba(255,255,255,.72); }
-
-    .critical-stock { border-radius: 22px; padding: 16px 18px; background: radial-gradient(420px 200px at 0% 0%, rgba(255,92,92,.10), transparent 60%), linear-gradient(150deg, rgba(255,92,92,.06), rgba(255,92,92,.015)); border: 1px solid rgba(255,92,92,.24); box-shadow: 0 4px 16px rgba(0,0,0,.28); }
-    .critical-stock__head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .critical-stock__icon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; background: rgba(255,92,92,.16); border: 1px solid rgba(255,92,92,.28); flex-shrink: 0; }
-    .critical-stock__title { flex: 1; min-width: 0; }
-    .critical-stock__title strong { display: block; font-size: 14px; font-weight: 800; color: #FF5C5C; }
-    .critical-stock__title small { display: block; font-size: 11px; color: var(--kut-text-3); margin-top: 2px; }
-    .critical-stock__link { font-size: 12px; font-weight: 700; color: #FF5C5C; text-decoration: none; padding: 6px 10px; border-radius: 10px; background: rgba(255,92,92,.10); border: 1px solid rgba(255,92,92,.20); flex-shrink: 0; }
-    .critical-stock__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-    .critical-stock__item { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 12px; }
-    .critical-stock__item + .critical-stock__item { border-top: 1px dashed rgba(255,92,92,.14); }
-    .critical-stock__name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--kut-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .critical-stock__qty { display: inline-flex; align-items: baseline; gap: 3px; padding: 4px 10px; border-radius: 999px; background: rgba(255,92,92,.14); border: 1px solid rgba(255,92,92,.24); color: #FF5C5C; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
-    .critical-stock__qty strong { font-size: 13px; font-weight: 800; }
-    .critical-stock__qty small { font-size: 10px; font-weight: 700; opacity: 0.75; }
-    .critical-stock__item.is-zero .critical-stock__qty { background: rgba(255,92,92,.28); border-color: rgba(255,92,92,.5); color: #fff; }
-    .critical-stock__more { padding: 8px 8px 4px; font-size: 12px; font-weight: 600; color: var(--kut-text-3); text-align: center; list-style: none; }
-
-    .recent { border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; max-height: 55vh; background: var(--kut-surface); border: 1px solid var(--kut-border); box-shadow: 0 10px 34px rgba(0,0,0,.10); }
-    .recent__head { display: flex; justify-content: space-between; gap: 10px; padding: 16px 18px; flex-shrink: 0; border-bottom: 1px solid var(--kut-border); }
-    .recent__head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--kut-text-1); }
-    .recent__head a { font-size: 13px; font-weight: 600; text-decoration: none; color: var(--kut-gold-deep); }
-    .recent__list { padding: 6px 8px; overflow-y: auto; flex: 1; min-height: 0; }
-    .sale-row { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-radius: 14px; }
-    .sale-row + .sale-row { border-top: 1px dashed var(--kut-border); }
-    .sale-row__avatar { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; font-size: 17px; flex-shrink: 0; background: rgba(212, 175, 55, 0.14); }
-    .sale-row__info { flex: 1; min-width: 0; overflow: hidden; }
-    .sale-row__title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--kut-text-1); }
-    .sale-row__meta { font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--kut-text-3); }
-    .sale-row__amount { font-size: 14px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; color: #0F7F4D; }
-    .sale-row__amount--debt { color: #C0392B; }
-    .recent__empty { padding: 40px 18px; text-align: center; font-size: 14px; color: var(--kut-text-3); }
-    .recent__empty span { display: block; font-size: 34px; margin-bottom: 8px; opacity: .8; }
-
-    .footer { text-align: center; font-size: 12px; padding: 8px 0 4px; color: var(--kut-text-3); }
-
-    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: 1fr 1fr 92px 1fr 1fr; align-items: center; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--kut-nav-bg); backdrop-filter: blur(24px) saturate(160%); border-top: 1px solid var(--kut-nav-border); box-shadow: var(--kut-nav-shadow); height: 76px; }
-    .bottom-nav__item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-family: inherit; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .3px; color: var(--kut-nav-text); min-width: 48px; min-height: 48px; padding: 8px 4px; border-radius: 14px; }
-    .bottom-nav__item:active { transform: scale(.92); }
-    .bottom-nav__icon { font-size: 24px; line-height: 1; filter: grayscale(.5) opacity(.7); }
-    .bottom-nav__item.active { color: var(--kut-nav-text-active); background: linear-gradient(180deg, rgba(212,175,55,.14), rgba(212,175,55,.02)); }
-    .bottom-nav__item.active .bottom-nav__icon { filter: none; transform: translateY(-2px) scale(1.06); }
-    .bottom-nav__scan { position: relative; display: grid; place-items: center; width: 80px; height: 80px; margin: -22px auto 0; border-radius: 50%; border: 5px solid var(--kut-canvas-2); background: radial-gradient(circle at 35% 30%, #F5DA7C 0%, #B88F1D 70%); color: #06150F; font-size: 34px; cursor: pointer; padding: 0; box-shadow: 0 12px 30px rgba(212,175,55,.5), 0 4px 12px rgba(0,0,0,.35); }
-    .bottom-nav__scan:active { transform: scale(.92); }
-    .badge-notify { position: absolute; top: 4px; right: 6px; min-width: 20px; height: 20px; padding: 0 6px; background: #FF5C5C; color: #fff; font-size: 11px; font-weight: 800; border-radius: 999px; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--kut-canvas-2); pointer-events: none; }
-    .badge-notify[hidden] { display: none; }
+    /* Telegram widget container (hidden) */
+    #tgWidgetSlot {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
   </style>
 </head>
-<body class="page-home">
+<body>
 
-  <script>
-    (function () {
-      var BUILD = 'v11.0-SQUARE';
-      var saved = null;
-      try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
-      if (saved === BUILD) return;
-      try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
-      var todo = [];
-      if ('serviceWorker' in navigator) {
-        todo.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
-          return Promise.all(regs.map(function (r) { return r.unregister(); }));
-        }).catch(function () {}));
-      }
-      if ('caches' in window) {
-        todo.push(caches.keys().then(function (keys) {
-          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-        }).catch(function () {}));
-      }
-      Promise.all(todo).then(function () {
-        setTimeout(function () {
-          try {
-            var url = new URL(window.location.href);
-            url.searchParams.set('_cb', Date.now().toString(36));
-            window.location.replace(url.toString());
-          } catch (e) { window.location.reload(); }
-        }, 200);
-      });
-    })();
-  </script>
+  <main class="card login">
+    <div class="login__logo" aria-hidden="true">К</div>
+    <h1>КУТ: БИЗНЕС</h1>
+    <p>Касса, склад и долги для вашего магазина.<br>Войдите одним из способов ниже.</p>
 
-  <div class="overlay" id="overlay" aria-hidden="true"></div>
-
-  <div class="layout">
-    <aside class="sidebar" id="sidebar" aria-label="Основное меню">
-      <div id="sidebar-profile-slot"></div>
-
-      <div class="sidebar__brand-row">
-        <a href="./index.html" class="sidebar__brand">
-          <span class="brand__mark" aria-hidden="true">К</span>
-          <span class="brand__text">
-            <strong>КУТ: БИЗНЕС</strong>
-            <small>Учёт для малого бизнеса</small>
-          </span>
-        </a>
-      </div>
-
-      <nav class="sidebar__nav" aria-label="Навигация">
-        <a href="./index.html" class="nav-link active" aria-current="page">
-          <span class="nav-link__icon" aria-hidden="true">🏠</span><span>Главная</span>
-        </a>
-        <a href="./cash.html" class="nav-link">
-          <span class="nav-link__icon" aria-hidden="true">🧾</span><span>Касса</span>
-        </a>
-        <a href="./stock.html" class="nav-link">
-          <span class="nav-link__icon" aria-hidden="true">📦</span><span>Склад</span>
-        </a>
-        <a href="./debts.html" class="nav-link">
-          <span class="nav-link__icon" aria-hidden="true">📒</span><span>Несие (долги)</span>
-          <span class="nav-link__badge" id="nav-debts-count" hidden>0</span>
-        </a>
-        <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden>
-          <span class="nav-link__icon" aria-hidden="true">👥</span><span>Сотрудники</span>
-          <span class="nav-link__badge" id="nav-staff-count" hidden>0</span>
-        </a>
-      </nav>
-
-      <div id="sidebar-theme-slot"></div>
-
-      <a href="./cash.html" class="sidebar__cta" aria-label="Открыть кассу">
-        <span class="sidebar__cta__icon" aria-hidden="true">＋</span>
-        <span class="sidebar__cta__text">
-          <strong>Открыть кассу</strong>
-          <small>Новая продажа</small>
-        </span>
-      </a>
-
-      <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
-
-      <div id="sidebar-logout-slot"></div>
-    </aside>
-
-    <div>
-      <header class="mobile-bar">
-        <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
-        <span class="mobile-bar__title">
-          КУТ: БИЗНЕС · <span id="page-title">Главная</span>
-        </span>
-        <div id="business-switcher-slot" hidden></div>
-        <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
-          <span class="net-pill__dot" aria-hidden="true"></span>
-          <span class="net-pill__label">онлайн</span>
-          <span class="net-pill__qty" id="net-queue-qty">0</span>
-        </span>
-        <div data-kut-lang></div>
-      </header>
-
-      <main class="main-content">
-        <div class="page-head">
-          <div>
-            <h1>Здравствуйте! 👋</h1>
-            <p>Сводка по вашему бизнесу на сегодня</p>
-          </div>
-          <span class="role-badge role-badge--user" id="role-badge">Пользователь</span>
-        </div>
-
-        <div class="period-chips" id="periodChips" role="tablist" aria-label="Период аналитики">
-          <button class="period-chip" type="button" role="tab" data-period="today">Сегодня</button>
-          <button class="period-chip" type="button" role="tab" data-period="yesterday">Вчера</button>
-          <button class="period-chip" type="button" role="tab" data-period="week">7 дней</button>
-          <button class="period-chip is-active" type="button" role="tab" data-period="month" aria-selected="true">Месяц</button>
-        </div>
-
-        <section class="analytics" aria-label="Финансовая аналитика">
-          <div class="analytics__head">
-            <h2 class="analytics__title">📊 Финансовая аналитика</h2>
-            <span class="analytics__period" id="analytics-period">Сводка за месяц</span>
-          </div>
-
-          <div class="revenue-hero">
-            <div class="revenue-hero__label">Выручка</div>
-            <div class="revenue-hero__value" id="analyticsRevenue">0<small>KGS</small></div>
-            <div class="revenue-hero__split">
-              <div class="mini">
-                <span class="mini__dot mini__dot--cash" aria-hidden="true"></span>
-                <div class="mini__body">
-                  <div class="mini__label">Наличные</div>
-                  <div class="mini__value" id="analyticsCash">0 KGS</div>
-                </div>
-              </div>
-              <div class="mini">
-                <span class="mini__dot mini__dot--card" aria-hidden="true"></span>
-                <div class="mini__body">
-                  <div class="mini__label">Карта / Перевод</div>
-                  <div class="mini__value" id="analyticsCard">0 KGS</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="kpi kpi--profit">
-            <div class="kpi__label">Чистая прибыль</div>
-            <div class="kpi__value" id="analyticsProfit">0<small>KGS</small></div>
-          </div>
-
-          <div class="kpi kpi--muted">
-            <div class="kpi__label">Стоимость склада</div>
-            <div class="kpi__value" id="analyticsStockValue">0<small>KGS</small></div>
-          </div>
-
-          <div class="chart-wrap">
-            <div class="chart-wrap__head">
-              <span class="chart-wrap__title">Выручка по дням недели</span>
-              <span class="chart-wrap__total" id="weekTotal">0 KGS</span>
-            </div>
-            <div class="chart" id="weekChart"></div>
-          </div>
-        </section>
-
-        <section class="critical-stock" id="criticalStock" hidden aria-live="polite">
-          <header class="critical-stock__head">
-            <span class="critical-stock__icon" aria-hidden="true">⚠️</span>
-            <div class="critical-stock__title">
-              <strong>Внимание! Заканчиваются товары</strong>
-              <small id="criticalStockSub">Меньше 5 единиц на складе</small>
-            </div>
-            <a class="critical-stock__link" href="./stock.html">Склад →</a>
-          </header>
-          <ul class="critical-stock__list" id="criticalStockList"></ul>
-        </section>
-
-        <div hidden>
-          <span id="dashboard-total-sales" data-kut="revenue-total">0</span>
-          <span id="dashboard-stock-value" data-kut="stock-value">0</span>
-          <span id="dashboard-total-debts" data-kut="debts-sum">0</span>
-          <span id="sales-sub"></span>
-          <span id="stock-sub"></span>
-          <span id="debts-sub"></span>
-          <span id="staff-section"></span>
-          <span id="staff-total"></span>
-          <span id="staff-active"></span>
-          <span id="staff-pending"></span>
-        </div>
-
-        <section class="recent" aria-label="Последние продажи">
-          <div class="recent__head">
-            <h2>Последние продажи</h2>
-            <a href="./cash.html">Открыть кассу →</a>
-          </div>
-          <div class="recent__list" id="recent-sales">
-            <div class="recent__empty">
-              <span aria-hidden="true">🧾</span>
-              Продаж ещё не было. Начните с кассы.
-            </div>
-          </div>
-        </section>
-
-        <div class="footer">КУТ: БИЗНЕС · v11.0 «Square»</div>
-      </main>
-    </div>
-  </div>
-
-  <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
-    <a href="./index.html" class="bottom-nav__item" data-page="index">
-      <span class="bottom-nav__icon" aria-hidden="true">🏠</span><span>Главная</span>
-    </a>
-    <a href="./stock.html" class="bottom-nav__item" data-page="stock">
-      <span class="bottom-nav__icon" aria-hidden="true">📦</span><span>Склад</span>
-    </a>
-    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать штрихкод">
-      <span aria-hidden="true">📷</span>
+    <!-- Google -->
+    <button class="auth-btn auth-btn--google" id="googleBtn" type="button">
+      <svg class="auth-btn__icon" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/>
+        <path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/>
+        <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
+      </svg>
+      <span id="googleBtnText">Войти через Google</span>
     </button>
-    <a href="./cash.html" class="bottom-nav__item" data-page="cash">
-      <span class="bottom-nav__icon" aria-hidden="true">⚡</span><span>Касса</span>
-    </a>
-    <a href="./debts.html" class="bottom-nav__item" data-page="debts">
-      <span class="bottom-nav__icon" aria-hidden="true">📒</span><span>Несие</span>
-      <span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span>
-    </a>
-  </nav>
 
-  <script>
-    (function () {
-      function sync() {
-        var src = document.getElementById('nav-debts-count');
-        var dst = document.getElementById('nav-debts-count-bottom');
-        if (!src || !dst) return;
-        var has = !src.hidden && src.textContent && src.textContent !== '0';
-        if (has) { dst.textContent = src.textContent; dst.hidden = false; }
-        else { dst.hidden = true; }
+    <div class="login__divider">или</div>
+
+    <!-- Telegram — наша стилизованная кнопка -->
+    <button class="auth-btn auth-btn--telegram" id="telegramBtn" type="button">
+      <svg class="auth-btn__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.26-1.91.178-.184 3.247-2.977 3.307-3.23.007-.03.014-.143-.054-.2-.068-.058-.169-.038-.242-.022-.106.023-1.79 1.135-5.056 3.335-.477.327-.908.487-1.294.478-.426-.01-1.247-.24-1.857-.438-.75-.242-1.345-.37-1.294-.783.027-.215.32-.435.879-.66 3.432-1.494 5.72-2.48 6.866-2.957 3.27-1.36 3.948-1.597 4.39-1.604z"/>
+      </svg>
+      <span id="telegramBtnText">Войти через Telegram</span>
+    </button>
+
+    <div class="login__err" id="err" role="alert" aria-live="polite"></div>
+
+    <div class="login__foot">
+      Нажимая «Войти», вы соглашаетесь с правилами сервиса.<br>
+      © 2026 КУТ: БИЗНЕС
+    </div>
+
+    <!-- Скрытый контейнер для виджета Telegram -->
+    <div id="tgWidgetSlot"></div>
+  </main>
+
+  <script type="module">
+    import './js/firebase-config.js';
+
+    const googleBtn  = document.getElementById('googleBtn');
+    const googleTxt  = document.getElementById('googleBtnText');
+    const tgBtn      = document.getElementById('telegramBtn');
+    const tgTxt      = document.getElementById('telegramBtnText');
+    const err        = document.getElementById('err');
+
+    const MESSAGES = {
+      // Google
+      'auth/popup-closed-by-user':           'Окно входа было закрыто.',
+      'auth/cancelled-popup-request':        '',
+      'auth/network-request-failed':         'Нет соединения с интернетом.',
+      'auth/unauthorized-domain':            'Домен не добавлен в Firebase → Authentication → Authorized domains.',
+      'auth/operation-not-allowed':          'Вход через Google не включён в Firebase Console.',
+      // Общие
+      'permission-denied':                   'Нет доступа к базе. Проверьте правила Firestore.',
+      'account-disabled':                    'Ваш аккаунт заблокирован. Свяжитесь с администратором.',
+      // Telegram
+      'invalid_hash':                        'Ошибка проверки Telegram. Попробуйте ещё раз.',
+      'expired':                             'Данные Telegram устарели. Попробуйте снова.',
+      'telegram/bad_data':                   'Telegram не передал данные. Попробуйте ещё раз.',
+      'telegram/no_token':                   'Сервер не выдал токен. Обратитесь к администратору.',
+      'telegram/cf_error':                   'Ошибка Telegram-входа. Проверьте интернет.',
+      'server_misconfigured':                'Сервер не настроен. Обратитесь к администратору.',
+      'server_error':                        'Ошибка сервера. Попробуйте позже.',
+    };
+
+    function showErr(code, fallback) {
+      const msg = MESSAGES[code];
+      err.textContent = msg !== undefined ? msg : (fallback || ('Ошибка: ' + code));
+    }
+    function clearErr() { err.textContent = ''; }
+
+    function setGoogleBusy(on) {
+      googleBtn.disabled = on;
+      googleTxt.textContent = on ? 'Входим…' : 'Войти через Google';
+    }
+    function setTgBusy(on) {
+      tgBtn.disabled = on;
+      tgTxt.textContent = on ? 'Входим…' : 'Войти через Telegram';
+    }
+
+    /* ---------- Google ---------- */
+    googleBtn.addEventListener('click', async () => {
+      clearErr();
+      setGoogleBusy(true);
+      try {
+        const res = await window.FB.signInWithGoogle();
+        if (res) window.FB.redirectByRole(res.profile);
+      } catch (e) {
+        console.error('[login] google', e);
+        showErr(e.code, e.message);
+        setGoogleBusy(false);
       }
-      setTimeout(sync, 500); setTimeout(sync, 1500); setTimeout(sync, 3000);
-      var src = document.getElementById('nav-debts-count');
-      if (src && 'MutationObserver' in window) {
-        new MutationObserver(sync).observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
+    });
+
+    /* ---------- Telegram ---------- */
+    window.onTelegramAuth = async function (tgUser) {
+      clearErr();
+      setTgBusy(true);
+      try {
+        const res = await window.FB.signInWithTelegram(tgUser);
+        if (res) window.FB.redirectByRole(res.profile);
+      } catch (e) {
+        console.error('[login] telegram', e);
+        showErr(e.code, e.message);
+        setTgBusy(false);
+      }
+    };
+
+    tgBtn.addEventListener('click', () => {
+      const slot = document.getElementById('tgWidgetSlot');
+      const iframe = slot.querySelector('iframe');
+      if (iframe) {
+        try { iframe.focus(); iframe.click(); } catch (_) {}
+      } else {
+        const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
+        window.open('https://t.me/' + botName, '_blank', 'noopener');
+      }
+    });
+
+    /* ---------- Рендерим скрытый виджет Telegram ---------- */
+    (function mountTgWidget() {
+      const slot = document.getElementById('tgWidgetSlot');
+      const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
+
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://telegram.org/js/telegram-widget.js?22';
+      s.setAttribute('data-telegram-login', botName);
+      s.setAttribute('data-size', 'large');
+      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      s.setAttribute('data-request-access', 'write');
+      s.setAttribute('data-userpic', 'false');
+      s.setAttribute('data-radius', '0');
+      slot.appendChild(s);
+    })();
+
+    /* ---------- Автостарт ---------- */
+    (async function autoStart() {
+      try {
+        const redirected = await window.FB.handleRedirectResult();
+        if (redirected) { window.FB.redirectByRole(redirected.profile); return; }
+
+        const { user, profile } = await window.FB.waitForAuth();
+        if (user && profile) { window.FB.redirectByRole(profile); return; }
+      } catch (e) {
+        console.error('[login] autoStart', e);
+        showErr(e.code, e.message);
       }
     })();
   </script>
-
-  <script src="./js/theme.js"></script>
-  <script src="./js/ui-chrome.js"></script>
-  <script type="module" src="./js/app.js"></script>
-  <script src="./js/scanner.js"></script>
-
-  <script type="module" src="./js/permissions.js"></script>
-  <script type="module" src="./js/analytics-pro.js"></script>
-  <script type="module" src="./js/shifts.js"></script>
 </body>
 </html>
