@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v10.12 «Aurora»
+   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v11.0 «Square»
    
    НАДЁЖНОЕ СОХРАНЕНИЕ КОРЗИНЫ:
    • Синхронно при КАЖДОМ изменении корзины
@@ -9,6 +9,11 @@
    • Восстановление — в самом начале init(), до Firebase
    • Миграция со старых ключей v1/v2
    • Отладка через console + window.__KUT_CART__
+
+   🆕 v11.0 SQUARE:
+   • Интеграция со сканером штрихкодов (kut:barcode)
+   • Автопоиск товара в Firestore + добавление в корзину
+   • Приоритет cart-pro.js, если он подключён
    ========================================================= */
 
 (function () {
@@ -122,8 +127,6 @@
       }));
 
       localStorage.setItem(CART_LS_PRIMARY, JSON.stringify(full));
-
-      // Для отладки
       window.__KUT_CART__ = full;
 
       console.log('[cash] 💾 Корзина сохранена:', full.length, 'поз.',
@@ -134,7 +137,6 @@
   }
 
   function readCartFromLS() {
-    // Пробуем все ключи (миграция с v1/v2 → v3)
     for (const key of CART_LS_KEYS) {
       try {
         const raw = localStorage.getItem(key);
@@ -156,7 +158,6 @@
 
         if (parsed.length > 0) {
           console.log('[cash] 📖 Корзина найдена в LS[' + key + ']:', parsed.length, 'поз.');
-          // Если ключ не основной — мигрируем
           if (key !== CART_LS_PRIMARY) {
             try { localStorage.setItem(CART_LS_PRIMARY, JSON.stringify(parsed)); } catch (_) {}
           }
@@ -896,7 +897,6 @@
     if (el.successTotal) el.successTotal.textContent = `${fmt(total)} KGS`;
     openModal(el.successModal);
 
-    // Очистка корзины ТОЛЬКО после продажи
     state.cart = [];
     state.paymentMethod = null;
     state.customer = '';
@@ -1039,19 +1039,16 @@
   // ГЛОБАЛЬНЫЕ ХУКИ СОХРАНЕНИЯ
   // =========================================================
   function bindGlobalPersistence() {
-    // 1. При уходе со страницы (перезагрузка, закрытие)
     window.addEventListener('pagehide', () => {
       console.log('[cash] 📌 pagehide → сохраняем корзину');
       try { saveCartToLS(); } catch (_) {}
     });
 
-    // 2. При сворачивании/переключении на другое приложение
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         console.log('[cash] 📌 visibilitychange → сохраняем корзину');
         try { saveCartToLS(); } catch (_) {}
       } else {
-        // Развернулись обратно — на всякий случай проверяем LS
         const saved = readCartFromLS();
         if (saved.length > 0 && state.cart.length === 0) {
           console.log('[cash] 📌 вернулись на страницу — корзина была пуста в JS, но есть в LS');
@@ -1061,12 +1058,10 @@
       }
     });
 
-    // 3. beforeunload (десктоп)
     window.addEventListener('beforeunload', () => {
       try { saveCartToLS(); } catch (_) {}
     });
 
-    // 4. pageshow — если вернулись из bfcache (iOS Safari)
     window.addEventListener('pageshow', (e) => {
       if (e.persisted) {
         console.log('[cash] 📌 pageshow (bfcache) → восстанавливаем корзину');
@@ -1077,14 +1072,82 @@
   }
 
   // =========================================================
+  // 🆕 ИНТЕГРАЦИЯ СО СКАНЕРОМ ШТРИХКОДОВ
+  // =========================================================
+  function bindBarcodeListener() {
+    window.addEventListener('kut:barcode', async (e) => {
+      const code = String(e.detail?.code || '').trim();
+      if (!code) return;
+
+      console.log('[cash] 📷 Barcode получен:', code);
+
+      // 1. Мгновенный локальный поиск
+      let product = state.products.find((p) => String(p.barcode) === code);
+
+      // 2. Firestore lookup (если локально нет)
+      if (!product && window.FB?.db) {
+        const kst = window.KUT?.getState?.();
+        const bizId = kst?.businessId || window.FB?.getBusinessId?.();
+        if (bizId) {
+          try {
+            const { db, collection, query, where, limit, getDocs } = window.FB;
+            const snap = await getDocs(query(
+              collection(db, 'businesses', bizId, 'products'),
+              where('barcode', '==', code),
+              limit(1)
+            ));
+            if (!snap.empty) {
+              const docSnap = snap.docs[0];
+              product = stockToCashProduct({ id: docSnap.id, ...docSnap.data() });
+              console.log('[cash] ✓ Товар найден в Firestore:', product.name);
+            }
+          } catch (err) {
+            console.warn('[cash] barcode lookup failed:', err);
+          }
+        }
+      }
+
+      // 3. Не нашли — ошибка
+      if (!product) {
+        notify(`Товар со штрихкодом ${code} не найден`, true);
+        if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+        playErrorBeep();
+        return;
+      }
+
+      // 4. Приоритет — cart-pro (Square-style корзина)
+      if (window.KUT_CART && typeof window.KUT_CART.addItem === 'function') {
+        window.KUT_CART.addItem({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          costPrice: product.costPrice,
+          unit: product.unit,
+        }, 1);
+        notify(`+ ${product.name}`);
+        if (navigator.vibrate) navigator.vibrate(80);
+        playSuccessBeep();
+        return;
+      }
+
+      // 5. Fallback на старую логику
+      addToCart(product.id);
+      notify(`+ ${product.name}`);
+      if (navigator.vibrate) navigator.vibrate(80);
+      playSuccessBeep();
+    });
+
+    console.log('[cash] 📷 Слушатель сканера штрихкодов активирован');
+  }
+
+  // =========================================================
   // ИНИЦИАЛИЗАЦИЯ
   // =========================================================
   async function init() {
-    console.log('[cash] 🚀 init() · v10.12');
+    console.log('[cash] 🚀 init() · v11.0 SQUARE');
     console.log('[cash] 📦 LS ключи:', CART_LS_KEYS.map((k) => k + '=' + (localStorage.getItem(k)?.length || 0) + 'b').join(', '));
 
     // 🆕 ШАГ 1: мгновенно восстанавливаем корзину из LS
-    // (до любых запросов к Firebase)
     restoreCartFromLS();
 
     const st = await waitForReady();
@@ -1112,8 +1175,9 @@
     renderCart();
     bindEvents();
     bindGlobalPersistence();
+    bindBarcodeListener();
 
-    console.log('[cash] ✓ v10.12 запущена · бизнес:', st.businessId);
+    console.log('[cash] ✓ v11.0 SQUARE запущена · бизнес:', st.businessId);
     console.log('[cash] 💡 Отладка: window.__KUT_CART__ покажет текущую корзину');
   }
 
