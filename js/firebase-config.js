@@ -421,7 +421,6 @@ async function signInWithTelegram(tgUser) {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         return await finishSignIn(cred.user, extra);
       } catch (createErr) {
-        // Если email уже занят — значит, что-то не так с паролем
         if (createErr.code === 'auth/email-already-in-use') {
           const err = new Error('Аккаунт уже существует, но пароль не подошёл');
           err.code = 'telegram/password_mismatch';
