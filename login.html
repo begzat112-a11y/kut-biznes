@@ -1,964 +1,283 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — вход в систему.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0F172A">
   <title>Вход — КУТ: БИЗНЕС</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    try {
+      var t = localStorage.getItem('kut_theme');
+      if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
 
+  <link rel="stylesheet" href="./css/theme.css">
   <style>
-    :root {
-      --kut-green: #005F40; --kut-green-dark: #003F2A; --kut-green-soft: #E6F1ED;
-      --kut-gold: #D4AF37; --kut-gold-dark: #B8952A; --kut-border: #E3EAE6;
-      --kut-text: #14211C; --kut-muted: #64776E; --kut-danger: #C0392B;
-      --kut-whatsapp: #25D366; --shadow-lg: 0 18px 48px rgba(16,32,25,.20);
+    body { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
+    .login {
+      width: 100%;
+      max-width: 420px;
+      padding: 32px 24px;
+      text-align: center;
     }
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
-
-    body {
-      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: linear-gradient(160deg, #005F40 0%, #003F2A 100%);
-      color: var(--kut-text); min-height: 100dvh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 20px; -webkit-font-smoothing: antialiased;
+    .login__logo {
+      width: 72px; height: 72px;
+      margin: 0 auto 16px;
+      border-radius: 20px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #fff; font-size: 32px; font-weight: 800;
+      box-shadow: 0 12px 32px rgba(16,185,129,.35);
     }
-
-    #error-banner {
-      position: fixed; top: 0; left: 0; right: 0;
-      background: #C0392B; color: #fff; padding: 10px 14px;
-      font-family: ui-monospace, Menlo, monospace; font-size: 12px;
-      line-height: 1.4; z-index: 9999; display: none;
-      max-height: 40vh; overflow-y: auto;
-      white-space: pre-wrap; word-break: break-word;
-    }
-    #error-banner.is-visible { display: block; }
-    #error-banner strong { display: block; margin-bottom: 4px; font-size: 13px; }
-
-    .auth-card {
-      width: 100%; max-width: 460px; background: #fff; border-radius: 24px;
-      padding: 28px 26px; box-shadow: var(--shadow-lg);
-      animation: cardIn .35s cubic-bezier(.2,.9,.3,1.1);
-    }
-    @keyframes cardIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .auth-brand {
-      display: flex; align-items: center; gap: 12px;
-      margin-bottom: 20px; justify-content: center;
-    }
-    .auth-brand__mark {
-      width: 52px; height: 52px; border-radius: 14px;
-      background: var(--kut-green); color: var(--kut-gold);
-      display: grid; place-items: center; font-size: 26px;
-      font-weight: 800; box-shadow: 0 8px 20px rgba(0,95,64,.30);
-    }
-    .auth-brand__text { line-height: 1.15; }
-    .auth-brand__text strong {
-      display: block; font-size: 20px; font-weight: 800;
-      color: var(--kut-green); letter-spacing: -.3px;
-    }
-    .auth-brand__text small {
-      display: block; font-size: 12px; color: var(--kut-muted); margin-top: 2px;
-    }
-
-    .auth-tabs {
-      display: flex; gap: 4px; background: var(--kut-green-soft);
-      padding: 4px; border-radius: 14px; margin-bottom: 18px;
-    }
-    .auth-tab {
-      flex: 1; padding: 10px 8px; border: none; background: transparent;
-      border-radius: 10px; font-family: inherit; font-size: 13px;
-      font-weight: 600; color: var(--kut-muted); cursor: pointer;
-      transition: all .18s ease; display: inline-flex;
-      align-items: center; justify-content: center; gap: 6px;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .auth-tab:hover { color: var(--kut-green); }
-    .auth-tab.is-active {
-      background: #fff; color: var(--kut-green);
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
-    }
-
-    .auth-message {
-      padding: 12px 14px; border-radius: 12px; font-size: 13px;
-      font-weight: 500; margin-bottom: 16px; display: none;
-      line-height: 1.4; word-break: break-word;
-    }
-    .auth-message.is-error {
-      display: block; background: rgba(192,57,43,.08); color: var(--kut-danger);
-      border: 1px solid rgba(192,57,43,.20);
-    }
-    .auth-message.is-success {
-      display: block; background: rgba(30,190,90,.08); color: #0F7F3A;
-      border: 1px solid rgba(30,190,90,.20);
-    }
-    .auth-message.is-info {
-      display: block; background: var(--kut-green-soft); color: var(--kut-green);
-      border: 1px solid rgba(0,95,64,.20);
-    }
-
-    .form-field {
-      margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px;
-    }
-    .form-field label {
-      font-size: 13px; font-weight: 600; color: var(--kut-text);
-    }
-    .form-field label .req { color: var(--kut-danger); margin-left: 2px; }
-
-    .form-field input {
-      width: 100%; padding: 14px 15px; border: 1.5px solid var(--kut-border);
-      border-radius: 12px; font-family: inherit; font-size: 16px;
-      color: var(--kut-text); outline: none; background: #fff;
-      transition: border-color .18s ease, box-shadow .18s ease;
-    }
-    .form-field input:focus {
-      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
-    }
-    .form-field input.is-invalid {
-      border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12);
-    }
-    .form-field input.otp-input {
-      text-align: center; letter-spacing: 14px; font-size: 26px;
-      font-weight: 700; padding: 16px 20px 16px 30px;
-    }
-
-    /* ===== Phone group с селектом страны ===== */
-    .phone-group {
-      display: grid; grid-template-columns: 140px 1fr;
-      gap: 8px; align-items: stretch;
-    }
-    @media (max-width: 420px) {
-      .phone-group { grid-template-columns: 118px 1fr; gap: 6px; }
-    }
-    .country-select {
-      width: 100%; padding: 14px 10px; font-family: inherit;
-      font-size: 14px; font-weight: 600; color: var(--kut-text);
-      border: 1.5px solid var(--kut-border); border-radius: 12px;
-      background: #fff; text-align: center; cursor: pointer;
-      appearance: none; -webkit-appearance: none;
-      transition: border-color .18s ease, box-shadow .18s ease;
-    }
-    .country-select:focus {
-      border-color: var(--kut-green); box-shadow: 0 0 0 4px rgba(0,95,64,.12);
-    }
-    .country-select.is-invalid {
-      border-color: var(--kut-danger); box-shadow: 0 0 0 4px rgba(192,57,43,.12);
-    }
-    .phone-input {
-      min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: .3px;
-    }
-
-    .form-error {
-      font-size: 12px; color: var(--kut-danger); min-height: 14px; font-weight: 500;
-    }
+    .login h1 { margin: 0 0 6px; font-size: 22px; font-weight: 800; }
+    .login p { margin: 0 0 28px; color: var(--text-muted); font-size: 14px; line-height: 1.5; }
 
     .auth-btn {
-      width: 100%; padding: 15px 18px; border: none; border-radius: 14px;
-      background: var(--kut-green); color: #fff; font-family: inherit;
-      font-size: 15px; font-weight: 700; cursor: pointer;
-      box-shadow: 0 8px 20px rgba(0,95,64,.28);
-      transition: background .18s ease, transform .12s ease;
-      margin-top: 8px; display: inline-flex;
-      align-items: center; justify-content: center; gap: 8px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      min-height: 54px;
+      padding: 0 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-2);
+      color: var(--text);
+      font: 600 15px/1 inherit;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform .1s, opacity .2s, background .18s;
+      text-decoration: none;
     }
-    .auth-btn:hover { background: var(--kut-green-dark); }
-    .auth-btn:active { transform: translateY(1px); }
-    .auth-btn:disabled { opacity: .7; cursor: wait; }
-    .auth-btn--whatsapp {
-      background: var(--kut-whatsapp);
-      box-shadow: 0 8px 20px rgba(37,211,102,.35);
-    }
-    .auth-btn--whatsapp:hover { background: #1EBE5A; }
-    .auth-btn--ghost {
-      background: transparent; color: var(--kut-green);
-      border: 1.5px solid var(--kut-border); box-shadow: none; margin-top: 10px;
-    }
-    .auth-btn--ghost:hover { background: var(--kut-green-soft); }
+    .auth-btn:active { transform: scale(.98); }
+    .auth-btn:disabled { opacity: .55; cursor: progress; }
+    .auth-btn + .auth-btn { margin-top: 12px; }
 
-    .auth-footer {
-      text-align: center; margin-top: 16px; font-size: 13px;
-      color: var(--kut-muted); line-height: 1.4;
+    .auth-btn--google {
+      background: #FFFFFF;
+      color: #1F2937;
+      border-color: #E5E7EB;
     }
-
-    .forgot-link {
-      text-align: right; margin-top: -6px; margin-bottom: 8px;
-    }
-    .forgot-link button {
-      background: transparent; border: none; color: var(--kut-green);
-      font-family: inherit; font-size: 13px; font-weight: 600;
-      cursor: pointer; padding: 4px 0;
-    }
-    .forgot-link button:hover { text-decoration: underline; }
-
-    .diag {
-      margin-top: 16px; padding: 10px 12px; background: #F7F9F8;
-      border: 1px dashed #C7D4CE; border-radius: 10px;
-      font-family: ui-monospace, Menlo, monospace; font-size: 11px;
-      color: #4A5C54; line-height: 1.5; word-break: break-word;
-      max-height: 200px; overflow-y: auto;
-    }
-    .version-badge {
-      text-align: center; margin-top: 10px; font-size: 11px;
-      color: var(--kut-muted); font-family: ui-monospace, Menlo, monospace;
+    [data-theme="dark"] .auth-btn--google {
+      background: #1E293B;
+      color: #F1F5F9;
+      border-color: rgba(255,255,255,.10);
     }
 
-    .hidden { display: none !important; }
-    ::selection { background: var(--kut-gold); color: var(--kut-green-dark); }
+    .auth-btn--telegram {
+      background: linear-gradient(135deg, #229ED9, #1C8DC2);
+      color: #FFFFFF;
+      border-color: transparent;
+      box-shadow: 0 8px 24px rgba(34,158,217,.35);
+    }
+    [data-theme="dark"] .auth-btn--telegram {
+      background: linear-gradient(135deg, #229ED9, #1C8DC2);
+    }
+
+    .auth-btn__icon { width: 22px; height: 22px; flex-shrink: 0; }
+
+    .login__divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+    }
+    .login__divider::before,
+    .login__divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border-strong);
+      opacity: .5;
+    }
+
+    .login__err {
+      margin-top: 20px;
+      min-height: 20px;
+      color: var(--debt);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .login__foot {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .login__foot a { color: var(--accent); text-decoration: none; }
+
+    /* Telegram widget container (скрытый) */
+    #tgWidgetSlot {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
-  <div id="error-banner" role="alert"></div>
+  <main class="card login">
+    <div class="login__logo" aria-hidden="true">К</div>
+    <h1>КУТ: БИЗНЕС</h1>
+    <p>Касса, склад и долги для вашего магазина.<br>Войдите одним из способов ниже.</p>
 
-  <!-- Kill-switch кэша -->
-  <script>
-    (function () {
-      var BUILD = 'v4.7-LOGIN-COUNTRIES';
-      var saved = null;
-      try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
-      if (saved === BUILD) return;
-      try { localStorage.setItem('kut_build', BUILD); } catch (e) {}
-      var todo = [];
-      if ('serviceWorker' in navigator) {
-        todo.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
-          return Promise.all(regs.map(function (r) { return r.unregister(); }));
-        }).catch(function () {}));
-      }
-      if ('caches' in window) {
-        todo.push(caches.keys().then(function (keys) {
-          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
-        }).catch(function () {}));
-      }
-      Promise.all(todo).then(function () {
-        setTimeout(function () {
-          try {
-            var url = new URL(window.location.href);
-            url.searchParams.set('_cb', Date.now().toString(36));
-            window.location.replace(url.toString());
-          } catch (e) { window.location.reload(); }
-        }, 200);
-      });
-    })();
-  </script>
+    <!-- Google -->
+    <button class="auth-btn auth-btn--google" id="googleBtn" type="button">
+      <svg class="auth-btn__icon" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/>
+        <path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/>
+        <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/>
+      </svg>
+      <span id="googleBtnText">Войти через Google</span>
+    </button>
 
-  <div class="auth-card">
-    <div class="auth-brand">
-      <div class="auth-brand__mark">К</div>
-      <div class="auth-brand__text">
-        <strong>КУТ: БИЗНЕС</strong>
-        <small>Вход в систему</small>
-      </div>
+    <div class="login__divider">или</div>
+
+    <!-- Telegram — стилизованная кнопка -->
+    <button class="auth-btn auth-btn--telegram" id="telegramBtn" type="button">
+      <svg class="auth-btn__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.26-1.91.178-.184 3.247-2.977 3.307-3.23.007-.03.014-.143-.054-.2-.068-.058-.169-.038-.242-.022-.106.023-1.79 1.135-5.056 3.335-.477.327-.908.487-1.294.478-.426-.01-1.247-.24-1.857-.438-.75-.242-1.345-.37-1.294-.783.027-.215.32-.435.879-.66 3.432-1.494 5.72-2.48 6.866-2.957 3.27-1.36 3.948-1.597 4.39-1.604z"/>
+      </svg>
+      <span id="telegramBtnText">Войти через Telegram</span>
+    </button>
+
+    <div class="login__err" id="err" role="alert" aria-live="polite"></div>
+
+    <div class="login__foot">
+      Нажимая «Войти», вы соглашаетесь с правилами сервиса.<br>
+      © 2026 КУТ: БИЗНЕС
     </div>
 
-    <div class="auth-tabs" role="tablist">
-      <button class="auth-tab is-active" type="button" data-tab="phone" role="tab" aria-selected="true">
-        <span aria-hidden="true">📱</span> По номеру
-      </button>
-      <button class="auth-tab" type="button" data-tab="email" role="tab" aria-selected="false">
-        <span aria-hidden="true">✉️</span> По Email
-      </button>
-    </div>
-
-    <div class="auth-message" id="authMessage"></div>
-
-    <!-- ========== ВХОД ПО НОМЕРУ ========== -->
-    <div id="phoneTab">
-      <form id="phoneForm" novalidate>
-        <div class="form-field">
-          <label for="phone">Номер телефона <span class="req">*</span></label>
-          <div class="phone-group">
-            <select id="countrySelect" class="country-select" aria-label="Код страны">
-              <option value="kg" data-code="+996" data-digits="9"  data-pattern="XXX XXX XXX">🇰🇬 +996</option>
-              <option value="ru" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇷🇺 +7</option>
-              <option value="kz" data-code="+7"   data-digits="10" data-pattern="XXX XXX XX XX">🇰🇿 +7</option>
-              <option value="uz" data-code="+998" data-digits="9"  data-pattern="XX XXX XX XX">🇺🇿 +998</option>
-              <option value="tj" data-code="+992" data-digits="9"  data-pattern="XX XXX XX XX">🇹🇯 +992</option>
-              <option value="tm" data-code="+993" data-digits="8"  data-pattern="XX XXXXXX">🇹🇲 +993</option>
-              <option value="az" data-code="+994" data-digits="9"  data-pattern="XX XXX XX XX">🇦🇿 +994</option>
-              <option value="am" data-code="+374" data-digits="8"  data-pattern="XX XXX XXX">🇦🇲 +374</option>
-              <option value="by" data-code="+375" data-digits="9"  data-pattern="XX XXX XX XX">🇧🇾 +375</option>
-              <option value="md" data-code="+373" data-digits="8"  data-pattern="XX XXX XXX">🇲🇩 +373</option>
-            </select>
-            <input
-              type="tel"
-              id="phone"
-              class="phone-input"
-              placeholder="700 123 456"
-              inputmode="tel"
-              autocomplete="tel"
-              required>
-          </div>
-          <div class="form-error" data-for="phone"></div>
-        </div>
-
-        <button class="auth-btn auth-btn--whatsapp" type="submit" id="sendOtpBtn">
-          <span aria-hidden="true">💬</span> Получить код в WhatsApp
-        </button>
-
-        <div class="auth-footer">
-          Для сотрудников и кассиров. Код приходит в WhatsApp.
-        </div>
-      </form>
-
-      <form id="otpForm" class="hidden" novalidate>
-        <div class="form-field">
-          <label for="otpInput">Введи 4-значный код <span class="req">*</span></label>
-          <input
-            type="text"
-            id="otpInput"
-            class="otp-input"
-            placeholder="0000"
-            inputmode="numeric"
-            maxlength="4"
-            autocomplete="one-time-code"
-            required>
-          <div class="form-error" data-for="otpInput"></div>
-        </div>
-
-        <button class="auth-btn" type="submit" id="verifyOtpBtn">
-          Войти в систему
-        </button>
-
-        <button class="auth-btn auth-btn--ghost" type="button" id="backBtn">
-          ← Изменить номер
-        </button>
-
-        <div class="auth-footer" id="otpTimerWrap">
-          Код действителен ещё <strong id="otpTimer">05:00</strong>
-        </div>
-      </form>
-    </div>
-
-    <!-- ========== ВХОД ПО EMAIL ========== -->
-    <div id="emailTab" class="hidden">
-      <form id="emailForm" novalidate>
-        <div class="form-field">
-          <label for="emailInput">Email <span class="req">*</span></label>
-          <input
-            type="email"
-            id="emailInput"
-            placeholder="admin@kut.local"
-            autocomplete="email"
-            required>
-          <div class="form-error" data-for="emailInput"></div>
-        </div>
-
-        <div class="form-field">
-          <label for="passwordInput">Пароль <span class="req">*</span></label>
-          <input
-            type="password"
-            id="passwordInput"
-            placeholder="••••••••"
-            autocomplete="current-password"
-            required>
-          <div class="form-error" data-for="passwordInput"></div>
-        </div>
-
-        <div class="forgot-link">
-          <button type="button" id="forgotBtn">Забыли пароль?</button>
-        </div>
-
-        <button class="auth-btn" type="submit" id="emailLoginBtn">
-          Войти
-        </button>
-
-        <div class="auth-footer">
-          Для владельцев бизнеса и супер-администратора.
-        </div>
-      </form>
-    </div>
-
-    <div class="diag" id="diagBox">
-      <strong>Диагностика:</strong><br>
-      ожидание загрузки скриптов...
-    </div>
-
-    <div class="version-badge">версия: v4.7-LOGIN-COUNTRIES</div>
-  </div>
-
-  <script>
-    (function () {
-      var banner = document.getElementById('error-banner');
-      var diag = document.getElementById('diagBox');
-      function showBanner(label, msg) {
-        banner.innerHTML = '<strong>' + label + '</strong>' + String(msg);
-        banner.classList.add('is-visible');
-      }
-      window.__kutDiag = function (line) {
-        if (!diag) return;
-        diag.innerHTML += '<br>' + line;
-        diag.scrollTop = diag.scrollHeight;
-      };
-      window.__kutResetDiag = function () {
-        if (!diag) return;
-        diag.innerHTML = '<strong>Диагностика:</strong>';
-      };
-      window.addEventListener('error', function (e) {
-        showBanner('JS ошибка:', (e.message || 'неизвестно') +
-          '\n' + (e.filename || '') + ':' + (e.lineno || ''));
-      });
-      window.addEventListener('unhandledrejection', function (e) {
-        var r = e.reason;
-        var msg = (r && r.message) ? r.message : String(r);
-        showBanner('Promise ошибка:', msg);
-      });
-      window.__kutDiag('HTML загружен, ожидание модуля...');
-    })();
-  </script>
+    <!-- Скрытый контейнер для виджета Telegram -->
+    <div id="tgWidgetSlot"></div>
+  </main>
 
   <script type="module">
-    window.__kutResetDiag();
-    window.__kutDiag('Модуль начал выполняться');
+    import './js/firebase-config.js';
 
-    let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-        signOut, onAuthStateChanged, sendPasswordResetEmail, getFirestore,
-        doc, getDoc, setDoc, deleteDoc, serverTimestamp;
+    const googleBtn  = document.getElementById('googleBtn');
+    const googleTxt  = document.getElementById('googleBtnText');
+    const tgBtn      = document.getElementById('telegramBtn');
+    const tgTxt      = document.getElementById('telegramBtnText');
+    const err        = document.getElementById('err');
 
-    try {
-      const appMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-      initializeApp = appMod.initializeApp;
-      window.__kutDiag('✓ firebase-app.js загружен');
-
-      const authMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-      getAuth = authMod.getAuth;
-      signInWithEmailAndPassword = authMod.signInWithEmailAndPassword;
-      createUserWithEmailAndPassword = authMod.createUserWithEmailAndPassword;
-      signOut = authMod.signOut;
-      onAuthStateChanged = authMod.onAuthStateChanged;
-      sendPasswordResetEmail = authMod.sendPasswordResetEmail;
-      window.__kutDiag('✓ firebase-auth.js загружен');
-
-      const fsMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-      getFirestore = fsMod.getFirestore;
-      doc = fsMod.doc;
-      getDoc = fsMod.getDoc;
-      setDoc = fsMod.setDoc;
-      deleteDoc = fsMod.deleteDoc;
-      serverTimestamp = fsMod.serverTimestamp;
-      window.__kutDiag('✓ firebase-firestore.js загружен');
-    } catch (e) {
-      window.__kutDiag('✗ Ошибка загрузки Firebase SDK: ' + e.message);
-      throw e;
-    }
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
-      authDomain: "kut-biznes.firebaseapp.com",
-      projectId: "kut-biznes",
-      storageBucket: "kut-biznes.firebasestorage.app",
-      messagingSenderId: "699153181693",
-      appId: "1:699153181693:web:2f10e57664e8a0cefc4794",
-      measurementId: "G-VTZ49G265B"
+    const MESSAGES = {
+      // Google
+      'auth/popup-closed-by-user':           'Окно входа было закрыто.',
+      'auth/cancelled-popup-request':        '',
+      'auth/network-request-failed':         'Нет соединения с интернетом.',
+      'auth/unauthorized-domain':            'Домен не добавлен в Firebase → Authentication → Authorized domains.',
+      'auth/operation-not-allowed':          'Вход не включён в Firebase Console (Google или Email/Password).',
+      // Общие
+      'permission-denied':                   'Нет доступа к базе. Проверьте правила Firestore.',
+      'account-disabled':                    'Ваш аккаунт заблокирован. Свяжитесь с администратором.',
+      // Telegram
+      'telegram/bad_data':                   'Telegram не передал данные. Попробуйте ещё раз.',
+      'telegram/expired':                    'Данные Telegram устарели. Попробуйте снова.',
+      'telegram/password_mismatch':          'Ошибка привязки. Обратитесь к администратору.',
+      'auth/email-already-in-use':           'Такой Telegram уже привязан. Обратитесь к администратору.',
+      'auth/weak-password':                  'Ошибка сервера. Обратитесь к администратору.',
+      'auth/invalid-email':                  'Ошибка формата. Обратитесь к администратору.',
     };
 
-    const WA_CONFIG = {
-      idInstance: '720122747171',
-      apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
-      buildUrl() {
-        return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
-      },
+    function showErr(code, fallback) {
+      const msg = MESSAGES[code];
+      err.textContent = msg !== undefined ? msg : (fallback || ('Ошибка: ' + code));
+    }
+    function clearErr() { err.textContent = ''; }
+
+    function setGoogleBusy(on) {
+      googleBtn.disabled = on;
+      googleTxt.textContent = on ? 'Входим…' : 'Войти через Google';
+    }
+    function setTgBusy(on) {
+      tgBtn.disabled = on;
+      tgTxt.textContent = on ? 'Входим…' : 'Войти через Telegram';
+    }
+
+    /* ---------- Google ---------- */
+    googleBtn.addEventListener('click', async () => {
+      clearErr();
+      setGoogleBusy(true);
+      try {
+        const res = await window.FB.signInWithGoogle();
+        if (res) window.FB.redirectByRole(res.profile);
+      } catch (e) {
+        console.error('[login] google', e);
+        showErr(e.code, e.message);
+        setGoogleBusy(false);
+      }
+    });
+
+    /* ---------- Telegram ---------- */
+    window.onTelegramAuth = async function (tgUser) {
+      clearErr();
+      setTgBusy(true);
+      try {
+        const res = await window.FB.signInWithTelegram(tgUser);
+        if (res) window.FB.redirectByRole(res.profile);
+      } catch (e) {
+        console.error('[login] telegram', e);
+        showErr(e.code, e.message);
+        setTgBusy(false);
+      }
     };
 
-    let app, auth, db;
-    try {
-      app  = initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db   = getFirestore(app);
-      window.__kutDiag('✓ Firebase инициализирован: ' + firebaseConfig.projectId);
-    } catch (initErr) {
-      window.__kutDiag('✗ Ошибка initializeApp: ' + initErr.message);
-      throw initErr;
-    }
-
-    const $ = (s) => document.querySelector(s);
-
-    function showMessage(text, kind) {
-      const box = $('#authMessage');
-      box.textContent = text;
-      box.className = 'auth-message ' + (kind ? 'is-' + kind : '');
-    }
-    function clearMessage() {
-      const box = $('#authMessage');
-      box.className = 'auth-message';
-      box.textContent = '';
-    }
-    function setError(fieldId, msg) {
-      const input = document.getElementById(fieldId);
-      const box = document.querySelector(`.form-error[data-for="${fieldId}"]`);
-      if (input) input.classList.toggle('is-invalid', Boolean(msg));
-      if (box) box.textContent = msg || '';
-    }
-    function clearErrors(form) {
-      form.querySelectorAll('.form-error').forEach((e) => (e.textContent = ''));
-      form.querySelectorAll('input').forEach((i) => i.classList.remove('is-invalid'));
-      const cs = document.getElementById('countrySelect');
-      if (cs) cs.classList.remove('is-invalid');
-    }
-
-    // =========================================================
-    // СТРАНЫ И МАСКИ ТЕЛЕФОНА
-    // =========================================================
-
-    const countrySelect = $('#countrySelect');
-    const phoneInput    = $('#phone');
-
-    function getSelectedCountry() {
-      const opt = countrySelect.options[countrySelect.selectedIndex];
-      return {
-        code:    opt.dataset.code,
-        digits:  Number(opt.dataset.digits),
-        pattern: opt.dataset.pattern,
-      };
-    }
-
-    function digitsOnly(raw, maxDigits) {
-      let d = String(raw || '').replace(/\D/g, '');
-      if (d.startsWith('0')) d = d.slice(1);
-      return d.slice(0, maxDigits);
-    }
-
-    function applyMask(digits, pattern) {
-      let out = '';
-      let di = 0;
-      for (let i = 0; i < pattern.length; i++) {
-        const p = pattern[i];
-        if (p === 'X') {
-          if (di >= digits.length) break;
-          out += digits[di++];
-        } else {
-          if (di >= digits.length) break;
-          out += p;
-        }
+    tgBtn.addEventListener('click', () => {
+      const slot = document.getElementById('tgWidgetSlot');
+      const iframe = slot.querySelector('iframe');
+      if (iframe) {
+        try { iframe.focus(); iframe.click(); } catch (_) {}
+      } else {
+        const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
+        window.open('https://t.me/' + botName, '_blank', 'noopener');
       }
-      return out;
-    }
-
-    function updatePhonePlaceholder() {
-      const c = getSelectedCountry();
-      phoneInput.placeholder = c.pattern;
-    }
-
-    function formatPhoneInput(raw) {
-      const c = getSelectedCountry();
-      const d = digitsOnly(raw, c.digits);
-      return applyMask(d, c.pattern);
-    }
-
-    function normalizePhoneFromInput() {
-      const c = getSelectedCountry();
-      const d = digitsOnly(phoneInput.value, c.digits);
-      return c.code + d;
-    }
-
-    function isValidPhoneValue() {
-      const c = getSelectedCountry();
-      const d = digitsOnly(phoneInput.value, c.digits);
-      return d.length === c.digits;
-    }
-
-    phoneInput.addEventListener('input', (e) => {
-      e.target.value = formatPhoneInput(e.target.value);
     });
 
-    countrySelect.addEventListener('change', () => {
-      updatePhonePlaceholder();
-      phoneInput.value = formatPhoneInput(phoneInput.value);
-      setError('phone', '');
-    });
+    /* ---------- Рендерим скрытый виджет Telegram ---------- */
+    (function mountTgWidget() {
+      const slot = document.getElementById('tgWidgetSlot');
+      const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
 
-    // =========================================================
-    // РЕДИРЕКТ ПО РОЛИ
-    // =========================================================
-    function redirectByRole(profile) {
-      if (!profile) {
-        window.__kutDiag('✗ Профиль не найден при редиректе');
-        window.location.href = './login.html';
-        return;
-      }
-      if (profile.active === false) {
-        window.__kutDiag('✗ Аккаунт заблокирован');
-        signOut(auth);
-        return;
-      }
-      const role = profile.role;
-      window.__kutDiag('→ Роль: ' + role);
-      if (role === 'super_admin')      window.location.href = './admin.html';
-      else if (role === 'owner')       window.location.href = './index.html';
-      else if (role === 'cashier')     window.location.href = './cash.html';
-      else                             window.location.href = './index.html';
-    }
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://telegram.org/js/telegram-widget.js?22';
+      s.setAttribute('data-telegram-login', botName);
+      s.setAttribute('data-size', 'large');
+      s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+      s.setAttribute('data-request-access', 'write');
+      s.setAttribute('data-userpic', 'false');
+      s.setAttribute('data-radius', '0');
+      slot.appendChild(s);
+    })();
 
-    // =========================================================
-    // ПЕРЕКЛЮЧЕНИЕ ТАБОВ
-    // =========================================================
-    const phoneTab = $('#phoneTab');
-    const emailTab = $('#emailTab');
-
-    document.querySelectorAll('.auth-tab').forEach((tab) => {
-      tab.addEventListener('click', () => {
-        const target = tab.dataset.tab;
-        document.querySelectorAll('.auth-tab').forEach((t) => {
-          const active = t.dataset.tab === target;
-          t.classList.toggle('is-active', active);
-          t.setAttribute('aria-selected', String(active));
-        });
-        phoneTab.classList.toggle('hidden', target !== 'phone');
-        emailTab.classList.toggle('hidden', target !== 'email');
-        clearMessage();
-        stopOtpTimer();
-      });
-    });
-
-    // =========================================================
-    // ВХОД ПО EMAIL
-    // =========================================================
-    const emailForm = $('#emailForm');
-
-    emailForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearErrors(emailForm);
-      clearMessage();
-      window.__kutResetDiag();
-      window.__kutDiag('--- Вход по email ---');
-
-      const email = $('#emailInput').value.trim();
-      const password = $('#passwordInput').value;
-      let ok = true;
-
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setError('emailInput', 'Введите корректный email');
-        ok = false;
-      }
-      if (password.length < 6) {
-        setError('passwordInput', 'Пароль минимум 6 символов');
-        ok = false;
-      }
-      if (!ok) return;
-
-      const btn = $('#emailLoginBtn');
-      btn.disabled = true;
-      btn.textContent = 'Входим...';
-
-      let user = null;
+    /* ---------- Автостарт ---------- */
+    (async function autoStart() {
       try {
-        const cred = await signInWithEmailAndPassword(auth, email, password);
-        user = cred.user;
-        window.__kutDiag('✓ Auth OK. UID: ' + user.uid);
-      } catch (error) {
-        window.__kutDiag('✗ Auth: ' + error.code + ' | ' + error.message);
-        showMessage('Ошибка входа: ' + error.code, 'error');
-        btn.disabled = false;
-        btn.textContent = 'Войти';
-        return;
+        const redirected = await window.FB.handleRedirectResult();
+        if (redirected) { window.FB.redirectByRole(redirected.profile); return; }
+
+        const { user, profile } = await window.FB.waitForAuth();
+        if (user && profile) { window.FB.redirectByRole(profile); return; }
+      } catch (e) {
+        console.error('[login] autoStart', e);
+        showErr(e.code, e.message);
       }
-
-      let profile = null;
-      try {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (!snap.exists()) {
-          window.__kutDiag('✗ users/' + user.uid + ' не найден');
-          showMessage('Профиль не найден в Firestore', 'error');
-          await signOut(auth).catch(() => {});
-          btn.disabled = false;
-          btn.textContent = 'Войти';
-          return;
-        }
-        profile = { uid: user.uid, ...snap.data() };
-        window.__kutDiag('✓ Профиль: role=' + (profile.role || '(пусто)'));
-      } catch (err) {
-        window.__kutDiag('✗ Firestore: ' + err.code + ' | ' + err.message);
-        showMessage('Ошибка чтения профиля: ' + err.code, 'error');
-        await signOut(auth).catch(() => {});
-        btn.disabled = false;
-        btn.textContent = 'Войти';
-        return;
-      }
-
-      if (!profile.role) {
-        window.__kutDiag('✗ Поле role пустое');
-        showMessage('Поле role пустое в Firestore', 'error');
-        await signOut(auth).catch(() => {});
-        btn.disabled = false;
-        btn.textContent = 'Войти';
-        return;
-      }
-
-      showMessage('Успешно! Перенаправляем...', 'success');
-      setTimeout(() => redirectByRole(profile), 300);
-
-      btn.disabled = false;
-      btn.textContent = 'Войти';
-    });
-
-    $('#forgotBtn').addEventListener('click', async () => {
-      const email = $('#emailInput').value.trim();
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showMessage('Введите email — мы отправим ссылку для сброса пароля.', 'info');
-        $('#emailInput').focus();
-        return;
-      }
-      try {
-        await sendPasswordResetEmail(auth, email);
-        showMessage('Письмо для сброса пароля отправлено на ' + email, 'success');
-      } catch (err) {
-        window.__kutDiag('✗ resetPassword: ' + err.code + ' | ' + err.message);
-        showMessage('Не удалось отправить письмо.', 'error');
-      }
-    });
-
-    // =========================================================
-    // ВХОД ПО НОМЕРУ + WHATSAPP OTP
-    // =========================================================
-
-    function generateOtpCode() {
-      return String(Math.floor(1000 + Math.random() * 9000));
-    }
-
-    async function sendWhatsAppOtp(rawPhone) {
-      if (!/^\+\d{8,15}$/.test(rawPhone)) {
-        throw new Error('INVALID_PHONE');
-      }
-
-      const code = generateOtpCode();
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-      const phoneKey = rawPhone.replace(/\D/g, '');
-
-      window.__kutDiag('→ setDoc(otp_sessions/' + phoneKey + ')');
-      await setDoc(doc(db, 'otp_sessions', phoneKey), {
-        phone: rawPhone,
-        code,
-        expiresAt,
-        createdAt: serverTimestamp(),
-        attempts: 0,
-      });
-      window.__kutDiag('✓ OTP записан в Firestore');
-
-      const message =
-        `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\n` +
-        `Никому не сообщайте этот код. Действителен 5 минут.`;
-
-      window.__kutDiag('→ fetch Green-API: ' + phoneKey);
-      const res = await fetch(WA_CONFIG.buildUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: `${phoneKey}@c.us`,
-          message: message,
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        window.__kutDiag('✗ Green-API: ' + res.status + ' ' + errText);
-        throw new Error('WHATSAPP_FAILED');
-      }
-
-      window.__kutDiag('✓ Green-API: код отправлен');
-      return true;
-    }
-
-    async function verifyWhatsAppOtp(rawPhone, code) {
-      const phoneKey = rawPhone.replace(/\D/g, '');
-      const ref = doc(db, 'otp_sessions', phoneKey);
-      const snap = await getDoc(ref);
-
-      if (!snap.exists()) throw new Error('OTP_NOT_FOUND');
-
-      const data = snap.data();
-      let expiresAt = data.expiresAt;
-      if (expiresAt && typeof expiresAt.toDate === 'function') expiresAt = expiresAt.toDate();
-      else if (expiresAt && expiresAt.seconds) expiresAt = new Date(expiresAt.seconds * 1000);
-      else expiresAt = new Date(expiresAt);
-
-      if (!expiresAt || Date.now() > expiresAt.getTime()) {
-        await deleteDoc(ref).catch(() => {});
-        throw new Error('OTP_EXPIRED');
-      }
-
-      if (String(data.code) !== String(code)) {
-        throw new Error('OTP_MISMATCH');
-      }
-
-      await deleteDoc(ref).catch(() => {});
-
-      const fakeEmail = phoneKey + '@kut.local';
-      const fakePassword = 'kut_' + phoneKey + '_secret';
-
-      let cred;
-      try {
-        cred = await signInWithEmailAndPassword(auth, fakeEmail, fakePassword);
-      } catch (err) {
-        if (err.code === 'auth/user-not-found' ||
-            err.code === 'auth/invalid-credential' ||
-            err.code === 'auth/invalid-login-credentials') {
-          cred = await createUserWithEmailAndPassword(auth, fakeEmail, fakePassword);
-        } else {
-          throw err;
-        }
-      }
-
-      const uid = cred.user.uid;
-      let profileSnap = await getDoc(doc(db, 'users', uid));
-
-      if (!profileSnap.exists()) {
-        await setDoc(doc(db, 'users', uid), {
-          email: fakeEmail,
-          displayName: '',
-          phone: rawPhone,
-          role: 'cashier',
-          businessId: '',
-          active: true,
-          createdAt: serverTimestamp(),
-        });
-        profileSnap = await getDoc(doc(db, 'users', uid));
-      }
-
-      const profile = { uid, ...profileSnap.data() };
-      return { user: cred.user, profile };
-    }
-
-    let currentPhone = '';
-    let otpTimerInterval = null;
-
-    const phoneForm = $('#phoneForm');
-    const otpForm = $('#otpForm');
-
-    phoneForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearErrors(phoneForm);
-      clearMessage();
-      window.__kutResetDiag();
-      window.__kutDiag('--- Вход по номеру ---');
-
-      if (!isValidPhoneValue()) {
-        const c = getSelectedCountry();
-        setError('phone', `Введите ${c.digits} цифр номера`);
-        return;
-      }
-
-      const phoneNorm = normalizePhoneFromInput();
-      window.__kutDiag('→ Номер: ' + phoneNorm);
-
-      const btn = $('#sendOtpBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<span>⏳</span> Отправляем код...';
-
-      try {
-        await sendWhatsAppOtp(phoneNorm);
-        currentPhone = phoneNorm;
-        showMessage('Код отправлен в WhatsApp на ' + phoneNorm, 'success');
-        phoneForm.classList.add('hidden');
-        otpForm.classList.remove('hidden');
-        $('#otpInput').focus();
-        startOtpTimer(300);
-      } catch (err) {
-        window.__kutDiag('✗ sendOtp: ' + err.message);
-        let msg = 'Не удалось отправить код. Попробуйте ещё раз.';
-        if (err.message === 'INVALID_PHONE') msg = 'Некорректный номер телефона.';
-        else if (err.message === 'WHATSAPP_FAILED') msg = 'WhatsApp-шлюз не смог отправить код.';
-        showMessage(msg, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<span aria-hidden="true">💬</span> Получить код в WhatsApp';
-      }
-    });
-
-    otpForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearErrors(otpForm);
-      clearMessage();
-      window.__kutDiag('--- Проверка OTP ---');
-
-      const code = $('#otpInput').value.trim();
-      if (!/^\d{4}$/.test(code)) {
-        setError('otpInput', 'Введите 4-значный код');
-        return;
-      }
-
-      const btn = $('#verifyOtpBtn');
-      btn.disabled = true;
-      btn.textContent = 'Проверяем...';
-
-      try {
-        const { profile } = await verifyWhatsAppOtp(currentPhone, code);
-        window.__kutDiag('✓ OTP подтверждён, роль: ' + (profile.role || '—'));
-
-        if (!profile) {
-          showMessage('Профиль не найден.', 'error');
-          return;
-        }
-        if (profile.active === false) {
-          showMessage('Ваш аккаунт заблокирован.', 'error');
-          await signOut(auth).catch(() => {});
-          return;
-        }
-
-        showMessage('Успешно! Перенаправляем...', 'success');
-        setTimeout(() => redirectByRole(profile), 400);
-      } catch (err) {
-        window.__kutDiag('✗ verifyOtp: ' + err.message);
-        let msg = 'Неверный код. Попробуйте ещё раз.';
-        if (err.message === 'OTP_EXPIRED') msg = 'Код истёк. Запросите новый.';
-        else if (err.message === 'OTP_NOT_FOUND') msg = 'Код не найден. Запросите новый.';
-        else if (err.message === 'OTP_MISMATCH') msg = 'Неверный код.';
-        showMessage(msg, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Войти в систему';
-      }
-    });
-
-    $('#backBtn').addEventListener('click', () => {
-      stopOtpTimer();
-      otpForm.classList.add('hidden');
-      phoneForm.classList.remove('hidden');
-      $('#otpInput').value = '';
-      clearErrors(otpForm);
-      clearMessage();
-      phoneInput.focus();
-    });
-
-    function startOtpTimer(seconds) {
-      stopOtpTimer();
-      const el = $('#otpTimer');
-      let left = seconds;
-      const tick = () => {
-        const m = String(Math.floor(left / 60)).padStart(2, '0');
-        const s = String(left % 60).padStart(2, '0');
-        el.textContent = `${m}:${s}`;
-        if (left <= 0) {
-          stopOtpTimer();
-          el.textContent = '00:00';
-        }
-        left--;
-      };
-      tick();
-      otpTimerInterval = setInterval(tick, 1000);
-    }
-    function stopOtpTimer() {
-      if (otpTimerInterval) {
-        clearInterval(otpTimerInterval);
-        otpTimerInterval = null;
-      }
-    }
-
-    // =========================================================
-    // СТАРТ
-    // =========================================================
-    updatePhonePlaceholder();
-
-    // НЕ делаем автоматический редирект — пользователь сам нажимает «Войти».
-    // Это защищает от цикла перезагрузок между login.html и admin.html.
-
-    window.__kutDiag('✓ Готово. Нажмите "Войти".');
+    })();
   </script>
 </body>
 </html>
