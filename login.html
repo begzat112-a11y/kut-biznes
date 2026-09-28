@@ -181,7 +181,67 @@
   </main>
 
   <script type="module">
-    import './js/firebase-config.js';
+    // ============================================
+    // ДИАГНОСТИКА НА ЭКРАНЕ (без DevTools)
+    // ============================================
+    const debugBox = document.createElement('pre');
+    debugBox.id = 'kutDebug';
+    debugBox.style.cssText = `
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      max-height: 40vh;
+      overflow-y: auto;
+      background: rgba(0,0,0,.92);
+      color: #7fffd4;
+      font: 11px/1.4 monospace;
+      padding: 8px 10px;
+      z-index: 99999;
+      margin: 0;
+      border-top: 1px solid #10B981;
+      white-space: pre-wrap;
+      word-break: break-word;
+    `;
+    document.body.appendChild(debugBox);
+
+    function log(msg, type) {
+      const time = new Date().toLocaleTimeString('ru-RU');
+      const color = type === 'err' ? '#FF5C5C'
+                  : type === 'warn' ? '#FBBF24'
+                  : '#7fffd4';
+      debugBox.innerHTML += `<span style="color:${color}">[${time}] ${msg}</span>\n`;
+      debugBox.scrollTop = debugBox.scrollHeight;
+    }
+
+    window.addEventListener('error', (e) => {
+      log(`❌ JS ERROR: ${e.message} | ${e.filename || '?'}:${e.lineno || '?'}`, 'err');
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const r = e.reason;
+      log(`❌ PROMISE: ${r?.code || ''} ${r?.message || r}`, 'err');
+    });
+
+    log('🔍 Старт диагностики...');
+
+    let FB = null;
+    try {
+      const mod = await import('./js/firebase-config.js');
+      FB = window.FB || mod;
+      log('✅ firebase-config.js загружен');
+    } catch (err) {
+      log('❌ Ошибка загрузки firebase-config.js: ' + err.message, 'err');
+      log('   → проверь, что файл на сервере не пустой и не старый', 'warn');
+      throw err;
+    }
+
+    if (!FB) {
+      log('❌ window.FB не определён', 'err');
+      throw new Error('FB not defined');
+    }
+
+    log('✓ window.FB доступен');
+    log('✓ signInWithGoogle: ' + typeof FB.signInWithGoogle);
+    log('✓ signInWithTelegram: ' + typeof FB.signInWithTelegram);
+    log('✓ TELEGRAM_BOT_NAME: ' + FB.TELEGRAM_BOT_NAME);
 
     const googleBtn  = document.getElementById('googleBtn');
     const googleTxt  = document.getElementById('googleBtnText');
@@ -189,28 +249,34 @@
     const tgTxt      = document.getElementById('telegramBtnText');
     const err        = document.getElementById('err');
 
+    log('✓ googleBtn: ' + (googleBtn ? 'найден' : 'НЕ НАЙДЕН'));
+    log('✓ telegramBtn: ' + (tgBtn ? 'найден' : 'НЕ НАЙДЕН'));
+
     const MESSAGES = {
-      // Google
-      'auth/popup-closed-by-user':           'Окно входа было закрыто.',
-      'auth/cancelled-popup-request':        '',
-      'auth/network-request-failed':         'Нет соединения с интернетом.',
-      'auth/unauthorized-domain':            'Домен не добавлен в Firebase → Authentication → Authorized domains.',
-      'auth/operation-not-allowed':          'Вход не включён в Firebase Console (Google или Email/Password).',
-      // Общие
-      'permission-denied':                   'Нет доступа к базе. Проверьте правила Firestore.',
-      'account-disabled':                    'Ваш аккаунт заблокирован. Свяжитесь с администратором.',
-      // Telegram
-      'telegram/bad_data':                   'Telegram не передал данные. Попробуйте ещё раз.',
-      'telegram/expired':                    'Данные Telegram устарели. Попробуйте снова.',
-      'telegram/password_mismatch':          'Ошибка привязки. Обратитесь к администратору.',
-      'auth/email-already-in-use':           'Такой Telegram уже привязан. Обратитесь к администратору.',
-      'auth/weak-password':                  'Ошибка сервера. Обратитесь к администратору.',
-      'auth/invalid-email':                  'Ошибка формата. Обратитесь к администратору.',
+      'auth/popup-closed-by-user':   'Окно входа было закрыто.',
+      'auth/cancelled-popup-request':'',
+      'auth/network-request-failed': 'Нет соединения с интернетом.',
+      'auth/unauthorized-domain':    'Домен не добавлен в Firebase.',
+      'auth/operation-not-allowed':  'Вход не включён в Firebase Console.',
+      'auth/invalid-api-key':        'Неверный API-ключ Firebase.',
+      'auth/api-key-not-valid':      'Неверный API-ключ Firebase.',
+      'auth/configuration-not-found':'Не найдена конфигурация Firebase Auth.',
+      'auth/internal-error':         'Внутренняя ошибка Firebase. Попробуйте позже.',
+      'permission-denied':           'Нет доступа к базе.',
+      'account-disabled':            'Аккаунт заблокирован.',
+      'telegram/bad_data':           'Telegram не передал данные.',
+      'telegram/expired':            'Данные Telegram устарели.',
+      'telegram/password_mismatch':  'Ошибка привязки. Обратитесь к администратору.',
+      'auth/email-already-in-use':   'Такой Telegram уже привязан.',
+      'auth/weak-password':          'Ошибка сервера. Обратитесь к администратору.',
+      'auth/invalid-email':          'Ошибка формата. Обратитесь к администратору.',
+      'auth/invalid-credential':     'Неверные данные для входа.',
     };
 
     function showErr(code, fallback) {
       const msg = MESSAGES[code];
       err.textContent = msg !== undefined ? msg : (fallback || ('Ошибка: ' + code));
+      log('⚠ ' + (code || '') + ' — ' + err.textContent, 'warn');
     }
     function clearErr() { err.textContent = ''; }
 
@@ -223,51 +289,68 @@
       tgTxt.textContent = on ? 'Входим…' : 'Войти через Telegram';
     }
 
-    /* ---------- Google ---------- */
-    googleBtn.addEventListener('click', async () => {
-      clearErr();
-      setGoogleBusy(true);
-      try {
-        const res = await window.FB.signInWithGoogle();
-        if (res) window.FB.redirectByRole(res.profile);
-      } catch (e) {
-        console.error('[login] google', e);
-        showErr(e.code, e.message);
-        setGoogleBusy(false);
-      }
-    });
+    // Google
+    if (googleBtn) {
+      googleBtn.addEventListener('click', async () => {
+        log('👉 Клик по Google');
+        clearErr();
+        setGoogleBusy(true);
+        try {
+          log('   → вызываю FB.signInWithGoogle()...');
+          const res = await FB.signInWithGoogle();
+          log('✓ Google signIn вернул: ' + (res ? (res.profile?.email || 'profile') : 'null'));
+          if (res) FB.redirectByRole(res.profile);
+        } catch (e) {
+          log('❌ Google error: ' + e.code + ' — ' + e.message, 'err');
+          if (e.stack) log('   ' + e.stack.split('\n').slice(0, 3).join(' | '), 'err');
+          showErr(e.code, e.message);
+          setGoogleBusy(false);
+        }
+      });
+    }
 
-    /* ---------- Telegram ---------- */
+    // Telegram callback
     window.onTelegramAuth = async function (tgUser) {
+      log('👉 Telegram callback получен');
+      log('   data: ' + JSON.stringify(tgUser));
       clearErr();
       setTgBusy(true);
       try {
-        const res = await window.FB.signInWithTelegram(tgUser);
-        if (res) window.FB.redirectByRole(res.profile);
+        const res = await FB.signInWithTelegram(tgUser);
+        log('✓ Telegram signIn вернул: ' + (res ? res.profile?.uid : 'null'));
+        if (res) FB.redirectByRole(res.profile);
       } catch (e) {
-        console.error('[login] telegram', e);
+        log('❌ Telegram error: ' + e.code + ' — ' + e.message, 'err');
+        if (e.stack) log('   ' + e.stack.split('\n').slice(0, 3).join(' | '), 'err');
         showErr(e.code, e.message);
         setTgBusy(false);
       }
     };
 
-    // Кнопка Telegram — если виджет загружен, клик по ней уходит в iframe
-    // (виджет-iframe лежит прозрачным overlay поверх, клики перехватывает он).
-    // Если iframe ещё не загружен — открываем бота в новой вкладке.
-    tgBtn.addEventListener('click', () => {
-      const slot = document.getElementById('tgWidgetSlot');
-      const iframe = slot.querySelector('iframe');
-      if (!iframe) {
-        const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
-        window.open('https://t.me/' + botName, '_blank', 'noopener');
-      }
-      // Если iframe есть — ничего не делаем, он сам обработает клик
-    });
+    // Telegram кнопка
+    if (tgBtn) {
+      tgBtn.addEventListener('click', () => {
+        log('👉 Клик по Telegram');
+        const slot = document.getElementById('tgWidgetSlot');
+        const iframe = slot?.querySelector('iframe');
+        log('   iframe в слоте: ' + (iframe ? 'ЕСТЬ' : 'НЕТ'));
+        if (!iframe) {
+          const botName = FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
+          log('   → виджет не загружен, открываю t.me/' + botName, 'warn');
+          window.open('https://t.me/' + botName, '_blank', 'noopener');
+        } else {
+          log('   → клик должен пройти в iframe виджета');
+          log('   размер iframe: ' + iframe.offsetWidth + '×' + iframe.offsetHeight);
+        }
+      });
+    }
 
-    /* ---------- Рендерим виджет Telegram ---------- */
+    // Рендер виджета
     (function mountTgWidget() {
       const slot = document.getElementById('tgWidgetSlot');
-      const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
+      if (!slot) { log('❌ #tgWidgetSlot не найден', 'err'); return; }
+      const botName = FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
+      log('📦 Монтирую виджет Telegram для @' + botName);
 
       const s = document.createElement('script');
       s.async = true;
@@ -278,23 +361,35 @@
       s.setAttribute('data-request-access', 'write');
       s.setAttribute('data-userpic', 'false');
       s.setAttribute('data-radius', '0');
-      s.setAttribute('data-auth-url', ''); // пусто — используем onauth
+      s.onload = () => log('✓ telegram-widget.js загружен');
+      s.onerror = () => log('❌ telegram-widget.js НЕ загрузился (VPN?)', 'err');
       slot.appendChild(s);
     })();
 
-    /* ---------- Автостарт ---------- */
+    // Автостарт
     (async function autoStart() {
       try {
-        const redirected = await window.FB.handleRedirectResult();
-        if (redirected) { window.FB.redirectByRole(redirected.profile); return; }
-
-        const { user, profile } = await window.FB.waitForAuth();
-        if (user && profile) { window.FB.redirectByRole(profile); return; }
+        log('🔄 Проверяю redirect...');
+        const redirected = await FB.handleRedirectResult();
+        if (redirected) {
+          log('✓ Redirect: ' + (redirected.profile?.email || 'profile'));
+          FB.redirectByRole(redirected.profile);
+          return;
+        }
+        log('🔄 Проверяю текущую сессию...');
+        const { user, profile } = await FB.waitForAuth();
+        log('   user: ' + (user ? user.email : 'нет'));
+        log('   profile: ' + (profile ? profile.role : 'нет'));
+        if (user && profile) { FB.redirectByRole(profile); return; }
+        log('ℹ Сессия не найдена — показываю форму входа');
       } catch (e) {
-        console.error('[login] autoStart', e);
+        log('❌ autoStart: ' + e.code + ' — ' + e.message, 'err');
+        if (e.stack) log('   ' + e.stack.split('\n').slice(0, 3).join(' | '), 'err');
         showErr(e.code, e.message);
       }
     })();
+
+    log('🏁 Диагностика завершена. Жду действий...');
   </script>
 </body>
 </html>
