@@ -1,0 +1,13 @@
+{
+  "name": "kut-biznes-functions",
+  "description": "Cloud Functions для КУТ: БИЗНЕС",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0"
+  },
+  "private": true
+}
