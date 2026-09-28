@@ -39,7 +39,7 @@
 
     .sidebar__brand-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 8px; padding: 6px 6px 14px; border-bottom: 1px solid rgba(255,255,255,.10); min-width: 0; }
     .sidebar__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #EDF5F1; flex: 1; min-width: 0; }
-    .brand__mark { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex-shrink: 0; box-shadow: 0 6px 16px rgba(212,175,55,.35); }
+    .brand__mark { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex-shrink: 0; }
     .brand__text strong { display: block; font-size: 15px; color: #EDF5F1; }
     .brand__text small { display: block; font-size: 11px; color: rgba(237,245,241,.5); margin-top: 2px; }
 
@@ -49,7 +49,7 @@
     .nav-link.active { box-shadow: inset 3px 0 0 #D4AF37; background: linear-gradient(90deg, rgba(212,175,55,.14), rgba(212,175,55,.02)); }
     .nav-link__icon { width: 26px; display: grid; place-items: center; font-size: 18px; }
     .nav-link__badge { margin-left: auto; background: #FF5C5C; color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
-    .sidebar__cta { margin-top: auto; padding: 14px 16px; border-radius: 16px; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; box-shadow: 0 10px 26px rgba(212,175,55,.35); }
+    .sidebar__cta { margin-top: auto; padding: 14px 16px; border-radius: 16px; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, #E7C14A, #B88F1D); color: #06150F; }
     .sidebar__cta__icon { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(0,0,0,.12); border-radius: 12px; font-size: 20px; flex-shrink: 0; }
     .sidebar__cta__text strong { display: block; font-size: 14px; }
     .sidebar__cta__text small { display: block; font-size: 11px; opacity: .75; margin-top: 2px; }
@@ -64,8 +64,6 @@
     .mobile-bar__title { font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; color: inherit; text-align: center; }
     .net-pill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(52,211,153,.16); border: 1px solid rgba(52,211,153,.32); color: #34D399; flex-shrink: 0; }
     .net-pill__dot { width: 7px; height: 7px; border-radius: 50%; background: #34D399; }
-    .net-pill.is-offline { background: rgba(255,92,92,.16); border-color: rgba(255,92,92,.42); color: #FF5C5C; }
-    .net-pill.is-offline .net-pill__dot { background: #FF5C5C; }
 
     .main-content { min-width: 0; max-width: 100%; overflow-x: hidden; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
     @media (min-width: 1000px) { .main-content { padding: 26px 32px 34px; gap: 22px; } }
@@ -73,101 +71,15 @@
 
     .page-head { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; min-width: 0; }
     @media (min-width: 720px) { .page-head { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; } }
-    .page-head h1 { margin: 0; font-size: clamp(20px, 5vw, 24px); font-weight: 800; color: inherit; }
-    .page-head p { margin: 4px 0 0; font-size: 14px; color: var(--v9-text-2); }
-    .role-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; width: fit-content; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: var(--v9-text-2); }
+    .page-head h1 { margin: 0; font-size: clamp(20px, 5vw, 24px); font-weight: 800; }
+    .page-head p { margin: 4px 0 0; font-size: 14px; color: #94A3B8; }
 
-    .period-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-    .period-chips::-webkit-scrollbar { display: none; }
-    .period-chip { flex-shrink: 0; min-height: 48px; padding: 12px 18px; border-radius: 999px; border: 1px solid var(--kut-border); background: var(--kut-surface); color: var(--kut-text-2); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap; transition: background .18s ease, color .18s ease, transform .12s ease; }
-    .period-chip:active { transform: scale(.96); }
-
-    .analytics { background: radial-gradient(600px 260px at 15% 0%, rgba(212,175,55,.12), transparent 60%), linear-gradient(150deg, #0F2C22 0%, #071410 100%); border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 22px; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42); padding: 20px; position: relative; overflow: hidden; color: #FFFFFF; }
-    .analytics__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; position: relative; z-index: 1; }
-    .analytics__title { margin: 0; font-size: 13px; font-weight: 800; text-transform: uppercase; color: #F0D772; letter-spacing: .5px; }
-    .analytics__period { font-size: 12px; font-weight: 500; color: rgba(255,255,255,.65); white-space: nowrap; }
-
-    .revenue-hero { padding: 16px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); margin-bottom: 12px; }
-    .revenue-hero__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: rgba(255,255,255,.7); margin-bottom: 8px; }
-    .revenue-hero__value { font-size: clamp(28px, 8vw, 34px); font-weight: 800; line-height: 1; letter-spacing: -0.6px; color: #FFD86B; font-variant-numeric: tabular-nums; text-shadow: 0 0 24px rgba(212,175,55,.30); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .revenue-hero__value small { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.6); margin-left: 6px; letter-spacing: 0; text-shadow: none; }
-    .revenue-hero__split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-    .mini { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; min-width: 0; overflow: hidden; }
-    .mini__dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .mini__dot--cash { background: #2ecc71; box-shadow: 0 0 10px rgba(46,204,113,.55); }
-    .mini__dot--card { background: #7DD3FC; box-shadow: 0 0 10px rgba(125,211,252,.55); }
-    .mini__body { min-width: 0; flex: 1; }
-    .mini__label { font-size: 11px; font-weight: 700; letter-spacing: .3px; color: rgba(255,255,255,.62); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mini__value { font-size: 13px; font-weight: 800; color: #FFFFFF; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .kpi { border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; position: relative; }
-    .kpi:last-of-type { margin-bottom: 0; }
-    .kpi__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
-    .kpi__value { font-size: clamp(24px, 6vw, 28px); font-weight: 800; line-height: 1; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .kpi__value small { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.6); margin-left: 5px; letter-spacing: 0; }
-    .kpi--profit { background: linear-gradient(145deg, rgba(46,204,113,.12), rgba(46,204,113,.02)); border: 1px solid rgba(46,204,113,.22); }
-    .kpi--profit .kpi__label { color: rgba(255,255,255,.72); }
-    .kpi--profit .kpi__value { color: #7FE4A5; text-shadow: 0 0 22px rgba(46,204,113,.28); }
-    .kpi--muted { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06); margin-bottom: 14px; }
-    .kpi--muted .kpi__label { color: rgba(255,255,255,.5); font-size: 10px; }
-    .kpi--muted .kpi__value { font-size: clamp(20px, 5vw, 22px); font-weight: 700; color: rgba(255,255,255,.88); text-shadow: none; }
-    .kpi--muted .kpi__value small { color: rgba(255,255,255,.55); }
-
-    .chart-wrap { margin-top: 14px; padding: 14px 12px 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); border-radius: 16px; }
-    .chart-wrap__head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-    .chart-wrap__title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.72); }
-    .chart-wrap__total { font-size: 13px; font-weight: 700; white-space: nowrap; color: #FFD86B; }
-    .chart { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 6px; align-items: end; height: 110px; }
-    .chart__col { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; min-width: 0; }
-    .chart__bar { width: 100%; max-width: 34px; min-height: 4px; border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, #F0D772 0%, #B88F1D 100%); box-shadow: 0 4px 14px rgba(212,175,55,.28); position: relative; }
-    .chart__bar.is-today { background: linear-gradient(180deg, #6EF0B6 0%, #17A46F 100%); box-shadow: 0 4px 14px rgba(52,211,153,.36); }
-    .chart__bar-value { font-size: 10px; font-weight: 700; color: #fff; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
-    .chart__label { font-size: 10px; font-weight: 700; text-transform: lowercase; color: rgba(255,255,255,.72); }
-
-    .critical-stock { border-radius: 22px; padding: 16px 18px; background: radial-gradient(420px 200px at 0% 0%, rgba(255,92,92,.10), transparent 60%), linear-gradient(150deg, rgba(255,92,92,.06), rgba(255,92,92,.015)); border: 1px solid rgba(255,92,92,.24); box-shadow: 0 4px 16px rgba(0,0,0,.28); }
-    .critical-stock__head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .critical-stock__icon { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; background: rgba(255,92,92,.16); border: 1px solid rgba(255,92,92,.28); flex-shrink: 0; }
-    .critical-stock__title { flex: 1; min-width: 0; }
-    .critical-stock__title strong { display: block; font-size: 14px; font-weight: 800; color: #FF5C5C; }
-    .critical-stock__title small { display: block; font-size: 11px; color: var(--kut-text-3); margin-top: 2px; }
-    .critical-stock__link { font-size: 12px; font-weight: 700; color: #FF5C5C; text-decoration: none; padding: 6px 10px; border-radius: 10px; background: rgba(255,92,92,.10); border: 1px solid rgba(255,92,92,.20); flex-shrink: 0; }
-    .critical-stock__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-    .critical-stock__item { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 12px; }
-    .critical-stock__item + .critical-stock__item { border-top: 1px dashed rgba(255,92,92,.14); }
-    .critical-stock__name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--kut-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .critical-stock__qty { display: inline-flex; align-items: baseline; gap: 3px; padding: 4px 10px; border-radius: 999px; background: rgba(255,92,92,.14); border: 1px solid rgba(255,92,92,.24); color: #FF5C5C; font-variant-numeric: tabular-nums; white-space: nowrap; flex-shrink: 0; }
-    .critical-stock__qty strong { font-size: 13px; font-weight: 800; }
-    .critical-stock__qty small { font-size: 10px; font-weight: 700; opacity: 0.75; }
-    .critical-stock__item.is-zero .critical-stock__qty { background: rgba(255,92,92,.28); border-color: rgba(255,92,92,.5); color: #fff; }
-    .critical-stock__more { padding: 8px 8px 4px; font-size: 12px; font-weight: 600; color: var(--kut-text-3); text-align: center; list-style: none; }
-
-    .recent { border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; max-height: 55vh; background: var(--kut-surface); border: 1px solid var(--kut-border); box-shadow: 0 10px 34px rgba(0,0,0,.10); }
-    .recent__head { display: flex; justify-content: space-between; gap: 10px; padding: 16px 18px; flex-shrink: 0; border-bottom: 1px solid var(--kut-border); }
-    .recent__head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--kut-text-1); }
-    .recent__head a { font-size: 13px; font-weight: 600; text-decoration: none; color: var(--kut-gold-deep); }
-    .recent__list { padding: 6px 8px; overflow-y: auto; flex: 1; min-height: 0; }
-    .sale-row { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-radius: 14px; }
-    .sale-row + .sale-row { border-top: 1px dashed var(--kut-border); }
-    .sale-row__avatar { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; font-size: 17px; flex-shrink: 0; background: rgba(212, 175, 55, 0.14); }
-    .sale-row__info { flex: 1; min-width: 0; overflow: hidden; }
-    .sale-row__title { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--kut-text-1); }
-    .sale-row__meta { font-size: 12px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--kut-text-3); }
-    .sale-row__amount { font-size: 14px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; color: #0F7F4D; }
-    .sale-row__amount--debt { color: #C0392B; }
-    .recent__empty { padding: 40px 18px; text-align: center; font-size: 14px; color: var(--kut-text-3); }
-    .recent__empty span { display: block; font-size: 34px; margin-bottom: 8px; opacity: .8; }
-
-    .footer { text-align: center; font-size: 12px; padding: 8px 0 4px; color: var(--kut-text-3); }
-
-    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: 1fr 1fr 92px 1fr 1fr; align-items: center; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--kut-nav-bg); backdrop-filter: blur(24px) saturate(160%); border-top: 1px solid var(--kut-nav-border); box-shadow: var(--kut-nav-shadow); height: 76px; }
-    .bottom-nav__item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-family: inherit; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .3px; color: var(--kut-nav-text); min-width: 48px; min-height: 48px; padding: 8px 4px; border-radius: 14px; }
-    .bottom-nav__item:active { transform: scale(.92); }
-    .bottom-nav__icon { font-size: 24px; line-height: 1; filter: grayscale(.5) opacity(.7); }
-    .bottom-nav__item.active { color: var(--kut-nav-text-active); background: linear-gradient(180deg, rgba(212,175,55,.14), rgba(212,175,55,.02)); }
-    .bottom-nav__item.active .bottom-nav__icon { filter: none; transform: translateY(-2px) scale(1.06); }
-    .bottom-nav__scan { position: relative; display: grid; place-items: center; width: 80px; height: 80px; margin: -22px auto 0; border-radius: 50%; border: 5px solid var(--kut-canvas-2); background: radial-gradient(circle at 35% 30%, #F5DA7C 0%, #B88F1D 70%); color: #06150F; font-size: 34px; cursor: pointer; padding: 0; box-shadow: 0 12px 30px rgba(212,175,55,.5), 0 4px 12px rgba(0,0,0,.35); }
-    .bottom-nav__scan:active { transform: scale(.92); }
-    .badge-notify { position: absolute; top: 4px; right: 6px; min-width: 20px; height: 20px; padding: 0 6px; background: #FF5C5C; color: #fff; font-size: 11px; font-weight: 800; border-radius: 999px; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--kut-canvas-2); pointer-events: none; }
+    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: grid; grid-template-columns: 1fr 1fr 92px 1fr 1fr; align-items: center; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: #0B1220; border-top: 1px solid rgba(255,255,255,.08); height: 76px; }
+    .bottom-nav__item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; font-weight: 700; text-transform: uppercase; font-size: 10px; color: #94A3B8; padding: 8px 4px; border-radius: 14px; }
+    .bottom-nav__icon { font-size: 24px; }
+    .bottom-nav__item.active { color: #E4C56A; }
+    .bottom-nav__scan { display: grid; place-items: center; width: 80px; height: 80px; margin: -22px auto 0; border-radius: 50%; border: 5px solid #0B1220; background: radial-gradient(circle at 35% 30%, #F5DA7C 0%, #B88F1D 70%); color: #06150F; font-size: 34px; cursor: pointer; padding: 0; }
+    .badge-notify { position: absolute; top: 4px; right: 6px; min-width: 20px; height: 20px; padding: 0 6px; background: #FF5C5C; color: #fff; font-size: 11px; font-weight: 800; border-radius: 999px; display: grid; place-items: center; }
     .badge-notify[hidden] { display: none; }
   </style>
 </head>
@@ -178,7 +90,6 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Основное меню">
       <div id="sidebar-profile-slot"></div>
-
       <div class="sidebar__brand-row">
         <a href="./index.html" class="sidebar__brand">
           <span class="brand__mark" aria-hidden="true">К</span>
@@ -188,51 +99,29 @@
           </span>
         </a>
       </div>
-
       <nav class="sidebar__nav" aria-label="Навигация">
-        <a href="./index.html" class="nav-link active" aria-current="page">
-          <span class="nav-link__icon" aria-hidden="true">🏠</span><span>Главная</span>
-        </a>
-        <a href="./cash.html" class="nav-link">
-          <span class="nav-link__icon" aria-hidden="true">🧾</span><span>Касса</span>
-        </a>
-        <a href="./stock.html" class="nav-link">
-          <span class="nav-link__icon" aria-hidden="true">📦</span><span>Склад</span>
-        </a>
-        <a href="./debts.html" class="nav-link">
-          <span class="nav-link__icon" aria-hidden="true">📒</span><span>Несие (долги)</span>
-          <span class="nav-link__badge" id="nav-debts-count" hidden>0</span>
-        </a>
-        <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden>
-          <span class="nav-link__icon" aria-hidden="true">👥</span><span>Сотрудники</span>
-          <span class="nav-link__badge" id="nav-staff-count" hidden>0</span>
-        </a>
+        <a href="./index.html" class="nav-link active"><span class="nav-link__icon">🏠</span><span>Главная</span></a>
+        <a href="./cash.html" class="nav-link"><span class="nav-link__icon">🧾</span><span>Касса</span></a>
+        <a href="./stock.html" class="nav-link"><span class="nav-link__icon">📦</span><span>Склад</span></a>
+        <a href="./debts.html" class="nav-link"><span class="nav-link__icon">📒</span><span>Несие</span></a>
+        <a href="./staff.html" class="nav-link" id="nav-staff-link" hidden><span class="nav-link__icon">👥</span><span>Сотрудники</span></a>
       </nav>
-
       <div id="sidebar-theme-slot"></div>
-
-      <a href="./cash.html" class="sidebar__cta" aria-label="Открыть кассу">
-        <span class="sidebar__cta__icon" aria-hidden="true">＋</span>
-        <span class="sidebar__cta__text">
-          <strong>Открыть кассу</strong>
-          <small>Новая продажа</small>
-        </span>
+      <a href="./cash.html" class="sidebar__cta">
+        <span class="sidebar__cta__icon">＋</span>
+        <span class="sidebar__cta__text"><strong>Открыть кассу</strong><small>Новая продажа</small></span>
       </a>
-
       <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
-
       <div id="sidebar-logout-slot"></div>
     </aside>
 
     <div>
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
-        <span class="mobile-bar__title">
-          КУТ: БИЗНЕС · <span id="page-title">Главная</span>
-        </span>
+        <span class="mobile-bar__title">КУТ: БИЗНЕС · <span id="page-title">Главная</span></span>
         <div id="business-switcher-slot" hidden></div>
-        <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
-          <span class="net-pill__dot" aria-hidden="true"></span>
+        <span class="net-pill" id="net-pill" data-queue="0">
+          <span class="net-pill__dot"></span>
           <span class="net-pill__label">онлайн</span>
           <span class="net-pill__qty" id="net-queue-qty">0</span>
         </span>
@@ -248,146 +137,133 @@
           <span class="role-badge role-badge--user" id="role-badge">Пользователь</span>
         </div>
 
-        <div class="period-chips" id="periodChips" role="tablist" aria-label="Период аналитики">
-          <button class="period-chip" type="button" role="tab" data-period="today">Сегодня</button>
-          <button class="period-chip" type="button" role="tab" data-period="yesterday">Вчера</button>
-          <button class="period-chip" type="button" role="tab" data-period="week">7 дней</button>
-          <button class="period-chip is-active" type="button" role="tab" data-period="month" aria-selected="true">Месяц</button>
-        </div>
+        <div id="kutDebugIndex" style="padding:14px;background:#0F172A;border:1px solid #10B981;border-radius:14px;font:12px/1.5 monospace;color:#7fffd4;white-space:pre-wrap;word-break:break-word;"></div>
 
-        <section class="analytics" aria-label="Финансовая аналитика">
-          <div class="analytics__head">
-            <h2 class="analytics__title">📊 Финансовая аналитика</h2>
-            <span class="analytics__period" id="analytics-period">Сводка за месяц</span>
-          </div>
-
-          <div class="revenue-hero">
-            <div class="revenue-hero__label">Выручка</div>
-            <div class="revenue-hero__value" id="analyticsRevenue">0<small>KGS</small></div>
-            <div class="revenue-hero__split">
-              <div class="mini">
-                <span class="mini__dot mini__dot--cash" aria-hidden="true"></span>
-                <div class="mini__body">
-                  <div class="mini__label">Наличные</div>
-                  <div class="mini__value" id="analyticsCash">0 KGS</div>
-                </div>
-              </div>
-              <div class="mini">
-                <span class="mini__dot mini__dot--card" aria-hidden="true"></span>
-                <div class="mini__body">
-                  <div class="mini__label">Карта / Перевод</div>
-                  <div class="mini__value" id="analyticsCard">0 KGS</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="kpi kpi--profit">
-            <div class="kpi__label">Чистая прибыль</div>
-            <div class="kpi__value" id="analyticsProfit">0<small>KGS</small></div>
-          </div>
-
-          <div class="kpi kpi--muted">
-            <div class="kpi__label">Стоимость склада</div>
-            <div class="kpi__value" id="analyticsStockValue">0<small>KGS</small></div>
-          </div>
-
-          <div class="chart-wrap">
-            <div class="chart-wrap__head">
-              <span class="chart-wrap__title">Выручка по дням недели</span>
-              <span class="chart-wrap__total" id="weekTotal">0 KGS</span>
-            </div>
-            <div class="chart" id="weekChart"></div>
+        <section style="background:#1E293B;border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:20px;">
+          <h2 style="margin:0 0 12px;font-size:15px;font-weight:800;color:#F1F5F9;">📊 Быстрые ссылки</h2>
+          <div style="display:grid;gap:10px;">
+            <a href="./cash.html" style="display:flex;align-items:center;gap:12px;padding:14px;background:#273449;border-radius:14px;color:#F1F5F9;text-decoration:none;">
+              <span style="font-size:22px;">🧾</span><span>Касса — продажи</span>
+            </a>
+            <a href="./stock.html" style="display:flex;align-items:center;gap:12px;padding:14px;background:#273449;border-radius:14px;color:#F1F5F9;text-decoration:none;">
+              <span style="font-size:22px;">📦</span><span>Склад — товары</span>
+            </a>
+            <a href="./debts.html" style="display:flex;align-items:center;gap:12px;padding:14px;background:#273449;border-radius:14px;color:#F1F5F9;text-decoration:none;">
+              <span style="font-size:22px;">📒</span><span>Несие — долги</span>
+            </a>
           </div>
         </section>
 
-        <section class="critical-stock" id="criticalStock" hidden aria-live="polite">
-          <header class="critical-stock__head">
-            <span class="critical-stock__icon" aria-hidden="true">⚠️</span>
-            <div class="critical-stock__title">
-              <strong>Внимание! Заканчиваются товары</strong>
-              <small id="criticalStockSub">Меньше 5 единиц на складе</small>
-            </div>
-            <a class="critical-stock__link" href="./stock.html">Склад →</a>
-          </header>
-          <ul class="critical-stock__list" id="criticalStockList"></ul>
-        </section>
-
-        <div hidden>
-          <span id="dashboard-total-sales" data-kut="revenue-total">0</span>
-          <span id="dashboard-stock-value" data-kut="stock-value">0</span>
-          <span id="dashboard-total-debts" data-kut="debts-sum">0</span>
-          <span id="sales-sub"></span>
-          <span id="stock-sub"></span>
-          <span id="debts-sub"></span>
-          <span id="staff-section"></span>
-          <span id="staff-total"></span>
-          <span id="staff-active"></span>
-          <span id="staff-pending"></span>
-        </div>
-
-        <section class="recent" aria-label="Последние продажи">
-          <div class="recent__head">
-            <h2>Последние продажи</h2>
-            <a href="./cash.html">Открыть кассу →</a>
-          </div>
-          <div class="recent__list" id="recent-sales">
-            <div class="recent__empty">
-              <span aria-hidden="true">🧾</span>
-              Продаж ещё не было. Начните с кассы.
-            </div>
-          </div>
-        </section>
-
-        <div class="footer">КУТ: БИЗНЕС · v14 «Square»</div>
+        <div class="footer">КУТ: БИЗНЕС · v14</div>
       </main>
     </div>
   </div>
 
-  <nav class="bottom-nav" id="bottomNav" aria-label="Основная навигация">
-    <a href="./index.html" class="bottom-nav__item" data-page="index">
-      <span class="bottom-nav__icon" aria-hidden="true">🏠</span><span>Главная</span>
-    </a>
-    <a href="./stock.html" class="bottom-nav__item" data-page="stock">
-      <span class="bottom-nav__icon" aria-hidden="true">📦</span><span>Склад</span>
-    </a>
-    <button type="button" class="bottom-nav__scan" id="bottomNavScan" aria-label="Сканировать штрихкод">
-      <span aria-hidden="true">📷</span>
-    </button>
-    <a href="./cash.html" class="bottom-nav__item" data-page="cash">
-      <span class="bottom-nav__icon" aria-hidden="true">⚡</span><span>Касса</span>
-    </a>
-    <a href="./debts.html" class="bottom-nav__item" data-page="debts">
-      <span class="bottom-nav__icon" aria-hidden="true">📒</span><span>Несие</span>
-      <span class="badge-notify" id="nav-debts-count-bottom" hidden>0</span>
-    </a>
+  <nav class="bottom-nav" id="bottomNav">
+    <a href="./index.html" class="bottom-nav__item active"><span class="bottom-nav__icon">🏠</span><span>Главная</span></a>
+    <a href="./stock.html" class="bottom-nav__item"><span class="bottom-nav__icon">📦</span><span>Склад</span></a>
+    <button type="button" class="bottom-nav__scan" id="bottomNavScan"><span>📷</span></button>
+    <a href="./cash.html" class="bottom-nav__item"><span class="bottom-nav__icon">⚡</span><span>Касса</span></a>
+    <a href="./debts.html" class="bottom-nav__item"><span class="bottom-nav__icon">📒</span><span>Несие</span></a>
   </nav>
 
-  <script>
-    (function () {
-      function sync() {
-        var src = document.getElementById('nav-debts-count');
-        var dst = document.getElementById('nav-debts-count-bottom');
-        if (!src || !dst) return;
-        var has = !src.hidden && src.textContent && src.textContent !== '0';
-        if (has) { dst.textContent = src.textContent; dst.hidden = false; }
-        else { dst.hidden = true; }
+  <script type="module">
+    // ============================================
+    // ДИАГНОСТИКА
+    // ============================================
+    const dbg = document.getElementById('kutDebugIndex');
+    function log(msg, type) {
+      const time = new Date().toLocaleTimeString('ru-RU');
+      const color = type === 'err' ? '#FF5C5C' : type === 'warn' ? '#FBBF24' : '#7fffd4';
+      dbg.innerHTML += `<span style="color:${color}">[${time}] ${msg}</span>\n`;
+      dbg.scrollTop = dbg.scrollHeight;
+    }
+
+    window.addEventListener('error', (e) => {
+      log(`❌ JS ERROR: ${e.message} | ${e.filename || '?'}:${e.lineno || '?'}`, 'err');
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const r = e.reason;
+      log(`❌ PROMISE: ${r?.code || ''} ${r?.message || r}`, 'err');
+    });
+
+    log('🔍 Старт index.html');
+
+    // 1. Проверяем Service Worker и удаляем его
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        log(`Найдено Service Worker: ${regs.length}`);
+        for (const r of regs) {
+          await r.unregister();
+          log('  → удалён: ' + (r.active?.scriptURL || 'unknown'), 'warn');
+        }
+        if (regs.length > 0) {
+          log('⚠️  Service Worker удалён — обновите страницу', 'warn');
+        }
+      } else {
+        log('Service Worker: не поддерживается');
       }
-      setTimeout(sync, 500); setTimeout(sync, 1500); setTimeout(sync, 3000);
-      var src = document.getElementById('nav-debts-count');
-      if (src && 'MutationObserver' in window) {
-        new MutationObserver(sync).observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
+    } catch (e) {
+      log('SW error: ' + e.message, 'err');
+    }
+
+    // 2. Проверяем кэш
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        log(`Кэши: [${keys.join(', ') || 'пусто'}]`);
+        for (const k of keys) {
+          await caches.delete(k);
+          log('  → кэш очищен: ' + k, 'warn');
+        }
       }
-    })();
+    } catch (e) {
+      log('Cache error: ' + e.message, 'err');
+    }
+
+    // 3. Загружаем FB
+    let FB = null;
+    try {
+      log('📥 Загружаю firebase-config.js...');
+      const t0 = Date.now();
+      const mod = await import('./js/firebase-config.js');
+      FB = window.FB || mod;
+      log(`✓ firebase-config.js загружен за ${Date.now() - t0}ms`);
+    } catch (err) {
+      log('❌ Ошибка firebase-config.js: ' + err.message, 'err');
+      throw err;
+    }
+
+    if (!FB) { log('❌ window.FB не определён', 'err'); throw new Error('no FB'); }
+    log('✓ window.FB доступен');
+
+    // 4. Ждём auth
+    try {
+      log('🔄 Жду Firebase Auth...');
+      const t1 = Date.now();
+      const { user, profile } = await FB.waitForAuth();
+      log(`✓ Auth за ${Date.now() - t1}ms`);
+      log('  user: ' + (user ? user.email : 'нет'));
+      log('  profile: ' + (profile ? profile.role + ' / ' + profile.businessId : 'нет'));
+
+      if (!user || !profile) {
+        log('❌ Нет пользователя — редирект на login', 'warn');
+        setTimeout(() => { window.location.href = './login.html'; }, 1500);
+        throw new Error('no user');
+      }
+
+      log('✅ Всё ок — можно работать!');
+
+      // Показываем email в шапке
+      const emailEl = document.getElementById('role-badge');
+      if (emailEl) emailEl.textContent = profile.displayName || user.email || 'Профиль';
+
+    } catch (e) {
+      log('❌ auth: ' + (e.code || e.message), 'err');
+    }
+
+    log('🏁 Готово');
   </script>
-
-  <script src="./js/theme.js"></script>
-  <script src="./js/ui-chrome.js"></script>
-  <script type="module" src="./js/app.js"></script>
-  <script src="./js/scanner.js"></script>
-
-  <script type="module" src="./js/permissions.js"></script>
-  <script type="module" src="./js/analytics-pro.js"></script>
-  <script type="module" src="./js/shifts.js"></script>
 </body>
 </html>
