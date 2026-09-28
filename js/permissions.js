@@ -13,9 +13,6 @@
 (function () {
   'use strict';
 
-  // =========================================================
-  // ИЕРАРХИЯ
-  // =========================================================
   const ROLE_HIERARCHY = {
     super_admin: 100,
     owner:       90,
@@ -23,7 +20,6 @@
     cashier:     40,
   };
 
-  // Дефолтные права по роли
   const ROLE_DEFAULT_PERMISSIONS = {
     owner: [
       'pos.sell', 'pos.refund', 'pos.discount', 'pos.discount.unlimited',
@@ -49,37 +45,36 @@
     ],
   };
 
-  // Полный каталог прав для UI
   const ALL_PERMISSIONS = [
-    { id: 'pos.sell',              label: 'Продавать',           group: 'Касса' },
-    { id: 'pos.refund',            label: 'Возвраты',            group: 'Касса' },
-    { id: 'pos.discount',          label: 'Давать скидки',       group: 'Касса' },
-    { id: 'pos.discount.unlimited',label: 'Скидка без лимита',   group: 'Касса' },
-    { id: 'pos.open_price',        label: 'Открытая цена',       group: 'Касса' },
-    { id: 'pos.split_payment',     label: 'Split-оплата',        group: 'Касса' },
-    { id: 'stock.view',            label: 'Видеть склад',        group: 'Склад' },
-    { id: 'stock.edit',            label: 'Редактировать товары',group: 'Склад' },
-    { id: 'stock.view_cost',       label: '🔴 Видеть закупку',   group: 'Склад' },
-    { id: 'stock.view_margin',     label: '🔴 Видеть маржу',     group: 'Склад' },
-    { id: 'stock.delete',          label: 'Удалять товары',      group: 'Склад' },
-    { id: 'stock.transfer',        label: 'Перевод между точками',group: 'Склад' },
-    { id: 'debts.view',            label: 'Видеть долги',        group: 'Несие' },
-    { id: 'debts.edit',            label: 'Редактировать долги', group: 'Несие' },
-    { id: 'debts.delete',          label: 'Удалять долги',       group: 'Несие' },
-    { id: 'reports.view',          label: 'Отчёты',              group: 'Аналитика' },
-    { id: 'reports.profit',        label: '🔴 Видеть прибыль',   group: 'Аналитика' },
-    { id: 'reports.cogs',          label: '🔴 Видеть COGS',      group: 'Аналитика' },
-    { id: 'reports.tax',           label: 'Налоги',              group: 'Аналитика' },
-    { id: 'staff.view',            label: 'Видеть сотрудников',  group: 'Команда' },
-    { id: 'staff.invite',          label: 'Приглашать',          group: 'Команда' },
-    { id: 'staff.edit_permissions',label: '🔴 Менять права',     group: 'Команда' },
-    { id: 'staff.delete',          label: 'Удалять',             group: 'Команда' },
-    { id: 'settings.view',         label: 'Настройки',           group: 'Настройки' },
-    { id: 'settings.edit',         label: '🔴 Редактировать',    group: 'Настройки' },
+    { id: 'pos.sell',              label: 'Продавать',              group: 'Касса' },
+    { id: 'pos.refund',            label: 'Возвраты',               group: 'Касса' },
+    { id: 'pos.discount',          label: 'Давать скидки',          group: 'Касса' },
+    { id: 'pos.discount.unlimited',label: 'Скидка без лимита',      group: 'Касса' },
+    { id: 'pos.open_price',        label: 'Открытая цена',          group: 'Касса' },
+    { id: 'pos.split_payment',     label: 'Split-оплата',           group: 'Касса' },
+    { id: 'stock.view',            label: 'Видеть склад',           group: 'Склад' },
+    { id: 'stock.edit',            label: 'Редактировать товары',   group: 'Склад' },
+    { id: 'stock.view_cost',       label: '🔴 Видеть закупку',      group: 'Склад' },
+    { id: 'stock.view_margin',     label: '🔴 Видеть маржу',        group: 'Склад' },
+    { id: 'stock.delete',          label: 'Удалять товары',         group: 'Склад' },
+    { id: 'stock.transfer',        label: 'Перевод между точками',  group: 'Склад' },
+    { id: 'debts.view',            label: 'Видеть долги',           group: 'Несие' },
+    { id: 'debts.edit',            label: 'Редактировать долги',    group: 'Несие' },
+    { id: 'debts.delete',          label: 'Удалять долги',          group: 'Несие' },
+    { id: 'reports.view',          label: 'Отчёты',                 group: 'Аналитика' },
+    { id: 'reports.profit',        label: '🔴 Видеть прибыль',      group: 'Аналитика' },
+    { id: 'reports.cogs',          label: '🔴 Видеть COGS',         group: 'Аналитика' },
+    { id: 'reports.tax',           label: 'Налоги',                 group: 'Аналитика' },
+    { id: 'staff.view',            label: 'Видеть сотрудников',     group: 'Команда' },
+    { id: 'staff.invite',          label: 'Приглашать',             group: 'Команда' },
+    { id: 'staff.edit_permissions',label: '🔴 Менять права',        group: 'Команда' },
+    { id: 'staff.delete',          label: 'Удалять',                group: 'Команда' },
+    { id: 'settings.view',         label: 'Настройки',              group: 'Настройки' },
+    { id: 'settings.edit',         label: '🔴 Редактировать',       group: 'Настройки' },
   ];
 
   // =========================================================
-  // ФУНКЦИИ ПРОВЕРКИ
+  // ПРОВЕРКИ
   // =========================================================
   function getCurrentProfile() {
     return window.KUT?.getState?.()?.profile || null;
@@ -106,7 +101,6 @@
   function canGrantPermission(actor, target, perm) {
     if (!canManage(actor, target)) return false;
     if (actor.role === 'super_admin') return true;
-    // Manager не может выдать права выше своих
     if (actor.role === 'manager') {
       const actorPerms = [
         ...ROLE_DEFAULT_PERMISSIONS.manager,
@@ -114,15 +108,14 @@
       ];
       return actorPerms.includes(perm) || actorPerms.includes('*');
     }
-    // Owner может всё, кроме выдачи super_admin
     if (actor.role === 'owner') {
-      return !perm.startsWith('super.');
+      return !String(perm).startsWith('super.');
     }
     return false;
   }
 
   // =========================================================
-  // PIN-ХЕШИРОВАНИЕ (Web Crypto API)
+  // PIN (SHA-256)
   // =========================================================
   async function hashPin(pin) {
     const buf = new TextEncoder().encode(String(pin));
@@ -147,17 +140,38 @@
     }
   }
 
+  async function setPin(staffId, pin) {
+    if (!/^\d{4}$/.test(String(pin))) {
+      toast('PIN должен состоять из 4 цифр', true);
+      return false;
+    }
+    try {
+      const h = await hashPin(pin);
+      const { db, doc, updateDoc, serverTimestamp } = window.FB;
+      await updateDoc(doc(db, 'staff', staffId), {
+        pinHash: h,
+        updatedAt: serverTimestamp(),
+      });
+      toast('PIN установлен');
+      return true;
+    } catch (err) {
+      console.error('[perms] setPin failed:', err);
+      toast('Не удалось сохранить PIN', true);
+      return false;
+    }
+  }
+
   // =========================================================
-  // МОДАЛКА «МАТРИЦА ПРАВ»
+  // МОДАЛКА ПРАВ
   // =========================================================
   function openPermissionsModal(staffId) {
     if (!hasPermission('staff.edit_permissions')) {
-      if (window.KUT?.toast) window.KUT.toast('Нет прав на изменение разрешений', true);
+      toast('Нет прав на изменение разрешений', true);
       return;
     }
 
     const st = window.KUT?.getState?.();
-    const staff = (st.staff || []).find((s) => s.id === staffId);
+    const staff = (st?.staff || []).find((s) => s.id === staffId);
     if (!staff) { toast('Сотрудник не найден', true); return; }
 
     const existing = document.getElementById('kutPermsModal');
@@ -174,14 +188,13 @@
     modal.id = 'kutPermsModal';
     modal.className = 'kut-perms-modal';
 
-    // Группировка
     const groups = {};
     ALL_PERMISSIONS.forEach((p) => {
       if (!groups[p.group]) groups[p.group] = [];
       groups[p.group].push(p);
     });
 
-    const roleOptions = ['cashier', 'manager']; // owner только через super_admin
+    const roleOptions = ['cashier', 'manager'];
     if (actor.role === 'super_admin') roleOptions.push('owner');
 
     modal.innerHTML = `
@@ -205,9 +218,7 @@
           <div class="kut-perms__role-options">
             ${roleOptions.map((r) => `
               <button class="kut-perms__role-btn ${staff.role === r ? 'is-active' : ''}"
-                      data-role="${r}" type="button">
-                ${roleLabel(r)}
-              </button>
+                      data-role="${r}" type="button">${roleLabel(r)}</button>
             `).join('')}
           </div>
         </div>
@@ -248,8 +259,14 @@
       });
     });
 
+    const close = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+    };
+
     modal.querySelectorAll('[data-close]').forEach((el) =>
       el.addEventListener('click', close));
+
     modal.querySelector('.kut-perms__save').addEventListener('click', async () => {
       const perms = [];
       modal.querySelectorAll('input[data-perm]:checked').forEach((cb) => {
@@ -258,18 +275,12 @@
       await savePermissions(staffId, selectedRole, perms);
       close();
     });
-
-    function close() {
-      modal.remove();
-      document.body.style.overflow = '';
-    }
   }
 
   async function savePermissions(staffId, role, permissions) {
     const actor = getCurrentProfile();
     if (!actor) return;
 
-    // Проверка иерархии
     if (role === 'owner' && actor.role !== 'super_admin') {
       toast('Только супер-админ может назначить владельца', true);
       return;
@@ -294,7 +305,7 @@
   }
 
   // =========================================================
-  // PIN-ВХОД (быстрое переключение кассиров)
+  // PIN-ВХОД
   // =========================================================
   function openPinModal(onSuccess) {
     const existing = document.getElementById('kutPinModal');
@@ -332,10 +343,10 @@
         if (k === '⌫') buf = buf.slice(0, -1);
         else if (buf.length < 4) buf += k;
         update();
+
         if (buf.length === 4) {
-          // Ищем совпадение
           const st = window.KUT?.getState?.();
-          const candidates = (st.staff || []).filter((s) => s.pinHash);
+          const candidates = (st?.staff || []).filter((s) => s.pinHash);
           let matched = null;
           for (const c of candidates) {
             if (await verifyPin(c.id, buf)) { matched = c; break; }
@@ -344,12 +355,15 @@
             if (typeof onSuccess === 'function') onSuccess(matched);
             modal.remove();
           } else {
-            modal.querySelector('.kut-pin__pad').animate(
-              [{ transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(0)' }],
-              { duration: 250 });
+            const pad = modal.querySelector('.kut-pin__pad');
+            if (pad && pad.animate) {
+              pad.animate(
+                [{ transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(0)' }],
+                { duration: 250 });
+            }
             buf = '';
             update();
-            if (window.KUT?.toast) window.KUT.toast('Неверный PIN', true);
+            toast('Неверный PIN', true);
           }
         }
       });
@@ -357,21 +371,17 @@
 
     modal.querySelectorAll('[data-close]').forEach((el) =>
       el.addEventListener('click', () => modal.remove()));
-
-    function update() { /* hoisted */ }
   }
 
   // =========================================================
   // UI-ГЕЙТИНГ
   // =========================================================
   function applyUiGates() {
-    // Скрываем элементы с data-perm, если нет права
     document.querySelectorAll('[data-perm]').forEach((el) => {
       const perm = el.dataset.perm;
       el.style.display = hasPermission(perm) ? '' : 'none';
     });
 
-    // Скрываем маржу в stock.html для кассиров
     if (!hasPermission('stock.view_margin')) {
       document.querySelectorAll('[data-label="Маржа"]').forEach((el) => {
         el.style.display = 'none';
@@ -385,14 +395,13 @@
   }
 
   // =========================================================
-  // ИНЪЕКЦИЯ КНОПКИ "ПРАВА" в staff.html
+  // ИНЪЕКЦИЯ КНОПОК В staff.html
   // =========================================================
   function injectPermsButtons() {
     const page = (location.pathname.split('/').pop() || '').replace('.html', '');
     if (page !== 'staff') return;
     if (!hasPermission('staff.edit_permissions')) return;
 
-    // Добавляем иконку в row-actions каждой строки
     const observer = new MutationObserver(() => {
       document.querySelectorAll('.staff-table tbody tr[data-id]').forEach((row) => {
         if (row.querySelector('[data-act="perms"]')) return;
@@ -476,4 +485,41 @@
       .kut-pin__dots { display: flex; gap: 14px; justify-content: center; margin-bottom: 20px; }
       .kut-pin__dot { width: 16px; height: 16px; border: 2px solid var(--kut-border, rgba(255,255,255,.2)); border-radius: 50%; transition: background .15s; }
       .kut-pin__dot.is-filled { background: #10B981; border-color: #10B981; box-shadow: 0 0 12px rgba(16,185,129,.5); }
-      .kut-p
+      .kut-pin__pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .kut-pin__key { padding: 16px 0; font-size: 22px; font-weight: 800; background: var(--kut-surface-2, #273449); border: 1px solid var(--kut-border, rgba(255,255,255,.08)); border-radius: 12px; color: var(--kut-text-1, #F1F5F9); cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+      .kut-pin__key:active { transform: scale(.94); background: rgba(16,185,129,.2); }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // =========================================================
+  // ПУБЛИЧНОЕ API
+  // =========================================================
+  window.KUT_PERMS = {
+    hasPermission, canManage, canGrantPermission,
+    hashPin, verifyPin, setPin,
+    openPermissionsModal, openPinModal,
+    applyUiGates,
+    ROLE_HIERARCHY, ROLE_DEFAULT_PERMISSIONS, ALL_PERMISSIONS,
+  };
+
+  // =========================================================
+  // BOOT
+  // =========================================================
+  function boot() {
+    injectStyles();
+    applyUiGates();
+    injectPermsButtons();
+    // Перепроверка после загрузки профиля
+    setTimeout(applyUiGates, 1200);
+    setTimeout(applyUiGates, 2500);
+    window.addEventListener('kut:business-changed', applyUiGates);
+    console.info('[permissions v1.0] RBAC + PIN готов');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
