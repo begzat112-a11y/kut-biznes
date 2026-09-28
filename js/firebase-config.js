@@ -1,26 +1,27 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Configuration v11.1 «SaaS»
+   КУТ: БИЗНЕС — Firebase Core v13 «Google + Telegram»
    
-   + Мультифилиалы: businessIds: [] в users
-   + Селектор текущего бизнеса (localStorage)
-   + Чтение/подписка сразу по нескольким бизнесам
-   + Запись businessId во все новые документы
-   + super_admin видит все бизнесы платформы
-   + 🔁 Обратная совместимость: getPage / subscribePage / loadMore
-     (для старых модулей cash.js / stock.js / debts.js / staff.js)
+   • Вход: Google (popup/redirect) + Telegram (Cloud Function)
+   • Первый вход через Google: автосоздание бизнеса (businessId = uid)
+   • Первый вход через Telegram: CF сам создаёт user + business
+   • Firestore: persistentLocalCache + multi-tab
+   • Все подписки onSnapshot учитываются и снимаются
    ========================================================= */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import {
   getAuth,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithCustomToken,
   signOut,
-  sendPasswordResetEmail,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import {
   initializeFirestore,
+  getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
   collection,
@@ -42,22 +43,25 @@ import {
   collectionGroup,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-// =========================================================
-// CONFIG
-// =========================================================
+/* ---------- CONFIG ---------- */
 const firebaseConfig = {
-  apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
-  authDomain:        "kut-biznes.firebaseapp.com",
-  projectId:         "kut-biznes",
-  storageBucket:     "kut-biznes.firebasestorage.app",
-  messagingSenderId: "699153181693",
-  appId:             "1:699153181693:web:2f10e57664e8a0cefc4794",
-  measurementId:     "G-VTZ49G265B",
+  apiKey:            'AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg',
+  authDomain:        'kut-biznes.firebaseapp.com',
+  projectId:         'kut-biznes',
+  storageBucket:     'kut-biznes.firebasestorage.app',
+  messagingSenderId: '699153181693',
+  appId:             '1:699153181693:web:2f10e57664e8a0cefc4794',
+  measurementId:     'G-VTZ49G265B',
 };
 
-// =========================================================
-// INIT
-// =========================================================
+/* ---------- TELEGRAM CLOUD FUNCTION URL ---------- */
+export const TELEGRAM_CF_URL =
+  'https://us-central1-kut-biznes.cloudfunctions.net/telegramAuth';
+
+/* ---------- TELEGRAM BOT NAME (без @) ---------- */
+export const TELEGRAM_BOT_NAME = 'NexusBizIDBot';
+
+/* ---------- INIT ---------- */
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
@@ -68,46 +72,21 @@ try {
       tabManager: persistentMultipleTabManager(),
     }),
   });
-  console.info('[KUT FB v11.1] IndexedDB persistence активен');
 } catch (err) {
-  console.warn('[KUT FB v11.1] persistence fallback:', err?.message);
-  const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  console.warn('[KUT FB] persistence fallback:', err && err.message);
   db = getFirestore(app);
 }
 
-// =========================================================
-// STATE
-// =========================================================
+/* ---------- STATE ---------- */
 let currentUser = null;
 let currentProfile = null;
-
-// null = «Все филиалы», строка = конкретный bizId
 let currentBusinessId = null;
-
-// Метаданные бизнесов (для селектора)
 let businessMetas = [];
 
-const KG_PHONE_CODE = '+996';
-const OTP_TTL_MS = 5 * 60 * 1000;
+const BIZ_LS_KEY = 'kut_current_business';
 const DEFAULT_PAGE_SIZE = 50;
 
-// Ключ localStorage для выбранной точки
-const BIZ_LS_KEY = 'kut_current_business';
-
-// =========================================================
-// HELPERS
-// =========================================================
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
-
-function normalizePhone(raw) {
-  let d = String(raw || '').replace(/\D/g, '');
-  if (!d) return '';
-  if (d.startsWith('996')) d = d.slice(3);
-  else if (d.startsWith('0')) d = d.slice(1);
-  d = d.slice(0, 9);
-  return KG_PHONE_CODE + d;
-}
-
+/* ---------- HELPERS ---------- */
 function toDate(ts) {
   if (!ts) return null;
   if (typeof ts.toDate === 'function') return ts.toDate();
@@ -116,68 +95,70 @@ function toDate(ts) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-function fakeEmailFromPhone(phone) { return phone.replace(/\D/g, '') + '@kut.local'; }
-function fakePasswordFromPhone(phone) { return 'kut_' + phone.replace(/\D/g, '') + '_secret'; }
+function normalizePhone(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('996')) d = d.slice(3);
+  else if (d.startsWith('0')) d = d.slice(1);
+  return '+996' + d.slice(0, 9);
+}
 
 function makeBusinessId() {
   return 'biz_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-// =========================================================
-// МУЛЬТИБИЗНЕС — ЯДРО
-// =========================================================
+/* ---------- РЕЕСТР ПОДПИСОК ---------- */
+const liveSubs = new Set();
 
+function track(unsub) {
+  let done = false;
+  const wrapped = () => {
+    if (done) return;
+    done = true;
+    liveSubs.delete(wrapped);
+    try { unsub(); } catch (_) {}
+  };
+  liveSubs.add(wrapped);
+  return wrapped;
+}
+
+function unsubscribeAll() {
+  Array.from(liveSubs).forEach((u) => u());
+}
+
+/* ---------- МУЛЬТИБИЗНЕС ---------- */
 function getBusinessIds() {
   const p = currentProfile;
   if (!p) return [];
-
   if (p.role === 'super_admin') {
-    if (Array.isArray(p.businessIds) && p.businessIds.length > 0) return p.businessIds.slice();
-    if (Array.isArray(p.allBusinessIds) && p.allBusinessIds.length > 0) return p.allBusinessIds.slice();
+    if (Array.isArray(p.businessIds) && p.businessIds.length) return p.businessIds.slice();
+    if (Array.isArray(p.allBusinessIds) && p.allBusinessIds.length) return p.allBusinessIds.slice();
     return [];
   }
-
-  if (Array.isArray(p.businessIds) && p.businessIds.length > 0) {
-    return p.businessIds.slice();
-  }
-
-  if (p.businessId && typeof p.businessId === 'string') {
-    return [p.businessId];
-  }
+  if (Array.isArray(p.businessIds) && p.businessIds.length) return p.businessIds.slice();
+  if (p.businessId && typeof p.businessId === 'string') return [p.businessId];
   return [];
 }
 
 function getEffectiveBusinessIds() {
   const all = getBusinessIds();
-  if (currentBusinessId && all.includes(currentBusinessId)) {
-    return [currentBusinessId];
-  }
-  return all;
+  return currentBusinessId && all.includes(currentBusinessId) ? [currentBusinessId] : all;
 }
 
 function getWriteBusinessId() {
   const ids = getBusinessIds();
-  if (ids.length === 0) return null;
-
-  if (currentBusinessId && ids.includes(currentBusinessId)) {
-    return currentBusinessId;
-  }
-
-  if (ids.length > 1) return null;
-
-  return ids[0];
+  if (!ids.length) return null;
+  if (currentBusinessId && ids.includes(currentBusinessId)) return currentBusinessId;
+  return ids.length > 1 ? null : ids[0];
 }
 
 function getBusinessId() {
   const ids = getBusinessIds();
-  if (ids.length === 0) return null;
-  if (currentBusinessId && ids.includes(currentBusinessId)) return currentBusinessId;
-  return ids[0];
+  if (!ids.length) return null;
+  return currentBusinessId && ids.includes(currentBusinessId) ? currentBusinessId : ids[0];
 }
 
-function getSelectedBusinessId() {
-  return currentBusinessId;
-}
+function getSelectedBusinessId() { return currentBusinessId; }
 
 function isAllBusinessesMode() {
   return currentBusinessId === null && getBusinessIds().length > 1;
@@ -188,15 +169,11 @@ function setSelectedBusinessId(id) {
     currentBusinessId = null;
     try { localStorage.removeItem(BIZ_LS_KEY); } catch (_) {}
   } else {
-    const ids = getBusinessIds();
-    if (!ids.includes(id)) {
-      console.warn('[KUT FB] Нельзя выбрать недоступный бизнес:', id);
-      return false;
-    }
+    if (!getBusinessIds().includes(id)) return false;
     currentBusinessId = id;
     try { localStorage.setItem(BIZ_LS_KEY, id); } catch (_) {}
   }
-
+  unsubscribeAll();
   try {
     window.dispatchEvent(new CustomEvent('kut:business-changed', {
       detail: { businessId: currentBusinessId },
@@ -208,17 +185,11 @@ function setSelectedBusinessId(id) {
 function restoreSelectedBusinessId() {
   try {
     const saved = localStorage.getItem(BIZ_LS_KEY);
-    if (!saved) {
-      currentBusinessId = null;
-      return;
-    }
-    const ids = getBusinessIds();
-    if (ids.includes(saved)) {
+    if (saved && getBusinessIds().includes(saved)) {
       currentBusinessId = saved;
-      console.log('[KUT FB] Выбранный филиал восстановлен:', saved);
     } else {
       currentBusinessId = null;
-      try { localStorage.removeItem(BIZ_LS_KEY); } catch (_) {}
+      if (saved) localStorage.removeItem(BIZ_LS_KEY);
     }
   } catch (_) {
     currentBusinessId = null;
@@ -227,39 +198,30 @@ function restoreSelectedBusinessId() {
 
 async function loadBusinessesMeta(ids) {
   ids = ids || getBusinessIds();
-  const result = [];
-  await Promise.all(ids.map(async (id) => {
+  const result = await Promise.all(ids.map(async (id) => {
     try {
       const snap = await getDoc(doc(db, 'businesses', id));
-      if (snap.exists()) {
-        result.push({ id, ...snap.data() });
-      } else {
-        result.push({ id, name: 'Точка ' + String(id).slice(-4), missing: true });
-      }
+      return snap.exists()
+        ? { id, ...snap.data() }
+        : { id, name: 'Точка ' + String(id).slice(-4), missing: true };
     } catch (e) {
-      result.push({ id, name: 'Точка ' + String(id).slice(-4), error: e.code });
+      return { id, name: 'Точка ' + String(id).slice(-4), error: e.code };
     }
   }));
-
   result.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'));
   businessMetas = result;
   return result;
 }
 
-function getBusinessesMeta() {
-  return businessMetas.slice();
-}
+function getBusinessesMeta() { return businessMetas.slice(); }
 
-// =========================================================
-// PERSISTENCE
-// =========================================================
 async function enablePersistence() {
   return { ok: true, mode: 'persistentLocalCache' };
 }
 
-// =========================================================
-// AUTH
-// =========================================================
+/* =========================================================
+   GOOGLE AUTH
+   ========================================================= */
 async function fetchProfile(uid) {
   try {
     const snap = await getDoc(doc(db, 'users', uid));
@@ -270,82 +232,161 @@ async function fetchProfile(uid) {
   }
 }
 
+async function ensureCompany(user) {
+  const uid = user.uid;
+  let profile = await fetchProfile(uid);
+  if (profile) return profile;
+
+  const batch = writeBatch(db);
+  const name = user.displayName || (user.email ? user.email.split('@')[0] : 'Владелец');
+
+  batch.set(doc(db, 'users', uid), {
+    uid,
+    email: user.email || '',
+    displayName: user.displayName || '',
+    photoURL: user.photoURL || '',
+    phone: '',
+    role: 'owner',
+    businessId: uid,
+    businessIds: [uid],
+    active: true,
+    authProvider: 'google',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  batch.set(doc(db, 'businesses', uid), {
+    name: 'Компания · ' + name,
+    ownerUid: uid,
+    ownerEmail: user.email || '',
+    status: 'active',
+    active: true,
+    createdAt: serverTimestamp(),
+  });
+  await batch.commit();
+
+  profile = await fetchProfile(uid);
+  return profile || {
+    uid, role: 'owner', businessId: uid, businessIds: [uid], active: true,
+    email: user.email || '', displayName: user.displayName || '',
+  };
+}
+
+async function finishSignIn(user) {
+  const profile = await ensureCompany(user);
+  if (profile.active === false) {
+    await signOut(auth);
+    const err = new Error('ACCOUNT_DISABLED');
+    err.code = 'account-disabled';
+    throw err;
+  }
+  currentUser = user;
+  currentProfile = profile;
+  restoreSelectedBusinessId();
+  return { user, profile };
+}
+
+function makeProvider() {
+  const p = new GoogleAuthProvider();
+  p.setCustomParameters({ prompt: 'select_account' });
+  return p;
+}
+
+async function signInWithGoogle() {
+  const provider = makeProvider();
+  try {
+    const cred = await signInWithPopup(auth, provider);
+    return await finishSignIn(cred.user);
+  } catch (err) {
+    const fallback = [
+      'auth/popup-blocked',
+      'auth/operation-not-supported-in-this-environment',
+      'auth/web-storage-unsupported',
+    ];
+    if (fallback.includes(err.code)) {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+    throw err;
+  }
+}
+
+/* =========================================================
+   TELEGRAM AUTH (через Cloud Function)
+   ========================================================= */
+
+async function signInWithTelegram(tgUser) {
+  if (!tgUser || !tgUser.id || !tgUser.hash) {
+    const err = new Error('Некорректные данные Telegram');
+    err.code = 'telegram/bad_data';
+    throw err;
+  }
+
+  // 1. Отправляем в CF
+  const res = await fetch(TELEGRAM_CF_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(tgUser),
+  });
+
+  if (!res.ok) {
+    let payload = null;
+    try { payload = await res.json(); } catch (_) {}
+    const code = payload?.error || 'telegram/cf_error';
+    const err = new Error('Telegram auth failed: ' + code);
+    err.code = code;
+    throw err;
+  }
+
+  const { token } = await res.json();
+  if (!token) {
+    const err = new Error('CF не вернула custom token');
+    err.code = 'telegram/no_token';
+    throw err;
+  }
+
+  // 2. Логинимся в Firebase
+  const cred = await signInWithCustomToken(auth, token);
+  return await finishSignIn(cred.user);
+}
+
+/* =========================================================
+   REDIRECT / LOGOUT
+   ========================================================= */
+async function handleRedirectResult() {
+  const cred = await getRedirectResult(auth);
+  return cred && cred.user ? finishSignIn(cred.user) : null;
+}
+
 function waitForAuth() {
   return new Promise((resolve) => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      currentUser = user;
-      currentProfile = user ? await fetchProfile(user.uid) : null;
-
-      if (currentProfile) {
-        restoreSelectedBusinessId();
-      } else {
-        currentBusinessId = null;
-      }
-
-      resolve({ user: currentUser, profile: currentProfile });
       unsub();
+      currentUser = user;
+      currentProfile = null;
+      currentBusinessId = null;
+      if (user) {
+        try {
+          currentProfile = await ensureCompany(user);
+          restoreSelectedBusinessId();
+        } catch (e) {
+          console.error('[KUT FB] ensureCompany failed:', e);
+        }
+      }
+      resolve({ user: currentUser, profile: currentProfile });
     });
   });
 }
 
 function redirectByRole(profile) {
   if (!profile) { window.location.href = './login.html'; return; }
-  if (profile.active === false) {
-    alert('Ваш аккаунт заблокирован. Свяжитесь с администратором.');
-    signOut(auth);
-    return;
-  }
-  const role = profile.role;
-  if (role === 'super_admin')  window.location.href = './admin.html';
-  else if (role === 'owner')   window.location.href = './index.html';
-  else if (role === 'manager') window.location.href = './index.html';
-  else if (role === 'cashier') window.location.href = './cash.html';
-  else                         window.location.href = './index.html';
-}
-
-async function login(email, password) {
-  const cred = await signInWithEmailAndPassword(auth, email, password);
-  const profile = await fetchProfile(cred.user.uid);
-  if (profile && profile.active === false) {
-    await signOut(auth);
-    throw new Error('ACCOUNT_DISABLED');
-  }
-  currentUser = cred.user;
-  currentProfile = profile;
-  if (profile) restoreSelectedBusinessId();
-  return { user: cred.user, profile };
-}
-
-async function registerOwner({ email, password, displayName, companyName }) {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
-  const uid = cred.user.uid;
-  const businessId = makeBusinessId();
-
-  await setDoc(doc(db, 'users', uid), {
-    email, displayName, phone: '',
-    role: 'owner',
-    businessIds: [businessId],
-    businessId: businessId,
-    active: true,
-    createdAt: serverTimestamp(),
-  });
-
-  await setDoc(doc(db, 'businesses', businessId), {
-    name: companyName,
-    ownerUid: uid, ownerEmail: email,
-    status: 'active',
-    createdAt: serverTimestamp(),
-  });
-
-  currentUser = cred.user;
-  currentProfile = await fetchProfile(uid);
-  currentBusinessId = businessId;
-  try { localStorage.setItem(BIZ_LS_KEY, businessId); } catch (_) {}
-
-  return { user: cred.user, businessId, profile: currentProfile };
+  if (profile.active === false) { signOut(auth); return; }
+  window.location.href = profile.role === 'super_admin' ? './admin.html'
+    : profile.role === 'cashier' ? './cash.html'
+    : './index.html';
 }
 
 async function logout() {
+  unsubscribeAll();
   try { await signOut(auth); } catch (_) {}
   currentUser = null;
   currentProfile = null;
@@ -354,110 +395,39 @@ async function logout() {
   window.location.href = './login.html';
 }
 
-async function resetPassword(email) { return sendPasswordResetEmail(auth, email); }
-
-// =========================================================
-// WHATSAPP OTP
-// =========================================================
-const WA_CONFIG = {
-  idInstance: '720122747171',
-  apiToken:   '4c32b507d4b44917a123631f42e47e868a2d3ff9e3b44b82bc',
-  buildUrl() {
-    return `https://api.green-api.com/waInstance${this.idInstance}/sendMessage/${this.apiToken}`;
-  },
-};
-
-function generateOtpCode() { return String(Math.floor(1000 + Math.random() * 9000)); }
-function otpSessionDoc(phone) { return doc(db, 'otp_sessions', phone.replace(/\D/g, '')); }
-
-async function sendWhatsAppOtp(rawPhone) {
-  const phone = normalizePhone(rawPhone);
-  if (!/^\+996\d{9}$/.test(phone)) throw new Error('INVALID_PHONE');
-
-  const code = generateOtpCode();
-  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-
-  await setDoc(otpSessionDoc(phone), {
-    phone, code, expiresAt,
-    createdAt: serverTimestamp(),
-    attempts: 0,
-  });
-
-  const phoneDigits = phone.replace(/\D/g, '');
-  const message = `Ваш код подтверждения в системе КУТ: БИЗНЕС — ${code}\n\nНикому не сообщайте этот код. Действителен 5 минут.`;
-
-  const res = await fetch(WA_CONFIG.buildUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chatId: `${phoneDigits}@c.us`, message }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error('[KUT OTP] Green-API ошибка:', res.status, errText);
-    throw new Error('WHATSAPP_FAILED');
-  }
-  return true;
+/* =========================================================
+   ДАННЫЕ
+   ========================================================= */
+function mapDoc(d, bizId, withDoc) {
+  const o = { id: d.id, businessId: bizId, _bizId: bizId, ...d.data() };
+  if (withDoc) o._doc = d;
+  return o;
 }
 
-async function verifyWhatsAppOtp(rawPhone, code) {
-  const phone = normalizePhone(rawPhone);
-  const ref = otpSessionDoc(phone);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) throw new Error('OTP_NOT_FOUND');
-  const data = snap.data();
-  const expiresAt = toDate(data.expiresAt);
-  if (!expiresAt || Date.now() > expiresAt.getTime()) {
-    await deleteDoc(ref).catch(() => {});
-    throw new Error('OTP_EXPIRED');
-  }
-  if (String(data.code) !== String(code)) throw new Error('OTP_MISMATCH');
-  await deleteDoc(ref).catch(() => {});
-
-  const fakeEmail = fakeEmailFromPhone(phone);
-  const fakePassword = fakePasswordFromPhone(phone);
-
-  let cred;
-  try {
-    cred = await signInWithEmailAndPassword(auth, fakeEmail, fakePassword);
-  } catch (err) {
-    if (err.code === 'auth/user-not-found' ||
-        err.code === 'auth/invalid-credential' ||
-        err.code === 'auth/invalid-login-credentials') {
-      cred = await createUserWithEmailAndPassword(auth, fakeEmail, fakePassword);
-    } else throw err;
-  }
-
-  const uid = cred.user.uid;
-  let profile = await fetchProfile(uid);
-  if (!profile) {
-    await setDoc(doc(db, 'users', uid), {
-      email: fakeEmail, displayName: '', phone,
-      role: 'cashier',
-      businessIds: [],
-      businessId: '',
-      active: true,
-      createdAt: serverTimestamp(),
-    });
-    profile = await fetchProfile(uid);
-  }
-
-  currentUser = cred.user;
-  currentProfile = profile;
-  if (profile) restoreSelectedBusinessId();
-  return { user: cred.user, profile };
+function buildQuery(ref, { filters = [], orderByField, orderDirection, startAfterDoc, pageSize }) {
+  const c = [];
+  filters.forEach((f) => c.push(where(f.field, f.op, f.value)));
+  if (orderByField) c.push(orderBy(orderByField, orderDirection));
+  if (startAfterDoc) c.push(startAfter(startAfterDoc));
+  if (pageSize) c.push(limit(pageSize));
+  return c.length ? query(ref, ...c) : ref;
 }
 
-// =========================================================
-// FIRESTORE — БАЗОВЫЕ CRUD
-// =========================================================
+function sortByField(items, field, dir) {
+  if (!field) return items;
+  return items.sort((a, b) => {
+    const av = (toDate(a[field]) || 0).valueOf();
+    const bv = (toDate(b[field]) || 0).valueOf();
+    return dir === 'desc' ? bv - av : av - bv;
+  });
+}
+
 async function getCollection(name) {
   const bizId = getBusinessId();
   if (!bizId) return [];
   try {
     const snap = await getDocs(collection(db, 'businesses', bizId, name));
-    return snap.docs.map((d) => ({ id: d.id, businessId: bizId, ...d.data() }));
+    return snap.docs.map((d) => mapDoc(d, bizId));
   } catch (e) {
     console.error('[KUT FB] getCollection failed:', name, e);
     return [];
@@ -467,315 +437,159 @@ async function getCollection(name) {
 function subscribeCollection(name, callback, opts = {}) {
   const bizId = getBusinessId();
   if (!bizId) { callback([]); return () => {}; }
-
   const {
     pageSize = DEFAULT_PAGE_SIZE,
     orderByField = 'createdAt',
     orderDirection = 'desc',
     limitCount = null,
   } = opts;
-
-  const ref = collection(db, 'businesses', bizId, name);
-  const lc = limitCount || pageSize;
-
-  let q;
-  try {
-    q = orderByField
-      ? query(ref, orderBy(orderByField, orderDirection), limit(lc))
-      : query(ref, limit(lc));
-  } catch (_) {
-    q = query(ref, limit(lc));
-  }
-
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, businessId: bizId, ...d.data() })));
-  }, (err) => {
-    console.error('[KUT FB] subscribe error:', name, err);
+  const q = buildQuery(collection(db, 'businesses', bizId, name), {
+    orderByField, orderDirection, pageSize: limitCount || pageSize,
   });
+  return track(onSnapshot(q,
+    (snap) => callback(snap.docs.map((d) => mapDoc(d, bizId))),
+    (err) => console.error('[KUT FB] subscribe error:', name, err)));
 }
-
-// =========================================================
-// 🔁 ОБРАТНАЯ СОВМЕСТИМОСТЬ — getPage / subscribePage / loadMore
-//    (для старых модулей cash.js / stock.js / debts.js / staff.js)
-// =========================================================
-
-/**
- * Постраничная загрузка из ТЕКУЩЕГО филиала (или первого, если «все»).
- * Возвращает { items, lastDoc, hasMore }.
- */
-async function getPage(name, opts = {}) {
-  const bizIds = getEffectiveBusinessIds();
-  if (!bizIds || bizIds.length === 0) {
-    return { items: [], lastDoc: null, hasMore: false };
-  }
-
-  // Если один филиал — простой путь
-  if (bizIds.length === 1) {
-    const bizId = bizIds[0];
-    const {
-      pageSize = DEFAULT_PAGE_SIZE,
-      orderByField = 'createdAt',
-      orderDirection = 'desc',
-      startAfterDoc = null,
-      filters = [],
-    } = opts;
-
-    const ref = collection(db, 'businesses', bizId, name);
-    const constraints = [];
-    for (const f of filters) constraints.push(where(f.field, f.op, f.value));
-    if (orderByField) constraints.push(orderBy(orderByField, orderDirection));
-    if (startAfterDoc) constraints.push(startAfter(startAfterDoc));
-    constraints.push(limit(pageSize));
-
-    try {
-      const snap = await getDocs(query(ref, ...constraints));
-      return {
-        items: snap.docs.map((d) => ({
-          id: d.id,
-          businessId: bizId,
-          _bizId: bizId,
-          _doc: d,
-          ...d.data(),
-        })),
-        lastDoc: snap.docs[snap.docs.length - 1] || null,
-        hasMore: snap.docs.length === pageSize,
-      };
-    } catch (err) {
-      console.error('[KUT FB] getPage failed:', name, err?.code);
-      return { items: [], lastDoc: null, hasMore: false, error: err };
-    }
-  }
-
-  // Если несколько (режим «Все филиалы») — собираем со всех
-  const {
-    pageSize = DEFAULT_PAGE_SIZE,
-    orderByField = 'createdAt',
-    orderDirection = 'desc',
-  } = opts;
-
-  const all = await getCollectionMulti(bizIds, name, {
-    pageSize,
-    orderByField,
-    orderDirection,
-  });
-
-  // Сортируем вручную по orderByField (Firestore не даёт сортировать через несколько parent-коллекций)
-  if (orderByField) {
-    all.sort((a, b) => {
-      const av = toDate(a[orderByField])?.getTime() || 0;
-      const bv = toDate(b[orderByField])?.getTime() || 0;
-      return orderDirection === 'desc' ? bv - av : av - bv;
-    });
-  }
-
-  return {
-    items: all,
-    lastDoc: null,
-    hasMore: false,
-  };
-}
-
-/**
- * Realtime-подписка. Если один филиал — subscribeCollection.
- * Если несколько — subscribeMulti.
- */
-function subscribePage(name, callback, opts = {}) {
-  const bizIds = getEffectiveBusinessIds();
-  if (!bizIds || bizIds.length === 0) {
-    callback({ items: [], hasMore: false });
-    return () => {};
-  }
-
-  // Один филиал — простая подписка
-  if (bizIds.length === 1) {
-    const bizId = bizIds[0];
-    const {
-      pageSize = DEFAULT_PAGE_SIZE,
-      orderByField = 'createdAt',
-      orderDirection = 'desc',
-      filters = [],
-    } = opts;
-
-    const ref = collection(db, 'businesses', bizId, name);
-    const constraints = [];
-    for (const f of filters) constraints.push(where(f.field, f.op, f.value));
-    if (orderByField) constraints.push(orderBy(orderByField, orderDirection));
-    constraints.push(limit(pageSize));
-
-    return onSnapshot(query(ref, ...constraints), (snap) => {
-      const items = snap.docs.map((d) => ({
-        id: d.id,
-        businessId: bizId,
-        _bizId: bizId,
-        _doc: d,
-        ...d.data(),
-      }));
-      callback({
-        items,
-        lastDoc: snap.docs[snap.docs.length - 1] || null,
-        hasMore: snap.docs.length === pageSize,
-      });
-    }, (err) => {
-      console.error('[KUT FB] subscribePage error:', name, err?.code);
-      callback({ items: [], hasMore: false, error: err });
-    });
-  }
-
-  // Несколько филиалов — мультиподписка
-  const {
-    pageSize = DEFAULT_PAGE_SIZE,
-    orderByField = 'createdAt',
-    orderDirection = 'desc',
-  } = opts;
-
-  const unsubMulti = subscribeMulti(bizIds, name, (items) => {
-    // Сортируем вручную
-    if (orderByField) {
-      items.sort((a, b) => {
-        const av = toDate(a[orderByField])?.getTime() || 0;
-        const bv = toDate(b[orderByField])?.getTime() || 0;
-        return orderDirection === 'desc' ? bv - av : av - bv;
-      });
-    }
-    callback({ items, hasMore: false });
-  }, { pageSize, orderByField, orderDirection });
-
-  return unsubMulti;
-}
-
-/**
- * Догрузка следующих N записей после курсора.
- */
-async function loadMore(name, lastDoc, opts = {}) {
-  const bizId = getBusinessId();
-  if (!bizId || !lastDoc) return { items: [], lastDoc: null, hasMore: false };
-
-  const {
-    pageSize = DEFAULT_PAGE_SIZE,
-    orderByField = 'createdAt',
-    orderDirection = 'desc',
-  } = opts;
-
-  const ref = collection(db, 'businesses', bizId, name);
-  try {
-    const q = query(
-      ref,
-      orderBy(orderByField, orderDirection),
-      startAfter(lastDoc),
-      limit(pageSize)
-    );
-    const snap = await getDocs(q);
-    return {
-      items: snap.docs.map((d) => ({ id: d.id, businessId: bizId, ...d.data() })),
-      lastDoc: snap.docs[snap.docs.length - 1] || null,
-      hasMore: snap.docs.length === pageSize,
-    };
-  } catch (err) {
-    console.error('[KUT FB] loadMore failed:', name, err?.code);
-    return { items: [], lastDoc: null, hasMore: false };
-  }
-}
-
-// =========================================================
-// FIRESTORE — МУЛЬТИБИЗНЕС
-// =========================================================
 
 async function getCollectionMulti(bizIds, name, opts = {}) {
-  if (!Array.isArray(bizIds) || bizIds.length === 0) return [];
-
-  const {
-    pageSize = 200,
-    orderByField = 'createdAt',
-    orderDirection = 'desc',
-  } = opts;
-
-  const results = [];
-
-  await Promise.all(bizIds.map(async (bizId) => {
+  if (!Array.isArray(bizIds) || !bizIds.length) return [];
+  const { pageSize = 200, orderByField = 'createdAt', orderDirection = 'desc' } = opts;
+  const parts = await Promise.all(bizIds.map(async (bizId) => {
     try {
-      const ref = collection(db, 'businesses', bizId, name);
-      const constraints = [];
-      if (orderByField) constraints.push(orderBy(orderByField, orderDirection));
-      if (pageSize) constraints.push(limit(pageSize));
-      const q = constraints.length ? query(ref, ...constraints) : ref;
+      const q = buildQuery(collection(db, 'businesses', bizId, name),
+        { orderByField, orderDirection, pageSize });
       const snap = await getDocs(q);
-      snap.docs.forEach((d) => {
-        results.push({
-          id: d.id,
-          businessId: bizId,
-          _bizId: bizId,
-          ...d.data(),
-        });
-      });
+      return snap.docs.map((d) => mapDoc(d, bizId));
     } catch (e) {
-      console.warn('[KUT FB] getCollectionMulti failed:', bizId, name, e?.code);
+      console.warn('[KUT FB] getCollectionMulti failed:', bizId, name, e && e.code);
+      return [];
     }
   }));
-
-  return results;
+  return parts.flat();
 }
 
 function subscribeMulti(bizIds, name, callback, opts = {}) {
-  if (!Array.isArray(bizIds) || bizIds.length === 0) {
-    callback([]);
-    return () => {};
-  }
-
-  const {
-    pageSize = 200,
-    orderByField = 'createdAt',
-    orderDirection = 'desc',
-  } = opts;
-
+  if (!Array.isArray(bizIds) || !bizIds.length) { callback([]); return () => {}; }
+  const { pageSize = 200, orderByField = 'createdAt', orderDirection = 'desc' } = opts;
   const buffers = {};
-  bizIds.forEach((id) => { buffers[id] = []; });
-
   const unsubs = [];
+  let scheduled = false;
 
   const emit = () => {
-    const all = [];
-    bizIds.forEach((id) => {
-      (buffers[id] || []).forEach((item) => all.push(item));
+    if (scheduled) return;
+    scheduled = true;
+    Promise.resolve().then(() => {
+      scheduled = false;
+      callback(bizIds.flatMap((id) => buffers[id] || []));
     });
-    callback(all);
   };
 
   bizIds.forEach((bizId) => {
+    buffers[bizId] = [];
     try {
-      const ref = collection(db, 'businesses', bizId, name);
-      const constraints = [];
-      if (orderByField) constraints.push(orderBy(orderByField, orderDirection));
-      if (pageSize) constraints.push(limit(pageSize));
-      const q = constraints.length ? query(ref, ...constraints) : ref;
-
-      const unsub = onSnapshot(q, (snap) => {
-        buffers[bizId] = snap.docs.map((d) => ({
-          id: d.id,
-          businessId: bizId,
-          _bizId: bizId,
-          ...d.data(),
-        }));
+      const q = buildQuery(collection(db, 'businesses', bizId, name),
+        { orderByField, orderDirection, pageSize });
+      unsubs.push(onSnapshot(q, (snap) => {
+        buffers[bizId] = snap.docs.map((d) => mapDoc(d, bizId));
         emit();
       }, (err) => {
-        console.error('[KUT FB] subscribeMulti error:', bizId, name, err?.code);
+        console.error('[KUT FB] subscribeMulti error:', bizId, err && err.code);
         buffers[bizId] = [];
         emit();
-      });
-
-      unsubs.push(unsub);
+      }));
     } catch (e) {
       console.error('[KUT FB] subscribeMulti init error:', bizId, e);
     }
   });
 
-  return () => {
-    unsubs.forEach((u) => { try { u(); } catch (_) {} });
-  };
+  return track(() => unsubs.forEach((u) => { try { u(); } catch (_) {} }));
 }
 
-// =========================================================
-// FIRESTORE — WRITE
-// =========================================================
+async function getPage(name, opts = {}) {
+  const bizIds = getEffectiveBusinessIds();
+  if (!bizIds.length) return { items: [], lastDoc: null, hasMore: false };
+
+  const {
+    pageSize = DEFAULT_PAGE_SIZE,
+    orderByField = 'createdAt',
+    orderDirection = 'desc',
+    startAfterDoc = null,
+    filters = [],
+  } = opts;
+
+  if (bizIds.length === 1) {
+    const bizId = bizIds[0];
+    try {
+      const q = buildQuery(collection(db, 'businesses', bizId, name),
+        { filters, orderByField, orderDirection, startAfterDoc, pageSize });
+      const snap = await getDocs(q);
+      return {
+        items: snap.docs.map((d) => mapDoc(d, bizId, true)),
+        lastDoc: snap.docs[snap.docs.length - 1] || null,
+        hasMore: snap.docs.length === pageSize,
+      };
+    } catch (err) {
+      console.error('[KUT FB] getPage failed:', name, err && err.code);
+      return { items: [], lastDoc: null, hasMore: false, error: err };
+    }
+  }
+
+  const all = await getCollectionMulti(bizIds, name, { pageSize, orderByField, orderDirection });
+  return { items: sortByField(all, orderByField, orderDirection), lastDoc: null, hasMore: false };
+}
+
+function subscribePage(name, callback, opts = {}) {
+  const bizIds = getEffectiveBusinessIds();
+  if (!bizIds.length) { callback({ items: [], hasMore: false }); return () => {}; }
+
+  const {
+    pageSize = DEFAULT_PAGE_SIZE,
+    orderByField = 'createdAt',
+    orderDirection = 'desc',
+    filters = [],
+  } = opts;
+
+  if (bizIds.length === 1) {
+    const bizId = bizIds[0];
+    const q = buildQuery(collection(db, 'businesses', bizId, name),
+      { filters, orderByField, orderDirection, pageSize });
+    return track(onSnapshot(q, (snap) => {
+      callback({
+        items: snap.docs.map((d) => mapDoc(d, bizId, true)),
+        lastDoc: snap.docs[snap.docs.length - 1] || null,
+        hasMore: snap.docs.length === pageSize,
+      });
+    }, (err) => {
+      console.error('[KUT FB] subscribePage error:', name, err && err.code);
+      callback({ items: [], hasMore: false, error: err });
+    }));
+  }
+
+  return subscribeMulti(bizIds, name, (items) => {
+    callback({ items: sortByField(items, orderByField, orderDirection), hasMore: false });
+  }, { pageSize, orderByField, orderDirection });
+}
+
+async function loadMore(name, lastDoc, opts = {}) {
+  const bizId = getBusinessId();
+  if (!bizId || !lastDoc) return { items: [], lastDoc: null, hasMore: false };
+  const { pageSize = DEFAULT_PAGE_SIZE, orderByField = 'createdAt', orderDirection = 'desc' } = opts;
+  try {
+    const q = buildQuery(collection(db, 'businesses', bizId, name),
+      { orderByField, orderDirection, startAfterDoc: lastDoc, pageSize });
+    const snap = await getDocs(q);
+    return {
+      items: snap.docs.map((d) => mapDoc(d, bizId)),
+      lastDoc: snap.docs[snap.docs.length - 1] || null,
+      hasMore: snap.docs.length === pageSize,
+    };
+  } catch (err) {
+    console.error('[KUT FB] loadMore failed:', name, err && err.code);
+    return { items: [], lastDoc: null, hasMore: false };
+  }
+}
+
+/* ---------- CRUD ---------- */
 async function addItem(name, data) {
   const bizId = getWriteBusinessId();
   if (!bizId) {
@@ -791,15 +605,6 @@ async function addItem(name, data) {
   });
 }
 
-async function updateItem(name, id, data) {
-  const bizId = getWriteBusinessId() || getBusinessId();
-  if (!bizId) throw new Error('NO_BUSINESS');
-  return updateDoc(doc(db, 'businesses', bizId, name, id), {
-    ...data,
-    updatedAt: serverTimestamp(),
-  });
-}
-
 async function updateItemInBiz(bizId, name, id, data) {
   if (!bizId) throw new Error('NO_BIZ');
   return updateDoc(doc(db, 'businesses', bizId, name, id), {
@@ -808,10 +613,8 @@ async function updateItemInBiz(bizId, name, id, data) {
   });
 }
 
-async function deleteItem(name, id) {
-  const bizId = getWriteBusinessId() || getBusinessId();
-  if (!bizId) throw new Error('NO_BUSINESS');
-  return deleteDoc(doc(db, 'businesses', bizId, name, id));
+async function updateItem(name, id, data) {
+  return updateItemInBiz(getWriteBusinessId() || getBusinessId(), name, id, data);
 }
 
 async function deleteItemInBiz(bizId, name, id) {
@@ -819,9 +622,11 @@ async function deleteItemInBiz(bizId, name, id) {
   return deleteDoc(doc(db, 'businesses', bizId, name, id));
 }
 
-// =========================================================
-// SUPER ADMIN
-// =========================================================
+async function deleteItem(name, id) {
+  return deleteItemInBiz(getWriteBusinessId() || getBusinessId(), name, id);
+}
+
+/* ---------- SUPER ADMIN ---------- */
 async function adminGetAllBusinesses() {
   const snap = await getDocs(collection(db, 'businesses'));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -833,43 +638,28 @@ async function adminToggleUserStatus(uid, active) {
   await updateDoc(doc(db, 'users', uid), { active });
 }
 
-// =========================================================
-// EXPORT
-// =========================================================
+/* =========================================================
+   ЭКСПОРТ
+   ========================================================= */
+window.addEventListener('pagehide', unsubscribeAll);
+
 window.FB = {
   app, auth, db,
   currentUser: () => currentUser,
   currentProfile: () => currentProfile,
-
   waitForAuth, fetchProfile, redirectByRole, makeBusinessId,
+  signInWithGoogle, signInWithTelegram, handleRedirectResult, logout,
+  enablePersistence, unsubscribeAll,
 
-  login, registerOwner, logout, resetPassword,
-  sendWhatsAppOtp, verifyWhatsAppOtp,
+  getBusinessIds, getEffectiveBusinessIds, getWriteBusinessId, getBusinessId,
+  getSelectedBusinessId, setSelectedBusinessId, restoreSelectedBusinessId,
+  isAllBusinessesMode, loadBusinessesMeta, getBusinessesMeta,
 
-  enablePersistence,
-
-  // Мультибизнес
-  getBusinessIds,
-  getEffectiveBusinessIds,
-  getWriteBusinessId,
-  getBusinessId,
-  getSelectedBusinessId,
-  setSelectedBusinessId,
-  restoreSelectedBusinessId,
-  isAllBusinessesMode,
-  loadBusinessesMeta,
-  getBusinessesMeta,
-
-  // Чтение/подписка
   getCollection, subscribeCollection,
   getCollectionMulti, subscribeMulti,
-
-  // 🔁 Обратная совместимость
   getPage, subscribePage, loadMore,
 
-  // Запись
-  addItem, updateItem, deleteItem,
-  updateItemInBiz, deleteItemInBiz,
+  addItem, updateItem, deleteItem, updateItemInBiz, deleteItemInBiz,
 
   adminGetAllBusinesses, adminToggleBusinessStatus, adminToggleUserStatus,
 
@@ -878,40 +668,25 @@ window.FB = {
   writeBatch, collectionGroup,
 
   normalizePhone, toDate,
+
+  TELEGRAM_CF_URL, TELEGRAM_BOT_NAME,
 };
 
 export {
   app, auth, db,
   waitForAuth, fetchProfile, redirectByRole, makeBusinessId,
-  login, registerOwner, logout, resetPassword,
-  sendWhatsAppOtp, verifyWhatsAppOtp,
-  enablePersistence,
-
-  getBusinessIds,
-  getEffectiveBusinessIds,
-  getWriteBusinessId,
-  getBusinessId,
-  getSelectedBusinessId,
-  setSelectedBusinessId,
-  restoreSelectedBusinessId,
-  isAllBusinessesMode,
-  loadBusinessesMeta,
-  getBusinessesMeta,
-
-  getCollection, subscribeCollection,
-  getCollectionMulti, subscribeMulti,
+  signInWithGoogle, signInWithTelegram, handleRedirectResult, logout,
+  enablePersistence, unsubscribeAll,
+  getBusinessIds, getEffectiveBusinessIds, getWriteBusinessId, getBusinessId,
+  getSelectedBusinessId, setSelectedBusinessId, restoreSelectedBusinessId,
+  isAllBusinessesMode, loadBusinessesMeta, getBusinessesMeta,
+  getCollection, subscribeCollection, getCollectionMulti, subscribeMulti,
   getPage, subscribePage, loadMore,
-
-  addItem, updateItem, deleteItem,
-  updateItemInBiz, deleteItemInBiz,
-
+  addItem, updateItem, deleteItem, updateItemInBiz, deleteItemInBiz,
   adminGetAllBusinesses, adminToggleBusinessStatus, adminToggleUserStatus,
-
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, onSnapshot,
   writeBatch, collectionGroup,
-
   normalizePhone, toDate,
+  TELEGRAM_CF_URL, TELEGRAM_BOT_NAME,
 };
-
-console.info('[KUT FB v11.1 «SaaS»] · проект:', firebaseConfig.projectId, '· мультифилиалы + обратная совместимость');
