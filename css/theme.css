@@ -1,0 +1,182 @@
+/* =========================================================
+   КУТ: БИЗНЕС — theme.css v12 «Fintech»
+   Заменяет theme-v9.css и theme-v10.css.
+   Подключать ПОСЛЕ style.css.
+   ========================================================= */
+
+/* ---------- ДЕНЬ ---------- */
+:root,
+:root[data-theme="light"] {
+  --bg:            #F8FAFC;
+  --surface:       #FFFFFF;
+  --surface-2:     #F1F5F9;
+  --border:        transparent;
+  --border-strong: #E2E8F0;
+  --text:          #0F172A;
+  --text-muted:    #64748B;
+  --money:         #0F172A;      /* крупные цифры */
+  --profit:        #059669;
+  --debt:          #DC2626;
+  --accent:        #10B981;
+  --accent-ink:    #FFFFFF;
+  --shadow-card:   0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.08);
+  --shadow-pop:    0 16px 40px rgba(15,23,42,.16);
+  --sidebar-bg:    #FFFFFF;
+  --sidebar-text:  #0F172A;
+  --sidebar-dim:   #64748B;
+  color-scheme: light;
+}
+
+/* ---------- НОЧЬ ---------- */
+:root[data-theme="dark"] {
+  --bg:            #0F172A;
+  --surface:       #1E293B;
+  --surface-2:     #273449;
+  --border:        rgba(255,255,255,.05);
+  --border-strong: rgba(255,255,255,.10);
+  --text:          #F1F5F9;
+  --text-muted:    #94A3B8;
+  --money:         #10B981;      /* выручка / прибыль */
+  --profit:        #10B981;
+  --debt:          #F87171;      /* долги / телефоны */
+  --accent:        #10B981;
+  --accent-ink:    #04150F;
+  --shadow-card:   none;
+  --shadow-pop:    0 16px 40px rgba(0,0,0,.45);
+  --sidebar-bg:    #0B1220;
+  --sidebar-text:  #F1F5F9;
+  --sidebar-dim:   #94A3B8;
+  color-scheme: dark;
+}
+
+/* ---------- ПЕРЕНАЗНАЧЕНИЕ СТАРЫХ ПЕРЕМЕННЫХ ---------- */
+:root, :root[data-theme] {
+  --kut-bg: var(--bg);
+  --kut-canvas: var(--bg);
+  --kut-surface: var(--surface);
+  --kut-surface-2: var(--surface-2);
+  --kut-surface-elevated: var(--surface);
+  --kut-surface-sunken: var(--surface-2);
+  --kut-border: var(--border-strong);
+  --kut-border-hairline: var(--border-strong);
+  --kut-border-strong: var(--border-strong);
+  --kut-text: var(--text);
+  --kut-text-1: var(--text);
+  --kut-text-2: var(--text-muted);
+  --kut-text-3: var(--text-muted);
+  --kut-text-muted: var(--text-muted);
+  --kut-muted: var(--text-muted);
+  --kut-green: var(--accent);
+  --kut-success: var(--profit);
+  --kut-success-bright: var(--profit);
+  --kut-danger: var(--debt);
+  --kut-danger-bright: var(--debt);
+  --kut-sidebar-bg: var(--sidebar-bg);
+  --kut-sidebar-text: var(--sidebar-text);
+  --kut-sidebar-text-dim: var(--sidebar-dim);
+  --kut-shadow-sm: var(--shadow-card);
+  --kut-shadow-md: var(--shadow-card);
+  --kut-shadow-lg: var(--shadow-pop);
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: var(--shadow-card);
+}
+
+/* ---------- БАЗА ---------- */
+html { background: var(--bg); }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Карточки: тёмная — рамка 1px, светлая — глубокая тень */
+.card, .stat, .kpi, .panel, .modal__box, .sheet {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Крупные цифры */
+.stat__value, .kpi__value { color: var(--money); font-variant-numeric: tabular-nums; font-weight: 800; }
+.stat__label, .kpi__label, .muted, small { color: var(--text-muted); }
+
+/* Выручка / прибыль и долги */
+.kpi--profit .kpi__value, .is-profit, .amount--profit, .amount--income { color: var(--profit); }
+.is-debt, .debt, .amount--debt, .phone, a[href^="tel:"] { color: var(--debt); }
+
+/* Поля ввода */
+input, select, textarea {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Основная кнопка */
+.btn--primary, .btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+/* ---------- САЙДБАР ---------- */
+.sidebar {
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-pop);
+}
+.sidebar a, .sidebar__brand { color: var(--sidebar-text); }
+.sidebar__footer { color: var(--sidebar-dim); border-top-color: var(--border-strong); }
+.sidebar__brand-row { border-bottom-color: var(--border-strong); }
+
+/* Строка «Сменить тему» */
+.theme-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 48px; padding: 10px 14px; margin: 8px 0;
+  background: var(--surface-2); color: var(--sidebar-text);
+  border: 1px solid var(--border-strong); border-radius: 14px;
+  font: 600 14px/1.2 inherit; font-family: inherit; text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.theme-row:active { transform: scale(.98); }
+.theme-row__icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.theme-row__text { flex: 1; }
+.theme-row__state { font-size: 12px; font-weight: 500; color: var(--sidebar-dim); }
+
+/* Плавная смена темы */
+html.kut-theme-transition, html.kut-theme-transition * {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.kut-theme-transition, html.kut-theme-transition * { transition: none !important; }
+}
+
+/* ---------- Складской журнал: метка «продажа» ---------- */
+.wh-row__tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; background: rgba(16,185,129,.15); color: var(--profit); }
+
+/* ---------- Несие: просроченный должник ---------- */
+.debts-list .debt-card.is-overdue {
+  border-color: #9F1239 !important;
+  border-left: 4px solid #9F1239 !important;
+  background: #FFF1F2 !important;
+}
+:root[data-theme="dark"] .debts-list .debt-card.is-overdue { background: rgba(159,18,57,.22) !important; }
+.debts-list .debt-card.is-overdue .debt-card__badge { background: #9F1239; color: #fff; }
+.debt-card__wa { margin-top: 8px; padding: 7px 10px; border: 0; border-radius: 10px; cursor: pointer;
+  background: #25D366; color: #04150F; font: 700 11px/1 inherit; font-family: inherit; white-space: nowrap; }
+.debt-card__wa:active { transform: scale(.96); }
+
+/* ---------- Кнопка камеры в шапке ---------- */
+.kut-cam-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface-2);
+  color: var(--accent); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.kut-cam-btn:active { transform: scale(.94); }
