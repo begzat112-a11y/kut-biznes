@@ -80,6 +80,30 @@
 
     .auth-btn__icon { width: 22px; height: 22px; flex-shrink: 0; }
 
+    /* Обёртка вокруг кнопки Telegram — виджет ложится поверх */
+    .auth-btn--telegram-wrap {
+      position: relative;
+      margin-top: 12px;
+      min-height: 54px;
+    }
+
+    /* Прозрачный overlay-виджет Telegram поверх кнопки */
+    #tgWidgetSlot {
+      position: absolute;
+      inset: 0;
+      opacity: 0.001;
+      overflow: hidden;
+      pointer-events: auto;
+      z-index: 10;
+      cursor: pointer;
+    }
+    #tgWidgetSlot iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: 0 !important;
+      display: block;
+    }
+
     .login__divider {
       display: flex;
       align-items: center;
@@ -115,16 +139,6 @@
       line-height: 1.5;
     }
     .login__foot a { color: var(--accent); text-decoration: none; }
-
-    /* Telegram widget container (скрытый) */
-    #tgWidgetSlot {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      overflow: hidden;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body>
@@ -147,13 +161,16 @@
 
     <div class="login__divider">или</div>
 
-    <!-- Telegram — стилизованная кнопка -->
-    <button class="auth-btn auth-btn--telegram" id="telegramBtn" type="button">
-      <svg class="auth-btn__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.26-1.91.178-.184 3.247-2.977 3.307-3.23.007-.03.014-.143-.054-.2-.068-.058-.169-.038-.242-.022-.106.023-1.79 1.135-5.056 3.335-.477.327-.908.487-1.294.478-.426-.01-1.247-.24-1.857-.438-.75-.242-1.345-.37-1.294-.783.027-.215.32-.435.879-.66 3.432-1.494 5.72-2.48 6.866-2.957 3.27-1.36 3.948-1.597 4.39-1.604z"/>
-      </svg>
-      <span id="telegramBtnText">Войти через Telegram</span>
-    </button>
+    <!-- Telegram — стилизованная кнопка + невидимый виджет поверх -->
+    <div class="auth-btn--telegram-wrap">
+      <button class="auth-btn auth-btn--telegram" id="telegramBtn" type="button">
+        <svg class="auth-btn__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.26-1.91.178-.184 3.247-2.977 3.307-3.23.007-.03.014-.143-.054-.2-.068-.058-.169-.038-.242-.022-.106.023-1.79 1.135-5.056 3.335-.477.327-.908.487-1.294.478-.426-.01-1.247-.24-1.857-.438-.75-.242-1.345-.37-1.294-.783.027-.215.32-.435.879-.66 3.432-1.494 5.72-2.48 6.866-2.957 3.27-1.36 3.948-1.597 4.39-1.604z"/>
+        </svg>
+        <span id="telegramBtnText">Войти через Telegram</span>
+      </button>
+      <div id="tgWidgetSlot"></div>
+    </div>
 
     <div class="login__err" id="err" role="alert" aria-live="polite"></div>
 
@@ -161,9 +178,6 @@
       Нажимая «Войти», вы соглашаетесь с правилами сервиса.<br>
       © 2026 КУТ: БИЗНЕС
     </div>
-
-    <!-- Скрытый контейнер для виджета Telegram -->
-    <div id="tgWidgetSlot"></div>
   </main>
 
   <script type="module">
@@ -237,18 +251,20 @@
       }
     };
 
+    // Кнопка Telegram — если виджет загружен, клик по ней уходит в iframe
+    // (виджет-iframe лежит прозрачным overlay поверх, клики перехватывает он).
+    // Если iframe ещё не загружен — открываем бота в новой вкладке.
     tgBtn.addEventListener('click', () => {
       const slot = document.getElementById('tgWidgetSlot');
       const iframe = slot.querySelector('iframe');
-      if (iframe) {
-        try { iframe.focus(); iframe.click(); } catch (_) {}
-      } else {
+      if (!iframe) {
         const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
         window.open('https://t.me/' + botName, '_blank', 'noopener');
       }
+      // Если iframe есть — ничего не делаем, он сам обработает клик
     });
 
-    /* ---------- Рендерим скрытый виджет Telegram ---------- */
+    /* ---------- Рендерим виджет Telegram ---------- */
     (function mountTgWidget() {
       const slot = document.getElementById('tgWidgetSlot');
       const botName = window.FB.TELEGRAM_BOT_NAME || 'NexusBizIDBot';
@@ -262,6 +278,7 @@
       s.setAttribute('data-request-access', 'write');
       s.setAttribute('data-userpic', 'false');
       s.setAttribute('data-radius', '0');
+      s.setAttribute('data-auth-url', ''); // пусто — используем onauth
       slot.appendChild(s);
     })();
 
