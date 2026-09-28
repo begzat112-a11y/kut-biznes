@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0D1418">
+  <meta name="theme-color" content="#0F172A">
   <title>Главная — КУТ: БИЗНЕС</title>
 
   <script>
@@ -22,8 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/style.css">
-  <link rel="stylesheet" href="./css/theme-v9.css">
-  <link rel="stylesheet" href="./css/theme-v10.css">
+  <link rel="stylesheet" href="./css/theme.css">
 
   <style>
     :root { --sidebar-w: 260px; }
@@ -34,16 +33,7 @@
     .layout > div { min-width: 0; max-width: 100%; overflow-x: hidden; }
     @media (min-width: 1000px) { .layout { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); } }
 
-    .sidebar {
-      padding: 16px 14px; display: flex; flex-direction: column; gap: 14px;
-      position: fixed; top: 0; left: 0; bottom: 0; width: 82%; max-width: 320px; z-index: 90;
-      transform: translateX(-105%); transition: transform .28s cubic-bezier(.2,.8,.2,1);
-      overflow-y: auto;
-      background: linear-gradient(180deg, #0C251C 0%, #08180F 100%);
-      border-right: 1px solid rgba(255,255,255,.09);
-      box-shadow: 20px 0 60px rgba(0,0,0,.30);
-      color: #EDF5F1;
-    }
+    .sidebar { padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; position: fixed; top: 0; left: 0; bottom: 0; width: 82%; max-width: 320px; z-index: 90; transform: translateX(-105%); transition: transform .28s cubic-bezier(.2,.8,.2,1); overflow-y: auto; background: linear-gradient(180deg, #0C251C 0%, #08180F 100%); border-right: 1px solid rgba(255,255,255,.09); box-shadow: 20px 0 60px rgba(0,0,0,.30); color: #EDF5F1; }
     .sidebar.is-open { transform: translateX(0); }
     @media (min-width: 1000px) { .sidebar { transform: none; width: var(--sidebar-w); max-width: none; position: sticky; top: 0; height: 100dvh; } }
 
@@ -185,7 +175,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v10.5-AURORA';
+      var BUILD = 'v11.0-SQUARE';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -379,7 +369,7 @@
           </div>
         </section>
 
-        <div class="footer">КУТ: БИЗНЕС · v10.5 «Aurora»</div>
+        <div class="footer">КУТ: БИЗНЕС · v11.0 «Square»</div>
       </main>
     </div>
   </div>
@@ -421,9 +411,13 @@
     })();
   </script>
 
-  <script src="./js/theme-v10.js"></script>
+  <script src="./js/theme.js"></script>
   <script src="./js/ui-chrome.js"></script>
   <script type="module" src="./js/app.js"></script>
   <script src="./js/scanner.js"></script>
+
+  <script type="module" src="./js/permissions.js"></script>
+  <script type="module" src="./js/analytics-pro.js"></script>
+  <script type="module" src="./js/shifts.js"></script>
 </body>
 </html>
