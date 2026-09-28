@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0D1418">
+  <meta name="theme-color" content="#0F172A">
   <title>Сотрудники — КУТ: БИЗНЕС</title>
 
   <script>
@@ -22,8 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./css/style.css">
-  <link rel="stylesheet" href="./css/theme-v9.css">
-  <link rel="stylesheet" href="./css/theme-v10.css">
+  <link rel="stylesheet" href="./css/theme.css">
 
   <style>
     :root { --sidebar-w: 260px; }
@@ -208,7 +207,7 @@
 
   <script>
     (function () {
-      var BUILD = 'v10.5-AURORA';
+      var BUILD = 'v11.0-SQUARE';
       var saved = null;
       try { saved = localStorage.getItem('kut_build'); } catch (e) { return; }
       if (saved === BUILD) return;
@@ -435,10 +434,12 @@
     </div>
   </div>
 
-  <script src="./js/theme-v10.js"></script>
+  <script src="./js/theme.js"></script>
   <script src="./js/ui-chrome.js"></script>
   <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/staff.js"></script>
   <script src="./js/scanner.js"></script>
+
+  <script type="module" src="./js/permissions.js"></script>
 </body>
 </html>
