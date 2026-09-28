@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Смены и отчёты (shifts.js) · v1.0
+   КУТ: БИЗНЕС — Смены и отчёты (shifts.js) · v1.1
    
    Square-style Cash Management:
    • Открытие смены → ввод начальной кассы
@@ -8,6 +8,8 @@
    • Z-отчёт (финальный, при закрытии)
    • Разбивка по кассирам, оплатам, нал/безнал
    • Автосохранение в shifts/{shiftId}
+   • 🆕 Использует KUT_CART.openNumpad, если он доступен
+   • 🆕 Совместим с firestore.rules (updatedAt, openedByUid)
    Публичное API: window.KUT_SHIFTS
    ========================================================= */
 
@@ -47,25 +49,102 @@
   }
 
   // =========================================================
-  // СТАРТ СМЕНЫ
+  // NUMPAD — использует KUT_CART, если доступен
+  // =========================================================
+  function promptNumpad({ title, subtitle, value, allowDecimal }) {
+    // 🆕 Приоритет 1: Numpad из cart-pro.js
+    if (window.KUT_CART?.openNumpad) {
+      return new Promise((resolve) => {
+        let resolved = false;
+        const originalToast = window.KUT?.toast;
+        window.KUT_CART.openNumpad({
+          title: title + (subtitle ? ' · ' + subtitle : ''),
+          value: String(value || '0'),
+          allowDecimal: allowDecimal !== false,
+          onConfirm: (v) => {
+            if (!resolved) { resolved = true; resolve(Number(v) || 0); }
+          },
+        });
+        // Если модалка закрыта без onConfirm — резолвим null через 100мс таймер
+        // (детектируем, что DOM-элемент numpad удалён и onConfirm не вызвался)
+        const check = setInterval(() => {
+          if (!document.getElementById('kutNumpadModal') && !resolved) {
+            clearInterval(check);
+            setTimeout(() => { if (!resolved) { resolved = true; resolve(null); } }, 80);
+          }
+        }, 200);
+        setTimeout(() => clearInterval(check), 60000);
+      });
+    }
+
+    // Fallback: собственный numpad
+    return new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.className = 'kut-numpad-modal';
+      modal.innerHTML = `
+        <div class="kut-numpad-backdrop"></div>
+        <div class="kut-numpad" role="dialog" aria-modal="true">
+          <div class="kut-numpad__title">${esc(title)}</div>
+          ${subtitle ? `<div class="kut-numpad__subtitle">${esc(subtitle)}</div>` : ''}
+          <div class="kut-numpad__display" id="kutNumpadDisplay">${esc(value || '0')}</div>
+          <div class="kut-numpad__grid">
+            ${[1,2,3,4,5,6,7,8,9, allowDecimal ? '.' : '', 0, '⌫']
+              .map((k) => k === '' ? '<div></div>' : `<button class="kut-numpad__key" data-key="${k}" type="button">${k}</button>`).join('')}
+          </div>
+          <div class="kut-numpad__actions">
+            <button class="kut-numpad__cancel" type="button">Отмена</button>
+            <button class="kut-numpad__confirm" type="button">OK</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      document.body.style.overflow = 'hidden';
+
+      let buf = String(value || '0');
+      const display = modal.querySelector('#kutNumpadDisplay');
+      const update = () => { display.textContent = buf; };
+
+      modal.querySelectorAll('.kut-numpad__key').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const k = btn.dataset.key;
+          if (k === '⌫') buf = buf.slice(0, -1) || '0';
+          else if (k === '.') { if (!buf.includes('.') && allowDecimal) buf += '.'; }
+          else { if (buf === '0') buf = k; else if (buf.length < 12) buf += k; }
+          update();
+        });
+      });
+
+      const close = (v) => {
+        modal.remove();
+        document.body.style.overflow = '';
+        resolve(v);
+      };
+      modal.querySelector('.kut-numpad-backdrop').addEventListener('click', () => close(null));
+      modal.querySelector('.kut-numpad__cancel').addEventListener('click', () => close(null));
+      modal.querySelector('.kut-numpad__confirm').addEventListener('click', () => close(Number(buf) || 0));
+    });
+  }
+
+  // =========================================================
+  // ОТКРЫТИЕ СМЕНЫ
   // =========================================================
   async function openShift() {
     if (state.current) { toast('Смена уже открыта', true); return; }
 
     const openingBalance = await promptNumpad({
-      title: 'Начальная касса (наличные в ящике)',
-      subtitle: 'Сколько денег сейчас в кассе?',
+      title: 'Начальная касса',
+      subtitle: 'Сколько наличных в ящике?',
       value: '0',
       allowDecimal: true,
     });
     if (openingBalance === null) return;
 
     const st = window.KUT?.getState?.();
-    const bizId = window.FB?.getWriteBusinessId?.();
+    const bizId = window.FB?.getWriteBusinessId?.() || window.FB?.getBusinessId?.();
     if (!bizId) { toast('Нет активного бизнеса', true); return; }
 
-    const profile = st.profile || {};
-    const { db, collection, doc, addDoc, serverTimestamp } = window.FB;
+    const profile = st?.profile || {};
+    const { db, collection, addDoc, serverTimestamp } = window.FB;
 
     try {
       const ref = await addDoc(collection(db, 'businesses', bizId, 'shifts'), {
@@ -75,7 +154,6 @@
         openedAt: serverTimestamp(),
         openingBalance: Number(openingBalance) || 0,
         businessId: bizId,
-        salesSnapshot: {},
         closedAt: null,
         closedByUid: null,
         closingBalance: null,
@@ -86,7 +164,7 @@
       return ref.id;
     } catch (err) {
       console.error('[shifts] open failed:', err);
-      toast('Не удалось открыть смену', true);
+      toast('Не удалось открыть смену: ' + (err.code || err.message), true);
       return null;
     }
   }
@@ -98,12 +176,11 @@
     if (!state.current) { toast('Нет открытой смены', true); return; }
 
     const report = buildReport(state.current);
-    const modal = await openCloseModal(report);
-    if (!modal) return;
+    const closingBalance = await openCloseModal(report);
+    if (closingBalance === null) return;
 
-    const closingBalance = modal;
     const st = window.KUT?.getState?.();
-    const bizId = window.FB?.getWriteBusinessId?.();
+    const bizId = window.FB?.getWriteBusinessId?.() || window.FB?.getBusinessId?.();
     const profile = st?.profile || {};
 
     try {
@@ -115,6 +192,7 @@
         closedByName: profile.displayName || profile.email || '',
         closingBalance: Number(closingBalance) || 0,
         report,
+        updatedAt: serverTimestamp(),
       });
       toast('Смена закрыта');
       state.current = null;
@@ -122,7 +200,7 @@
       render();
     } catch (err) {
       console.error('[shifts] close failed:', err);
-      toast('Не удалось закрыть смену', true);
+      toast('Не удалось закрыть смену: ' + (err.code || err.message), true);
     }
   }
 
@@ -156,7 +234,6 @@
     const sales = window.KUT?.getSales?.() || [];
     const shiftStart = toDate(shift.openedAt)?.getTime() || 0;
 
-    // Продажи за период смены
     const shiftSales = sales.filter((s) => {
       const t = toDate(s.createdAt)?.getTime() || 0;
       return t >= shiftStart;
@@ -182,18 +259,16 @@
         totalCount += 1;
       }
 
-      // Разбивка по методам
       if (Array.isArray(s.payments) && s.payments.length > 0) {
         s.payments.forEach((p) => {
           const m = p.method || 'cash';
           byPayment[m] = (byPayment[m] || 0) + (isRefund ? -Number(p.amount || 0) : Number(p.amount || 0));
         });
-      } else if (s.paymentMethod) {
+      } else if (s.paymentMethod && s.paymentMethod !== 'split') {
         const m = s.paymentMethod;
         byPayment[m] = (byPayment[m] || 0) + (isRefund ? -total : total);
       }
 
-      // Разбивка по кассирам
       const key = s.cashierUid || '__unknown__';
       if (!byCashier.has(key)) {
         byCashier.set(key, {
@@ -235,12 +310,12 @@
   }
 
   // =========================================================
-  // МОДАЛКА ОТЧЁТА (X)
+  // X-ОТЧЁТ
   // =========================================================
   function showXReport() {
     if (!state.current) { toast('Смена не открыта', true); return; }
     const report = buildReport(state.current);
-    renderReportModal(report, { mode: 'X' });
+    renderReportModal(report);
   }
 
   // =========================================================
@@ -326,7 +401,7 @@
   }
 
   // =========================================================
-  // РЕНДЕР ОТЧЁТА (HTML)
+  // HTML ОТЧЁТА
   // =========================================================
   function renderReportHtml(r) {
     const opened = toDate(r.openedAt);
@@ -387,9 +462,9 @@
   }
 
   // =========================================================
-  // МОДАЛКА X-ОТЧЁТА
+  // X-ОТЧЁТ — модалка
   // =========================================================
-  function renderReportModal(report, opts) {
+  function renderReportModal(report) {
     const existing = document.getElementById('kutXReportModal');
     if (existing) existing.remove();
 
@@ -421,57 +496,6 @@
 
     const printBtn = modal.querySelector('#kutPrintX');
     if (printBtn) printBtn.addEventListener('click', () => window.print());
-  }
-
-  // =========================================================
-  // NUMPAD (внутренний)
-  // =========================================================
-  function promptNumpad({ title, subtitle, value, allowDecimal }) {
-    return new Promise((resolve) => {
-      const modal = document.createElement('div');
-      modal.className = 'kut-numpad-modal';
-      modal.innerHTML = `
-        <div class="kut-numpad-backdrop"></div>
-        <div class="kut-numpad" role="dialog" aria-modal="true">
-          <div class="kut-numpad__title">${esc(title)}</div>
-          ${subtitle ? `<div class="kut-numpad__subtitle">${esc(subtitle)}</div>` : ''}
-          <div class="kut-numpad__display" id="kutNumpadDisplay">${esc(value || '0')}</div>
-          <div class="kut-numpad__grid">
-            ${[1,2,3,4,5,6,7,8,9, allowDecimal ? '.' : '', 0, '⌫']
-              .map((k) => k === '' ? '<div></div>' : `<button class="kut-numpad__key" data-key="${k}">${k}</button>`).join('')}
-          </div>
-          <div class="kut-numpad__actions">
-            <button class="kut-numpad__cancel" type="button">Отмена</button>
-            <button class="kut-numpad__confirm" type="button">OK</button>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modal);
-      document.body.style.overflow = 'hidden';
-
-      let buf = String(value || '0');
-      const display = modal.querySelector('#kutNumpadDisplay');
-      const update = () => { display.textContent = buf; };
-
-      modal.querySelectorAll('.kut-numpad__key').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const k = btn.dataset.key;
-          if (k === '⌫') buf = buf.slice(0, -1) || '0';
-          else if (k === '.') { if (!buf.includes('.') && allowDecimal) buf += '.'; }
-          else { if (buf === '0') buf = k; else if (buf.length < 12) buf += k; }
-          update();
-        });
-      });
-
-      const close = (v) => {
-        modal.remove();
-        document.body.style.overflow = '';
-        resolve(v);
-      };
-      modal.querySelector('.kut-numpad-backdrop').addEventListener('click', () => close(null));
-      modal.querySelector('.kut-numpad__cancel').addEventListener('click', () => close(null));
-      modal.querySelector('.kut-numpad__confirm').addEventListener('click', () => close(Number(buf) || 0));
-    });
   }
 
   // =========================================================
@@ -646,7 +670,7 @@
       .kut-shift__panel-btn--primary { background: linear-gradient(135deg, #10B981, #059669); color: #fff; }
       .kut-shift__panel-btn--danger { background: rgba(248,113,113,.15); color: #F87171; border: 1px solid rgba(248,113,113,.3); }
 
-      /* NUMPAD (если не подключён cart-pro) */
+      /* NUMPAD (fallback, если cart-pro не подключён) */
       .kut-numpad-modal { position: fixed; inset: 0; z-index: 10001; display: grid; place-items: center; padding: 16px; }
       .kut-numpad-backdrop { position: absolute; inset: 0; background: rgba(2,8,18,.7); backdrop-filter: blur(8px); }
       .kut-numpad { position: relative; width: 100%; max-width: 360px; padding: 20px; background: var(--kut-surface, #1E293B); border: 1px solid var(--kut-border, rgba(255,255,255,.08)); border-radius: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: var(--kut-text-1, #F1F5F9); }
@@ -682,13 +706,12 @@
     await loadCurrentShift();
     injectShiftButton();
     updateShiftButton();
-    // на случай позднего рендера
     setTimeout(injectShiftButton, 1200);
     window.addEventListener('kut:business-changed', async () => {
       await loadCurrentShift();
       updateShiftButton();
     });
-    console.info('[shifts v1.0] смены и X/Z-отчёты готовы');
+    console.info('[shifts v1.1] смены и X/Z-отчёты готовы');
   }
 
   if (document.readyState === 'loading') {
