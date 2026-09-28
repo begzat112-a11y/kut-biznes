@@ -1,0 +1,214 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== ХЕЛПЕРЫ =====
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function myRole() {
+      return isSignedIn() ? myData().role : '';
+    }
+
+    function isActiveUser() {
+      return isSignedIn() && myData().active == true;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && myRole() == 'super_admin';
+    }
+
+    function isOwner() {
+      return isActiveUser() && myRole() == 'owner';
+    }
+
+    function isManager() {
+      return isActiveUser() && (myRole() == 'owner' || myRole() == 'manager');
+    }
+
+    function isCashier() {
+      return isActiveUser() && myRole() == 'cashier';
+    }
+
+    function myBizIds() {
+      return isSignedIn() && myData().businessIds is list ? myData().businessIds : [];
+    }
+
+    function canAccessBiz(bizId) {
+      return isSignedIn() && (
+        isSuperAdmin() ||
+        bizId in myBizIds()
+      );
+    }
+
+    function ownerCanReadUser(targetUid) {
+      return isOwner() && myBizIds().hasAny(
+        get(/databases/$(database)/documents/users/$(targetUid)).data.businessIds
+      );
+    }
+
+    // ===== TELEGRAM_LINK — только Cloud Function =====
+    match /telegram_link/{telegramId} {
+      allow read, write: if false;
+    }
+
+    // ===== OTP =====
+    match /otp_sessions/{phoneDoc} {
+      allow create: if request.resource.data.keys().hasOnly(
+        ['phone', 'code', 'createdAt', 'expiresAt', 'attempts']
+      );
+      allow read, update, delete: if false;
+    }
+
+    // ===== USERS =====
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId
+        || isSuperAdmin()
+        || ownerCanReadUser(userId)
+      );
+
+      allow create: if isSignedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.role in ['owner', 'manager', 'cashier'];
+
+      allow update: if isSignedIn() && (
+        request.auth.uid == userId
+        || isSuperAdmin()
+        || (isOwner() && resource.data.businessIds is list
+            && myBizIds().hasAny(resource.data.businessIds))
+      );
+
+      allow delete: if isSuperAdmin();
+    }
+
+    // ===== BUSINESSES =====
+    match /businesses/{bizId} {
+      allow read: if canAccessBiz(bizId);
+
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerUid == request.auth.uid
+        || request.resource.data.ownerId == request.auth.uid
+      );
+
+      allow update, delete: if isSuperAdmin() || (isOwner() && canAccessBiz(bizId));
+
+      // ===== PRODUCTS =====
+      match /products/{productId} {
+        allow read: if canAccessBiz(bizId);
+        allow create, delete: if isSuperAdmin() || (isManager() && canAccessBiz(bizId));
+        allow update: if isSuperAdmin() || (
+          isSignedIn() && canAccessBiz(bizId) && (
+            isManager() ||
+            (isCashier()
+              && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['qty', 'updatedAt', 'businessId']))
+          )
+        );
+      }
+
+      // ===== SALES =====
+      match /sales/{saleId} {
+        allow read: if canAccessBiz(bizId);
+        allow create: if isSuperAdmin() || (isActiveUser() && canAccessBiz(bizId));
+        allow update, delete: if isSuperAdmin() || (isManager() && canAccessBiz(bizId));
+      }
+
+      // ===== DEBTS =====
+      match /debts/{debtId} {
+        allow read: if canAccessBiz(bizId);
+        allow create, update: if isSuperAdmin() || (isActiveUser() && canAccessBiz(bizId));
+        allow delete: if isSuperAdmin() || (isManager() && canAccessBiz(bizId));
+      }
+
+      // ===== REQUESTS =====
+      match /requests/{requestId} {
+        allow read: if isSuperAdmin()
+                    || (isSignedIn() && canAccessBiz(bizId)
+                        && (isOwner() || resource.data.uid == request.auth.uid));
+
+        allow create: if isActiveUser()
+                      && canAccessBiz(bizId)
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.status == 'pending';
+
+        allow update, delete: if isSuperAdmin() || (isOwner() && canAccessBiz(bizId));
+      }
+
+      // ===== WAREHOUSE LOGS =====
+      match /warehouse_logs/{logId} {
+        allow read: if canAccessBiz(bizId);
+
+        allow create: if isActiveUser()
+                      && canAccessBiz(bizId)
+                      && request.resource.data.actionType in ['in', 'out']
+                      && request.resource.data.quantity is number
+                      && request.resource.data.totalPrice is number
+                      && request.resource.data.timestamp == request.time;
+
+        allow update, delete: if isSuperAdmin() || (isManager() && canAccessBiz(bizId));
+      }
+
+      // ===== SHIFTS =====
+      match /shifts/{shiftId} {
+        allow read: if canAccessBiz(bizId);
+
+        allow create: if isActiveUser()
+                      && canAccessBiz(bizId)
+                      && request.resource.data.status == 'open'
+                      && request.resource.data.openedByUid == request.auth.uid;
+
+        allow update: if isSuperAdmin() || (
+          isActiveUser()
+          && canAccessBiz(bizId)
+          && (
+            resource.data.openedByUid == request.auth.uid
+            || isManager()
+          )
+        );
+
+        allow delete: if isSuperAdmin() || (isOwner() && canAccessBiz(bizId));
+      }
+    }
+
+    // ===== STAFF =====
+    match /staff/{phoneKey} {
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid
+        || (resource.data.businessId is string && canAccessBiz(resource.data.businessId))
+      );
+
+      allow create: if isSuperAdmin()
+                    || (isOwner() && request.resource.data.businessId in myBizIds())
+                    || (isManager() && request.resource.data.businessId in myBizIds());
+
+      allow update: if isSuperAdmin()
+                    || (
+                      (isManager() && resource.data.businessId in myBizIds()
+                        && request.resource.data.businessId == resource.data.businessId)
+                    )
+                    || (
+                      isSignedIn()
+                      && request.resource.data.uid == request.auth.uid
+                      && resource.data.uid == null
+                      && request.resource.data.businessId == resource.data.businessId
+                      && request.resource.data.phone == resource.data.phone
+                      && request.resource.data.name == resource.data.name
+                      && request.resource.data.active == resource.data.active
+                    );
+
+      allow delete: if isSuperAdmin()
+                    || (isOwner() && resource.data.businessId in myBizIds());
+    }
+
+    // ===== DENY ALL OTHERS =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
