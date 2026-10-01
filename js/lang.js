@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Многоязычность (i18n) v3.0
+   NexusBiz — Многоязычность (i18n) v3.1
    Языки: Русский (ru) · Кыргызча (kg) · English (en)
 
    Гарантированная стратегия:
@@ -14,9 +14,6 @@
 (function () {
   'use strict';
 
-  // =========================================================
-  // 1. КОНСТАНТЫ И ТЕКУЩИЙ ЯЗЫК
-  // =========================================================
   const STORAGE_KEY  = 'kut_lang';
   const DEFAULT_LANG = 'ru';
   const SUPPORTED    = ['ru', 'kg', 'en'];
@@ -32,9 +29,6 @@
     } catch (_) { return DEFAULT_LANG; }
   })();
 
-  // =========================================================
-  // 2. СЛОВАРЬ ПЕРЕВОДОВ
-  // =========================================================
   const dict = {
     ru: {
       'common.search': 'Поиск', 'common.add': 'Добавить', 'common.edit': 'Редактировать',
@@ -46,8 +40,8 @@
       'common.service': 'усл.', 'common.not_found': 'Ничего не найдено',
       'common.out_of_stock': 'Нет в наличии', 'common.low_stock': 'Мало на складе',
 
-      'brand.name': 'КУТ: БИЗНЕС', 'brand.tagline': 'Учёт для малого бизнеса',
-      'brand.footer': 'Простая система учёта для малого бизнеса Кыргызстана',
+      'brand.name': 'NexusBiz', 'brand.tagline': 'Учёт для малого бизнеса',
+      'brand.footer': 'Простая система учёта для малого бизнеса',
 
       'nav.home': 'Главная', 'nav.cash': 'Касса', 'nav.stock': 'Склад',
       'nav.debts': 'Несие (долги)', 'nav.reports': 'Отчёты',
@@ -206,8 +200,8 @@
       'common.service': 'кызм.', 'common.not_found': 'Эч нерсе табылган жок',
       'common.out_of_stock': 'Жок', 'common.low_stock': 'Аз калды',
 
-      'brand.name': 'КУТ: БИЗНЕС', 'brand.tagline': 'Чакан бизнес үчүн эсеп',
-      'brand.footer': 'Кыргызстандын чакан бизнеси үчүн жөнөкөй эсеп системасы',
+      'brand.name': 'NexusBiz', 'brand.tagline': 'Чакан бизнес үчүн эсеп',
+      'brand.footer': 'Чакан бизнес үчүн жөнөкөй эсеп системасы',
 
       'nav.home': 'Башкы бет', 'nav.cash': 'Касса', 'nav.stock': 'Склад',
       'nav.debts': 'Несие (карыздар)', 'nav.reports': 'Отчёттор',
@@ -366,8 +360,8 @@
       'common.service': 'serv.', 'common.not_found': 'Nothing found',
       'common.out_of_stock': 'Out of stock', 'common.low_stock': 'Low stock',
 
-      'brand.name': 'KUT: BUSINESS', 'brand.tagline': 'Accounting for small business',
-      'brand.footer': 'Simple accounting system for small business in Kyrgyzstan',
+      'brand.name': 'NexusBiz', 'brand.tagline': 'Accounting for small business',
+      'brand.footer': 'Simple accounting system for small business',
 
       'nav.home': 'Home', 'nav.cash': 'Cashier', 'nav.stock': 'Stock',
       'nav.debts': 'Debts (Nesiye)', 'nav.reports': 'Reports',
@@ -517,9 +511,6 @@
     },
   };
 
-  // =========================================================
-  // 3. КАРТЫ ПЕРЕВОДА ТОВАРОВ И КАТЕГОРИЙ
-  // =========================================================
   const PRODUCT_MAP = {
     'Лепёшка':                { ru: 'Лепёшка',              kg: 'Нан',                  en: 'Flatbread' },
     'Боорсок (порция)':       { ru: 'Боорсок (порция)',     kg: 'Боорсок (порция)',     en: 'Boorsok (portion)' },
@@ -559,17 +550,10 @@
     'Clothing': 'category.clothing', 'Services': 'category.services', 'Other': 'category.other',
   };
 
-  // =========================================================
-  // 4. ОБРАТНЫЙ ИНДЕКС: русский текст → ключ
-  // Работает для перевода текста БЕЗ data-i18n.
-  // HTML-разметка у нас всегда на русском — это источник истины.
-  // =========================================================
   const reverseIndex = (function () {
     const map = {};
     Object.keys(dict.ru).forEach(function (key) {
       const ruText = dict.ru[key];
-      // Для строк с параметрами {n} — берём шаблон, но при точном
-      // совпадении (без подстановки) такие строки обычно не встречаются.
       if (ruText && !/\{/.test(ruText)) {
         if (!map[ruText]) map[ruText] = [];
         map[ruText].push(key);
@@ -578,9 +562,6 @@
     return map;
   })();
 
-  // =========================================================
-  // 5. ПЕРЕВОДЧИКИ
-  // =========================================================
   function t(key, params) {
     const langDict = dict[current] || dict[DEFAULT_LANG];
     let value = langDict[key];
@@ -605,14 +586,10 @@
     return key ? t(key) : name;
   }
 
-  // =========================================================
-  // 6. ПРИМЕНЕНИЕ ПЕРЕВОДА К DOM
-  // =========================================================
   function applyToDOM() {
     try {
       document.documentElement.lang = current;
 
-      // --- 6.1. data-i18n (textContent) ---
       document.querySelectorAll('[data-i18n]').forEach(function (el) {
         const key = el.getAttribute('data-i18n');
         if (!key) return;
@@ -620,7 +597,6 @@
         if (el.textContent !== translated) el.textContent = translated;
       });
 
-      // --- 6.2. data-i18n-placeholder ---
       document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
         const key = el.getAttribute('data-i18n-placeholder');
         if (!key) return;
@@ -630,7 +606,6 @@
         }
       });
 
-      // --- 6.3. data-i18n-title ---
       document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
         const key = el.getAttribute('data-i18n-title');
         if (!key) return;
@@ -640,7 +615,6 @@
         }
       });
 
-      // --- 6.4. data-i18n-aria ---
       document.querySelectorAll('[data-i18n-aria]').forEach(function (el) {
         const key = el.getAttribute('data-i18n-aria');
         if (!key) return;
@@ -650,7 +624,6 @@
         }
       });
 
-      // --- 6.5. data-i18n-html ---
       document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
         const key = el.getAttribute('data-i18n-html');
         if (!key) return;
@@ -658,12 +631,9 @@
         if (el.innerHTML !== translated) el.innerHTML = translated;
       });
 
-      // --- 6.6. ГЛАВНОЕ: обход текстовых узлов для перевода
-      //        даже без data-i18n. Работает по обратному индексу.
-      //        Пропускает уже переведённые строки (нет изменений → нет мутации).
       translateTextNodes(document.body);
     } catch (e) {
-      console.warn('[KUT i18n] applyToDOM error:', e);
+      console.warn('[NexusBiz i18n] applyToDOM error:', e);
     }
   }
 
@@ -677,12 +647,10 @@
           const parent = node.parentElement;
           if (!parent) return NodeFilter.FILTER_REJECT;
           const tag = parent.tagName;
-          // Не трогаем скрипты/стили/вводимые поля
           if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' ||
               tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'OPTION') {
             return NodeFilter.FILTER_REJECT;
           }
-          // Только осмысленные текстовые узлы
           const text = (node.nodeValue || '').trim();
           if (!text || text.length < 2) return NodeFilter.FILTER_REJECT;
           return NodeFilter.FILTER_ACCEPT;
@@ -696,11 +664,9 @@
       const raw = node.nodeValue;
       const trimmed = raw.trim();
 
-      // 1) Приоритет — если у родителя есть data-i18n, перевод уже сделан в 6.1.
       const parent = node.parentElement;
       if (parent && parent.getAttribute && parent.getAttribute('data-i18n')) continue;
 
-      // 2) Ищем по обратному индексу (точное совпадение русского текста)
       const keys = reverseIndex[trimmed];
       if (keys && keys.length) {
         const translated = t(keys[0]);
@@ -710,8 +676,6 @@
         continue;
       }
 
-      // 3) Название товара? (для страниц кассы/склада — на случай,
-      //    если рендер делает модуль, а не наш tProduct)
       if (PRODUCT_MAP[trimmed]) {
         const translated = tProduct(trimmed);
         if (translated !== trimmed) {
@@ -720,18 +684,13 @@
       }
     }
 
-    // Применяем замены после обхода — так безопаснее для walker
     replacements.forEach(function (r) {
-      // Сохраняем ведущие/замыкающие пробелы
       const leading = r.raw.match(/^\s*/)[0];
       const trailing = r.raw.match(/\s*$/)[0];
       r.node.nodeValue = leading + r.translated + trailing;
     });
   }
 
-  // =========================================================
-  // 7. СТИЛИ ПЕРЕКЛЮЧАТЕЛЯ
-  // =========================================================
   function injectStyles() {
     if (document.getElementById('kut-lang-styles')) return;
     const style = document.createElement('style');
@@ -764,9 +723,6 @@
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // 8. ПЕРЕКЛЮЧАТЕЛЬ
-  // =========================================================
   function buildSwitcher() {
     const wrap = document.createElement('div');
     wrap.className = 'kut-lang';
@@ -802,9 +758,6 @@
     target.appendChild(buildSwitcher());
   }
 
-  // =========================================================
-  // 9. КЛИКИ: сохранить язык + reload
-  // =========================================================
   function switchLang(lang) {
     if (SUPPORTED.indexOf(lang) === -1) return;
     try { localStorage.setItem(STORAGE_KEY, lang); } catch (_) {}
@@ -849,9 +802,6 @@
     }
   });
 
-  // =========================================================
-  // 10. МУТАЦИОННЫЙ НАБЛЮДАТЕЛЬ — ядро всей защиты
-  // =========================================================
   let observer = null;
   let debounceTimer = null;
 
@@ -859,13 +809,11 @@
     if (observer || !document.body) return;
 
     observer = new MutationObserver(function (mutations) {
-      // Проверяем — были ли реальные изменения, которые нужно "отбить"
       let needsReapply = false;
 
       for (let i = 0; i < mutations.length; i++) {
         const m = mutations[i];
 
-        // Изменения текста
         if (m.type === 'characterData') {
           const text = (m.target.nodeValue || '').trim();
           if (text && reverseIndex[text]) { needsReapply = true; break; }
@@ -873,7 +821,6 @@
           continue;
         }
 
-        // Появление новых узлов (app.js отрисовал дашборд)
         if (m.type === 'childList' && m.addedNodes.length) {
           needsReapply = true;
           break;
@@ -882,13 +829,10 @@
 
       if (!needsReapply) return;
 
-      // Дебаунс: не чаще, чем раз в 120 мс
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(function () {
-        // Отключаем observer, чтобы наши записи не вызвали лавину
         observer.disconnect();
         try { applyToDOM(); } catch (_) {}
-        // Включаем обратно
         observer.observe(document.body, {
           childList: true,
           subtree: true,
@@ -904,9 +848,6 @@
     });
   }
 
-  // =========================================================
-  // 11. ПУБЛИЧНЫЙ API
-  // =========================================================
   window.KUT_LANG = {
     t: t,
     tProduct: tProduct,
@@ -917,7 +858,6 @@
     supported: SUPPORTED,
     dict: dict,
 
-    // Диагностика — запустить в консоли: KUT_LANG.diagnose()
     diagnose: function () {
       const i18nEls = document.querySelectorAll('[data-i18n]').length;
       const placeholderEls = document.querySelectorAll('[data-i18n-placeholder]').length;
@@ -928,7 +868,7 @@
         const trimmed = (n.nodeValue || '').trim();
         if (reverseIndex[trimmed] || PRODUCT_MAP[trimmed]) textMatches++;
       }
-      console.log('%c[KUT i18n] Диагностика', 'color:#005F40;font-weight:700');
+      console.log('%c[NexusBiz i18n] Диагностика', 'color:#005F40;font-weight:700');
       console.log('Текущий язык:', current.toUpperCase());
       console.log('Элементов с data-i18n:', i18nEls);
       console.log('Элементов с data-i18n-placeholder:', placeholderEls);
@@ -938,15 +878,10 @@
     },
   };
 
-  // =========================================================
-  // 12. АВТОЗАПУСК
-  // =========================================================
   function boot() {
     injectStyles();
     mountSwitcher();
 
-    // Основное применение + страховки с задержками,
-    // чтобы перебить любой рендер от app.js / cash.js / stock.js / debts.js
     applyToDOM();
     setTimeout(applyToDOM, 50);
     setTimeout(applyToDOM, 100);
@@ -957,19 +892,16 @@
     setTimeout(applyToDOM, 2000);
     setTimeout(applyToDOM, 3000);
 
-    // Запускаем наблюдатель
     startObserver();
 
-    // Оповещаем модули
     try {
       window.dispatchEvent(new CustomEvent('kut:lang', { detail: { lang: current } }));
     } catch (_) {}
 
-    // Ещё раз при смене языка (не должно происходить, т.к. мы reload, но на всякий)
     window.addEventListener('kut:lang', function () { applyToDOM(); });
 
     console.info(
-      '%cКУТ i18n v3.0 · язык: ' + current.toUpperCase() + ' · MutationObserver активен',
+      '%cNexusBiz i18n v3.1 · язык: ' + current.toUpperCase() + ' · MutationObserver активен',
       'color:#005F40; font-weight:700'
     );
   }
