@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0F172A">
-  <title>Сотрудники — КУТ: БИЗНЕС</title>
+  <title>Сотрудники — NexusBiz</title>
 
   <script>
     (function () {
@@ -224,13 +224,7 @@
         }).catch(function () {}));
       }
       Promise.all(todo).then(function () {
-        setTimeout(function () {
-          try {
-            var url = new URL(window.location.href);
-            url.searchParams.set('_cb', Date.now().toString(36));
-            window.location.replace(url.toString());
-          } catch (e) { window.location.reload(); }
-        }, 200);
+        console.log('[NexusBiz] Кэш очищен, сборка:', BUILD);
       });
     })();
   </script>
@@ -243,9 +237,9 @@
 
       <div class="sidebar__brand-row">
         <a href="./index.html" class="sidebar__brand">
-          <span class="brand__mark" aria-hidden="true">К</span>
+          <span class="brand__mark" aria-hidden="true">N</span>
           <span class="brand__text">
-            <strong>КУТ: БИЗНЕС</strong>
+            <strong>NexusBiz</strong>
             <small>Учёт для малого бизнеса</small>
           </span>
         </a>
@@ -269,7 +263,7 @@
         </span>
       </a>
 
-      <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
+      <div class="sidebar__footer">© <span id="year">2026</span> NexusBiz</div>
 
       <div id="sidebar-logout-slot"></div>
     </aside>
@@ -277,7 +271,7 @@
     <div>
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
-        <span class="mobile-bar__title">КУТ: БИЗНЕС · <span id="page-title">Сотрудники</span></span>
+        <span class="mobile-bar__title">NexusBiz · <span id="page-title">Сотрудники</span></span>
         <div id="business-switcher-slot" hidden></div>
         <div data-kut-lang></div>
       </header>
