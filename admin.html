@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <title>Супер-Администратор — КУТ: БИЗНЕС</title>
+  <title>Супер-Администратор — NexusBiz</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +66,6 @@
     .page-head h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.4px; }
     .page-head p { margin: 6px 0 0; color: var(--kut-muted); font-size: 14px; }
 
-    /* Диагностика — вне контента, чтобы всегда была видна */
     .diag-banner {
       max-width: 1400px; margin: 16px auto 0;
       padding: 14px 20px;
@@ -221,8 +220,8 @@
   <header class="topbar">
     <div class="topbar__inner">
       <a href="./admin.html" class="topbar__brand">
-        <span class="brand__mark">К</span>
-        <span>КУТ: БИЗНЕС<span class="topbar__badge">SUPER ADMIN</span></span>
+        <span class="brand__mark">N</span>
+        <span>NexusBiz<span class="topbar__badge">SUPER ADMIN</span></span>
       </a>
       <div class="topbar__user">
         <span id="adminEmail">—</span>
@@ -231,13 +230,11 @@
     </div>
   </header>
 
-  <!-- Диагностика — вне основного контента -->
   <div class="diag-banner" id="diagBox">
     <strong>Диагностика:</strong>
     <span>Инициализация...</span>
   </div>
 
-  <!-- Основной контент — виден по умолчанию -->
   <main class="wrap" id="adminContent">
     <div class="page-head">
       <h1>Панель супер-администратора</h1>
@@ -332,9 +329,6 @@
 
     const $ = (s) => document.querySelector(s);
 
-    // =========================================================
-    // ДИАГНОСТИКА
-    // =========================================================
     const diagBox = $('#diagBox');
     function diag(text, cls) {
       const span = document.createElement('span');
@@ -368,9 +362,6 @@
       }[ch]));
     }
 
-    // =========================================================
-    // ЗАГРУЗКА
-    // =========================================================
     async function loadBusinesses() {
       try {
         const snap = await getDocs(collection(db, 'businesses'));
@@ -393,9 +384,6 @@
       }
     }
 
-    // =========================================================
-    // СТАТИСТИКА И ТАБЛИЦА
-    // =========================================================
     function renderStats() {
       const total = allBusinesses.length;
       const active = allBusinesses.filter((b) => b.status !== 'blocked' && b.active !== false).length;
@@ -465,9 +453,6 @@
       });
     }
 
-    // =========================================================
-    // ПРОВЕРКА АВТОРИЗАЦИИ И РОЛИ
-    // =========================================================
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         diag('✗ Нет пользователя → login.html', 'err');
@@ -507,7 +492,6 @@
         return;
       }
 
-      // Всё ок — заполняем шапку и грузим данные
       $('#adminEmail').textContent = profile.email || user.email || '—';
 
       diag('→ Загружаем businesses...', 'warn');
@@ -520,9 +504,6 @@
       renderAll();
     });
 
-    // =========================================================
-    // КНОПКА «ОБНОВИТЬ»
-    // =========================================================
     $('#refreshBtn').addEventListener('click', async () => {
       diagReset();
       diag('→ Ручное обновление', 'warn');
@@ -532,15 +513,12 @@
       diag('✓ Готово', 'ok');
     });
 
-    // =========================================================
-    // ВЫХОД
-    // =========================================================
     $('#logoutBtn').addEventListener('click', async () => {
       await signOut(auth);
       window.location.href = './login.html';
     });
 
-    console.info('[KUT admin] Готово');
+    console.info('[NexusBiz admin] Готово');
   </script>
 </body>
 </html>
