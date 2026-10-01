@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Премиум-корзина (cart-pro.js) · v1.0
+   NexusBiz — Премиум-корзина (cart-pro.js) · v1.1
    
    Square-style Register UX:
    • Numpad для открытой цены (продать что-то без штрихкода)
@@ -19,12 +19,12 @@
   const EPS = 0.01;
 
   const state = {
-    items: [],        // [{id, name, price, costPrice, unit, qty, discount, note, isOpenPrice}]
-    discount: null,   // {type:'percent'|'fixed', value:Number}
-    payments: [],     // [{method:'cash'|'card'|'wallet'|'qr'|'debt', amount:Number, ts}]
-    customer: null,   // {name, phone}
+    items: [],
+    discount: null,
+    payments: [],
+    customer: null,
     note: '',
-    mode: 'sale',     // 'sale' | 'refund'
+    mode: 'sale',
     cashier: null,
   };
 
@@ -40,9 +40,6 @@
     else console.log('[cart-pro]', msg);
   }
 
-  // =========================================================
-  // РАСЧЁТЫ
-  // =========================================================
   function lineSubtotal(it) {
     return Number(it.price) * Number(it.qty);
   }
@@ -95,9 +92,6 @@
     return remainingAmount() < EPS;
   }
 
-  // =========================================================
-  // LOCALSTORAGE
-  // =========================================================
   function save() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
@@ -133,9 +127,6 @@
     state.mode = 'sale';
   }
 
-  // =========================================================
-  // ОПЕРАЦИИ С КОРЗИНОЙ
-  // =========================================================
   function addItem(product, qty) {
     qty = Math.max(1, Number(qty) || 1);
     const existing = state.items.find((i) => i.id === product.id);
@@ -238,9 +229,6 @@
     render();
   }
 
-  // =========================================================
-  // NUMPAD (универсальный: цена / количество / скидка)
-  // =========================================================
   function openNumpad({ title, value = '0', allowDecimal = true, onConfirm }) {
     const existing = document.getElementById('kutNumpadModal');
     if (existing) existing.remove();
@@ -315,9 +303,6 @@
     document.addEventListener('keydown', onKey);
   }
 
-  // =========================================================
-  // МОДАЛКА СКИДКИ
-  // =========================================================
   function openDiscountModal({ target = 'cart', itemId = null } = {}) {
     const existing = document.getElementById('kutDiscountModal');
     if (existing) existing.remove();
@@ -397,9 +382,6 @@
     setTimeout(() => input.focus(), 100);
   }
 
-  // =========================================================
-  // МОДАЛКА SPLIT PAYMENT
-  // =========================================================
   const PAYMENT_METHODS = [
     { id: 'cash',   label: 'Наличные',     icon: '💵' },
     { id: 'card',   label: 'Карта',        icon: '💳' },
@@ -514,9 +496,6 @@
     });
   }
 
-  // =========================================================
-  // ФИНАЛИЗАЦИЯ ПРОДАЖИ (Firestore batch)
-  // =========================================================
   async function finalizeSale() {
     if (state.items.length === 0) return { ok: false, error: 'empty_cart' };
     if (!isFullyPaid()) return { ok: false, error: 'not_paid' };
@@ -525,7 +504,6 @@
     const bizId = window.FB?.getWriteBusinessId?.();
     if (!bizId) { toast('Нет привязанного бизнеса', true); return { ok: false, error: 'no_business' }; }
 
-    // Проверка остатков (кроме open price)
     for (const it of state.items) {
       if (it.isOpenPrice) continue;
       const p = (st.products || []).find((x) => x.id === it.id);
@@ -577,7 +555,6 @@
       createdAt: serverTimestamp(),
     });
 
-    // Списание остатков + складской лог
     for (const it of state.items) {
       if (it.isOpenPrice) continue;
       const p = (st.products || []).find((x) => x.id === it.id);
@@ -607,7 +584,6 @@
       });
     }
 
-    // Если есть долговая часть — создаём запись в debts
     const debtPay = state.payments.find((p) => p.method === 'debt');
     if (debtPay && state.customer?.name && state.customer?.phone) {
       const debtRef = doc(collection(db, 'businesses', bizId, 'debts'));
@@ -647,9 +623,6 @@
     }
   }
 
-  // =========================================================
-  // РЕНДЕР
-  // =========================================================
   function pulseCount() {
     const b = document.getElementById('cartCount');
     if (b && b.animate) {
@@ -736,9 +709,6 @@
     wrap.innerHTML = rows.join('');
   }
 
-  // =========================================================
-  // СОБЫТИЯ
-  // =========================================================
   function bindEvents() {
     const list = document.getElementById('cartItems');
     if (list && !list.dataset.proWired) {
@@ -771,7 +741,6 @@
       });
     }
 
-    // Кнопка "Скидка на чек" — добавляем в шапку корзины если нет
     const cartHead = document.querySelector('.cart__head');
     if (cartHead && !cartHead.querySelector('[data-act="cart-discount"]')) {
       const btn = document.createElement('button');
@@ -785,7 +754,6 @@
       else cartHead.appendChild(btn);
     }
 
-    // Кнопка "Открытая цена" — добавим рядом с поиском
     const searchWrap = document.querySelector('.search');
     if (searchWrap && !document.getElementById('openPriceBtn')) {
       const btn = document.createElement('button');
@@ -808,17 +776,14 @@
       searchWrap.parentElement.insertBefore(btn, searchWrap.nextSibling);
     }
 
-    // Checkout ведёт в модалку оплаты
     const checkout = document.getElementById('checkoutBtn');
     if (checkout && !checkout.dataset.proWired) {
       checkout.dataset.proWired = '1';
-      // Отвязываем старый обработчик, ставим наш
       checkout.replaceWith(checkout.cloneNode(true));
       const fresh = document.getElementById('checkoutBtn');
       fresh.addEventListener('click', openPaymentModal);
     }
 
-    // Keyboard
     if (!window.__kutCartKeysBound) {
       window.__kutCartKeysBound = true;
       document.addEventListener('keydown', (e) => {
@@ -832,9 +797,6 @@
     }
   }
 
-  // =========================================================
-  // СТИЛИ
-  // =========================================================
   function injectStyles() {
     if (document.getElementById('cart-pro-styles')) return;
     const style = document.createElement('style');
@@ -853,7 +815,6 @@
       .btn-open-price { margin: 10px 0; width: 100%; padding: 12px 14px; background: transparent; color: var(--kut-gold-deep, #E4C56A); border: 1.5px dashed var(--kut-gold-border, rgba(212,175,55,.4)); border-radius: 12px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
       .btn-open-price:active { transform: scale(.98); }
 
-      /* NUMPAD */
       .kut-numpad-modal { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 16px; }
       .kut-numpad-backdrop { position: absolute; inset: 0; background: rgba(2,8,18,.7); backdrop-filter: blur(8px); }
       .kut-numpad { position: relative; width: 100%; max-width: 360px; padding: 20px; background: var(--kut-surface, #1E293B); border: 1px solid var(--kut-border, rgba(255,255,255,.08)); border-radius: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: var(--kut-text-1, #F1F5F9); }
@@ -867,7 +828,6 @@
       .kut-numpad__cancel { background: var(--kut-surface-2, #273449); color: var(--kut-text-1, #F1F5F9); }
       .kut-numpad__confirm { background: linear-gradient(135deg, #10B981, #059669); color: #fff; }
 
-      /* DISCOUNT */
       .kut-discount-modal { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 16px; }
       .kut-discount-backdrop { position: absolute; inset: 0; background: rgba(2,8,18,.7); backdrop-filter: blur(8px); }
       .kut-discount { position: relative; width: 100%; max-width: 380px; padding: 22px; background: var(--kut-surface, #1E293B); border: 1px solid var(--kut-border, rgba(255,255,255,.08)); border-radius: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: var(--kut-text-1, #F1F5F9); }
@@ -885,7 +845,6 @@
       .kut-discount__clear { background: var(--kut-surface-2, #273449); color: #F87171; }
       .kut-discount__save { background: linear-gradient(135deg, #10B981, #059669); color: #fff; }
 
-      /* PAYMENT */
       .kut-pay-modal { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 12px; }
       .kut-pay-backdrop { position: absolute; inset: 0; background: rgba(2,8,18,.75); backdrop-filter: blur(8px); }
       .kut-pay { position: relative; width: 100%; max-width: 460px; max-height: 96dvh; overflow-y: auto; padding: 20px; background: var(--kut-surface, #1E293B); border: 1px solid var(--kut-border, rgba(255,255,255,.08)); border-radius: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: var(--kut-text-1, #F1F5F9); }
@@ -921,36 +880,25 @@
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // ПУБЛИЧНОЕ API
-  // =========================================================
   window.KUT_CART = {
-    // Операции
     addItem, addOpenPriceItem, changeQty, setQty, removeItem,
     setItemDiscount, setItemNote, setCartDiscount, setCustomer, setMode,
     clearCart,
-    // Платежи
     addPayment: (method, amount) => { state.payments.push({ method, amount, ts: Date.now() }); save(); render(); },
     removePayment: (i) => { state.payments.splice(i, 1); save(); render(); },
-    // Расчёты
     cartTotal, cartSubtotal, cartCost, cartProfit, cartDiscountTotal,
     paidAmount, remainingAmount, changeAmount, isFullyPaid,
-    // Процесс
     finalizeSale, openNumpad, openDiscountModal, openPaymentModal,
-    // Управление
     getState: () => state,
     render, save, restore,
   };
 
-  // =========================================================
-  // BOOT
-  // =========================================================
   function boot() {
     injectStyles();
     restore();
     bindEvents();
     render();
-    console.info('[cart-pro v1.0] Square-style register готов');
+    console.info('[cart-pro v1.1] Square-style register готов');
   }
 
   if (document.readyState === 'loading') {
