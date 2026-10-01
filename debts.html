@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0D1418">
-  <title>Несие — КУТ: БИЗНЕС</title>
+  <title>Несие — NexusBiz</title>
 
   <script>
     (function () {
@@ -126,9 +126,6 @@
     .debts-empty h3 { margin: 0 0 6px; color: var(--kut-text-1); font-size: 17px; }
     .debts-empty p { margin: 0 0 18px; font-size: 14px; color: var(--kut-text-3); }
 
-    /* =========================================================
-       КОМПАКТНЫЕ МОДАЛКИ — БЕЗ СКРОЛЛА
-       ========================================================= */
     .modal[hidden] { display: none; }
     .modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 12px; }
     .modal__backdrop { position: absolute; inset: 0; background: rgba(15,30,25,.45); backdrop-filter: blur(8px); }
@@ -148,7 +145,6 @@
     .modal__dialog h3 { margin: 0 0 2px; font-size: 18px; font-weight: 800; color: var(--kut-text-1); }
     .modal__subtitle { margin: 0 0 10px; font-size: 13px; color: var(--kut-text-3); }
 
-    /* === КОМПАКТНЫЕ ПОЛЯ ФОРМЫ === */
     .field {
       display: flex;
       flex-direction: column;
@@ -242,7 +238,6 @@
       font-weight: 600;
     }
 
-    /* === STICKY-КНОПКИ === */
     .modal__actions {
       display: flex;
       gap: 8px;
@@ -267,7 +262,6 @@
       font-size: 14px;
     }
 
-    /* === ДЕТАЛИ ДОЛГА === */
     .debt-detail__head { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; margin-bottom: 16px; }
     .debt-detail__avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--kut-gold-gradient); color: var(--kut-text-on-gold); font-size: 22px; font-weight: 800; text-transform: uppercase; box-shadow: 0 6px 18px rgba(184,149,42,.36); margin-bottom: 4px; }
     .debt-detail__phone { font-size: 13px; color: var(--kut-text-3); }
@@ -335,13 +329,7 @@
         }).catch(function () {}));
       }
       Promise.all(todo).then(function () {
-        setTimeout(function () {
-          try {
-            var url = new URL(window.location.href);
-            url.searchParams.set('_cb', Date.now().toString(36));
-            window.location.replace(url.toString());
-          } catch (e) { window.location.reload(); }
-        }, 200);
+        console.log('[NexusBiz] Кэш очищен, сборка:', BUILD);
       });
     })();
   </script>
@@ -354,9 +342,9 @@
 
       <div class="sidebar__brand-row">
         <a href="./index.html" class="sidebar__brand">
-          <span class="brand__mark" aria-hidden="true">К</span>
+          <span class="brand__mark" aria-hidden="true">N</span>
           <span class="brand__text">
-            <strong>КУТ: БИЗНЕС</strong>
+            <strong>NexusBiz</strong>
             <small>Учёт для малого бизнеса</small>
           </span>
         </a>
@@ -377,7 +365,7 @@
         <span class="sidebar__cta__text"><strong>Открыть кассу</strong><small>Новая продажа</small></span>
       </a>
 
-      <div class="sidebar__footer">© <span id="year">2026</span> КУТ: БИЗНЕС</div>
+      <div class="sidebar__footer">© <span id="year">2026</span> NexusBiz</div>
 
       <div id="sidebar-logout-slot"></div>
     </aside>
@@ -385,7 +373,7 @@
     <div>
       <header class="mobile-bar">
         <button class="burger" id="burger" type="button" aria-label="Открыть меню">☰</button>
-        <span class="mobile-bar__title">КУТ: БИЗНЕС · <span id="page-title">Несие</span></span>
+        <span class="mobile-bar__title">NexusBiz · <span id="page-title">Несие</span></span>
         <div id="business-switcher-slot" hidden></div>
         <span class="net-pill" id="net-pill" title="Состояние соединения" data-queue="0">
           <span class="net-pill__dot" aria-hidden="true"></span>
@@ -446,7 +434,6 @@
     </div>
   </div>
 
-  <!-- МОДАЛКА: ДОБАВИТЬ ДОЛЖНИКА -->
   <div class="modal" id="addModal" hidden>
     <div class="modal__backdrop" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true">
@@ -520,7 +507,6 @@
     </div>
   </div>
 
-  <!-- ДЕТАЛИ ДОЛГА -->
   <div class="modal" id="detailModal" hidden>
     <div class="modal__backdrop" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true">
@@ -550,7 +536,6 @@
     </div>
   </div>
 
-  <!-- ПОГАШЕНИЕ / ЕЩЁ В ДОЛГ -->
   <div class="modal" id="payModal" hidden>
     <div class="modal__backdrop" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true">
@@ -571,7 +556,6 @@
     </div>
   </div>
 
-  <!-- УДАЛЕНИЕ -->
   <div class="modal" id="deleteModal" hidden>
     <div class="modal__backdrop" data-close></div>
     <div class="modal__dialog" role="dialog" aria-modal="true">
