@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Сотрудники» (staff.js) · Firebase v2
+   NexusBiz — Модуль «Сотрудники» (staff.js) · Firebase v2
    + отчёт «Продажи» по кассирам
    + роль manager при приглашении
    ========================================================= */
@@ -7,9 +7,6 @@
 (function () {
   'use strict';
 
-  // =========================================================
-  // СОСТОЯНИЕ
-  // =========================================================
   const state = {
     staff: [],
     sales: [],
@@ -25,9 +22,6 @@
     unsubSales: null,
   };
 
-  // =========================================================
-  // DOM
-  // =========================================================
   const $ = (s) => document.querySelector(s);
   const el = {
     mainWrap:      $('#mainWrap'),
@@ -41,7 +35,6 @@
     tabStaffCount: $('#tabStaffCount'),
     tabSalesCount: $('#tabSalesCount'),
 
-    // Staff
     searchStaffInput: $('#searchStaffInput'),
     statTotal:     $('#statTotal'),
     statActive:    $('#statActive'),
@@ -50,7 +43,6 @@
     staffBody:     $('#staffBody'),
     staffEmpty:    $('#staffEmpty'),
 
-    // Sales
     salesTotalRevenue: $('#salesTotalRevenue'),
     salesTotalChecks:  $('#salesTotalChecks'),
     salesAvgCheck:     $('#salesAvgCheck'),
@@ -60,7 +52,6 @@
     salesBody:         $('#salesBody'),
     salesEmpty:        $('#salesEmpty'),
 
-    // Модалки
     staffModal:      $('#staffModal'),
     staffModalTitle: $('#staffModalTitle'),
     staffModalSub:   $('#staffModalSub'),
@@ -78,9 +69,6 @@
     confirmDeleteBtn:$('#confirmDeleteBtn'),
   };
 
-  // =========================================================
-  // УТИЛИТЫ
-  // =========================================================
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -153,9 +141,6 @@
     return 'role-badge--cashier';
   }
 
-  // =========================================================
-  // ТЕЛЕФОН
-  // =========================================================
   function getSelectedCountry() {
     const opt = el.countrySelect.options[el.countrySelect.selectedIndex];
     return {
@@ -240,9 +225,6 @@
     setFieldError('fPhone', '');
   });
 
-  // =========================================================
-  // РОЛЬ
-  // =========================================================
   el.roleOptions.addEventListener('click', (e) => {
     const btn = e.target.closest('.role-option');
     if (!btn) return;
@@ -264,9 +246,6 @@
     });
   }
 
-  // =========================================================
-  // ВАЛИДАЦИЯ
-  // =========================================================
   function setFieldError(fieldId, message) {
     const input = document.getElementById(fieldId);
     const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
@@ -309,9 +288,6 @@
     return ok;
   }
 
-  // =========================================================
-  // СТАТИСТИКА СОТРУДНИКОВ
-  // =========================================================
   function renderStaffStats() {
     const list = state.staff;
     const total = list.length;
@@ -324,9 +300,6 @@
     if (el.tabStaffCount) el.tabStaffCount.textContent = String(total);
   }
 
-  // =========================================================
-  // ТАБЛИЦА СОТРУДНИКОВ
-  // =========================================================
   function getVisibleStaff() {
     const q = state.searchStaff.trim().toLowerCase();
     return state.staff
@@ -412,9 +385,6 @@
     }).join('');
   }
 
-  // =========================================================
-  // ОТЧЁТ ПО ПРОДАЖАМ
-  // =========================================================
   function periodStart(period) {
     const now = new Date();
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -525,9 +495,6 @@
       </tr>`;
   }
 
-  // =========================================================
-  // ПЕРЕКЛЮЧЕНИЕ ТАБОВ
-  // =========================================================
   function bindTabs() {
     el.tabs.forEach((tab) => {
       tab.addEventListener('click', () => {
@@ -543,9 +510,6 @@
     });
   }
 
-  // =========================================================
-  // МОДАЛЬНЫЕ ОКНА
-  // =========================================================
   let lastFocused = null;
   function openModal(modal) {
     lastFocused = document.activeElement;
@@ -558,9 +522,6 @@
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
-  // =========================================================
-  // CRUD
-  // =========================================================
   function openAddModal() {
     state.editingId = null;
     if (el.staffModalTitle) el.staffModalTitle.textContent = 'Пригласить сотрудника';
@@ -714,9 +675,6 @@
     }
   }
 
-  // =========================================================
-  // СОБЫТИЯ
-  // =========================================================
   function bindEvents() {
     if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
     if (el.emptyAddBtn) el.emptyAddBtn.addEventListener('click', openAddModal);
@@ -776,9 +734,6 @@
     });
   }
 
-  // =========================================================
-  // ИНИЦИАЛИЗАЦИЯ
-  // =========================================================
   async function init() {
     const st = await waitForReady();
     if (!st) { console.warn('[staff] Не дождались businessId'); return; }
@@ -798,7 +753,6 @@
     if (el.mainWrap) el.mainWrap.hidden = false;
     renderStaffStats();
 
-    // Подписка на staff
     try {
       const { db, collection, query, where, onSnapshot } = window.FB;
       const q = query(
@@ -814,7 +768,6 @@
         showToast('Ошибка загрузки списка сотрудников', true);
       });
 
-      // Подписка на продажи — все sales этого бизнеса
       const salesRef = collection(db, 'businesses', state.businessId, 'sales');
       state.unsubSales = onSnapshot(salesRef, (snap) => {
         state.sales = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -831,7 +784,7 @@
     bindEvents();
     updatePhonePlaceholder();
 
-    console.info('[staff] Подключено · бизнес:', state.businessId, '· роль:', state.myRole);
+    console.info('[NexusBiz staff] Подключено · бизнес:', state.businessId, '· роль:', state.myRole);
   }
 
   if (document.readyState === 'loading') {
