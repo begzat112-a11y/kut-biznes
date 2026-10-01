@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Матрица прав (permissions.js) · v1.0
+   NexusBiz — Матрица прав (permissions.js) · v1.1
    
    Granular RBAC как у Square:
    • permissions[] у каждого сотрудника
@@ -73,9 +73,6 @@
     { id: 'settings.edit',         label: '🔴 Редактировать',       group: 'Настройки' },
   ];
 
-  // =========================================================
-  // ПРОВЕРКИ
-  // =========================================================
   function getCurrentProfile() {
     return window.KUT?.getState?.()?.profile || null;
   }
@@ -114,9 +111,6 @@
     return false;
   }
 
-  // =========================================================
-  // PIN (SHA-256)
-  // =========================================================
   async function hashPin(pin) {
     const buf = new TextEncoder().encode(String(pin));
     const hash = await crypto.subtle.digest('SHA-256', buf);
@@ -161,9 +155,6 @@
     }
   }
 
-  // =========================================================
-  // МОДАЛКА ПРАВ
-  // =========================================================
   function openPermissionsModal(staffId) {
     if (!hasPermission('staff.edit_permissions')) {
       toast('Нет прав на изменение разрешений', true);
@@ -304,9 +295,6 @@
     }
   }
 
-  // =========================================================
-  // PIN-ВХОД
-  // =========================================================
   function openPinModal(onSuccess) {
     const existing = document.getElementById('kutPinModal');
     if (existing) existing.remove();
@@ -373,9 +361,6 @@
       el.addEventListener('click', () => modal.remove()));
   }
 
-  // =========================================================
-  // UI-ГЕЙТИНГ
-  // =========================================================
   function applyUiGates() {
     document.querySelectorAll('[data-perm]').forEach((el) => {
       const perm = el.dataset.perm;
@@ -394,9 +379,6 @@
     }
   }
 
-  // =========================================================
-  // ИНЪЕКЦИЯ КНОПОК В staff.html
-  // =========================================================
   function injectPermsButtons() {
     const page = (location.pathname.split('/').pop() || '').replace('.html', '');
     if (page !== 'staff') return;
@@ -420,9 +402,6 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
-  // =========================================================
-  // УТИЛИТЫ
-  // =========================================================
   function roleLabel(role) {
     return ({ owner: 'Владелец', manager: 'Менеджер', cashier: 'Кассир' })[role] || role;
   }
@@ -440,9 +419,6 @@
     else console.log('[perms]', msg);
   }
 
-  // =========================================================
-  // СТИЛИ
-  // =========================================================
   function injectStyles() {
     if (document.getElementById('kut-perms-styles')) return;
     const style = document.createElement('style');
@@ -476,7 +452,6 @@
       .kut-perms__cancel { background: var(--kut-surface-2, #273449); color: var(--kut-text-1, #F1F5F9); }
       .kut-perms__save { background: linear-gradient(135deg, #10B981, #059669); color: #fff; }
 
-      /* PIN */
       .kut-pin-modal { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 16px; }
       .kut-pin-backdrop { position: absolute; inset: 0; background: rgba(2,8,18,.8); backdrop-filter: blur(8px); }
       .kut-pin { position: relative; width: 100%; max-width: 320px; padding: 24px; background: var(--kut-surface, #1E293B); border: 1px solid var(--kut-border, rgba(255,255,255,.08)); border-radius: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: var(--kut-text-1, #F1F5F9); text-align: center; }
@@ -492,9 +467,6 @@
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // ПУБЛИЧНОЕ API
-  // =========================================================
   window.KUT_PERMS = {
     hasPermission, canManage, canGrantPermission,
     hashPin, verifyPin, setPin,
@@ -503,18 +475,14 @@
     ROLE_HIERARCHY, ROLE_DEFAULT_PERMISSIONS, ALL_PERMISSIONS,
   };
 
-  // =========================================================
-  // BOOT
-  // =========================================================
   function boot() {
     injectStyles();
     applyUiGates();
     injectPermsButtons();
-    // Перепроверка после загрузки профиля
     setTimeout(applyUiGates, 1200);
     setTimeout(applyUiGates, 2500);
     window.addEventListener('kut:business-changed', applyUiGates);
-    console.info('[permissions v1.0] RBAC + PIN готов');
+    console.info('[permissions v1.1] RBAC + PIN готов');
   }
 
   if (document.readyState === 'loading') {
