@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль возвратов (refund.js) · v1.0
+   NexusBiz — Модуль возвратов (refund.js) · v1.1
    
    Square-style Refund:
    • Открытие модалки → выбор чека из списка (последние 50)
@@ -17,7 +17,7 @@
   const state = {
     sales: [],
     currentSale: null,
-    refundItems: [],  // [{productId, qty, price, costPrice, name, unit, maxQty}]
+    refundItems: [],
     search: '',
     unsub: null,
   };
@@ -34,9 +34,6 @@
     else console.log('[refund]', msg);
   }
 
-  // =========================================================
-  // ЗАГРУЗКА ПРОДАЖ
-  // =========================================================
   async function loadSales() {
     const st = window.KUT?.getState?.();
     const bizId = st?.businessId;
@@ -57,9 +54,6 @@
     }
   }
 
-  // =========================================================
-  // ОТКРЫТИЕ МОДАЛКИ
-  // =========================================================
   async function openRefundModal() {
     const st = window.KUT?.getState?.();
     if (!st?.businessId) { toast('Нет активного бизнеса', true); return; }
@@ -89,12 +83,9 @@
     state.search = '';
   }
 
-  // =========================================================
-  // РЕНДЕР: СПИСОК ЧЕКОВ
-  // =========================================================
   function renderList(modal) {
     const filtered = state.sales.filter((s) => {
-      if (s.mode === 'refund') return false; // не показываем сами возвраты
+      if (s.mode === 'refund') return false;
       if (!state.search) return true;
       const q = state.search.toLowerCase();
       const dateStr = formatDate(s.createdAt).toLowerCase();
@@ -146,7 +137,6 @@
     if (search) {
       search.addEventListener('input', (e) => {
         state.search = e.target.value;
-        // Просто перерисовываем список без сброса фокуса
         const listEl = modal.querySelector('.kut-refund__list');
         const filtered2 = state.sales.filter((s) => {
           if (s.mode === 'refund') return false;
@@ -192,9 +182,6 @@
     });
   }
 
-  // =========================================================
-  // РЕНДЕР: ДЕТАЛИ ЧЕКА + ВЫБОР ПОЗИЦИЙ
-  // =========================================================
   function openRefundDetail(sale, modal) {
     state.currentSale = sale;
     state.refundItems = (sale.items || []).map((it) => ({
@@ -270,7 +257,6 @@
       </div>
     `;
 
-    // Bind back
     modal.querySelector('[data-back]').addEventListener('click', () => {
       state.currentSale = null;
       state.refundItems = [];
@@ -280,7 +266,6 @@
     modal.querySelectorAll('[data-close]').forEach((el) =>
       el.addEventListener('click', closeRefundModal));
 
-    // Bind item controls
     modal.querySelectorAll('.kut-refund-item').forEach((row) => {
       const idx = Number(row.dataset.idx);
       row.querySelectorAll('[data-act]').forEach((btn) => {
@@ -302,7 +287,6 @@
         let v = Number(e.target.value) || 0;
         v = Math.max(0, Math.min(it.maxQty, v));
         it.qty = v;
-        // Обновляем кнопку без полного перерендера
         const confirm = modal.querySelector('.kut-refund__confirm');
         if (confirm) {
           const anyQty = state.refundItems.some((x) => x.qty > 0);
@@ -314,14 +298,10 @@
       input.addEventListener('blur', () => renderDetail(modal));
     });
 
-    // Confirm
     const confirm = modal.querySelector('.kut-refund__confirm');
     if (confirm) confirm.addEventListener('click', () => executeRefund(modal));
   }
 
-  // =========================================================
-  // ИСПОЛНЕНИЕ ВОЗВРАТА
-  // =========================================================
   async function executeRefund(modal) {
     const sale = state.currentSale;
     if (!sale) return;
@@ -341,7 +321,6 @@
     const { db, collection, doc, writeBatch, serverTimestamp } = window.FB;
     const batch = writeBatch(db);
 
-    // 1. Создаём запись возврата
     const refundRef = doc(collection(db, 'businesses', bizId, 'sales'));
     batch.set(refundRef, {
       items: items.map((it) => ({
@@ -355,7 +334,7 @@
         qty: it.qty,
         lineTotal: it.qty * it.price,
       })),
-      total: -total,       // отрицательная сумма
+      total: -total,
       totalSum: -total,
       costTotal: cost,
       profit: -profit,
@@ -371,7 +350,6 @@
       createdAt: serverTimestamp(),
     });
 
-    // 2. Возврат остатков + складской лог
     for (const it of items) {
       if (it.productId?.startsWith('open_')) continue;
       const p = (st.products || []).find((x) => x.id === it.productId);
@@ -401,13 +379,6 @@
       });
     }
 
-    // 3. Если чек был в долг — уменьшаем долг
-    if (sale.paymentMethod === 'debt' && sale.customer && sale.customerPhone) {
-      // Ищем связанный долг (по saleId)
-      // В идеале — уменьшить соответствующий долг. Здесь упрощённо пропускаем,
-      // так как полная логика требует чтения долга.
-    }
-
     try {
       await batch.commit();
       toast(`Возврат на ${fmt(total)} KGS оформлен ✓`);
@@ -419,9 +390,6 @@
     }
   }
 
-  // =========================================================
-  // УТИЛИТЫ
-  // =========================================================
   function toDate(ts) {
     if (!ts) return null;
     if (typeof ts.toDate === 'function') return ts.toDate();
@@ -436,9 +404,6 @@
     return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  // =========================================================
-  // ИНЪЕКЦИЯ КНОПКИ В КАССУ
-  // =========================================================
   function injectRefundButton() {
     const page = (location.pathname.split('/').pop() || '').replace('.html', '');
     if (page !== 'cash') return;
@@ -456,9 +421,6 @@
     cartHead.appendChild(btn);
   }
 
-  // =========================================================
-  // СТИЛИ
-  // =========================================================
   function injectStyles() {
     if (document.getElementById('kut-refund-styles')) return;
     const style = document.createElement('style');
@@ -513,9 +475,6 @@
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // ПУБЛИЧНОЕ API
-  // =========================================================
   window.KUT_REFUND = {
     open: openRefundModal,
     close: closeRefundModal,
@@ -523,15 +482,11 @@
     getState: () => state,
   };
 
-  // =========================================================
-  // BOOT
-  // =========================================================
   function boot() {
     injectStyles();
     injectRefundButton();
-    // на случай если DOM ещё не готов
     setTimeout(injectRefundButton, 1200);
-    console.info('[refund v1.0] модуль возвратов готов');
+    console.info('[refund v1.1] модуль возвратов готов');
   }
 
   if (document.readyState === 'loading') {
