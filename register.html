@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#005F40">
-  <meta name="description" content="КУТ: БИЗНЕС — регистрация бизнеса.">
-  <title>Регистрация — КУТ: БИЗНЕС</title>
+  <meta name="description" content="NexusBiz — регистрация бизнеса.">
+  <title>Регистрация — NexusBiz</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -409,9 +409,9 @@
     <div class="register-card">
 
       <div class="register-brand">
-        <div class="register-brand__mark">К</div>
+        <div class="register-brand__mark">N</div>
         <div class="register-brand__text">
-          <strong>КУТ: БИЗНЕС</strong>
+          <strong>NexusBiz</strong>
           <small>Регистрация бизнеса</small>
         </div>
       </div>
@@ -537,9 +537,6 @@
       serverTimestamp,
     } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
-    // =========================================================
-    // FIREBASE CONFIG — точные ключи проекта (те же, что в login.html)
-    // =========================================================
     const firebaseConfig = {
       apiKey:            "AIzaSyAO1MhiEWnBKhcEs64XMMPVN0GDEZFpxPg",
       authDomain:        "kut-biznes.firebaseapp.com",
@@ -550,16 +547,10 @@
       measurementId:     "G-VTZ49G265B"
     };
 
-    // =========================================================
-    // ИНИЦИАЛИЗАЦИЯ
-    // =========================================================
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    // =========================================================
-    // DOM
-    // =========================================================
     const $ = (sel) => document.querySelector(sel);
 
     const form          = $('#registerForm');
@@ -572,10 +563,6 @@
     const submitBtn     = $('#submitBtn');
     const toggleBtn     = $('#togglePassword');
     const toggleIcon    = $('#toggleIcon');
-
-    // =========================================================
-    // УТИЛИТЫ
-    // =========================================================
 
     function showAlert(message, kind) {
       kind = kind || 'info';
@@ -627,10 +614,6 @@
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
       }[ch]));
     }
-
-    // =========================================================
-    // СТРАНЫ И МАСКИ
-    // =========================================================
 
     function getSelectedCountry() {
       const opt = countrySelect.options[countrySelect.selectedIndex];
@@ -696,18 +679,11 @@
       setFieldError('phone', '');
     });
 
-    // =========================================================
-    // ПОКАЗАТЬ/СКРЫТЬ ПАРОЛЬ
-    // =========================================================
     toggleBtn.addEventListener('click', () => {
       const isPassword = passwordInput.type === 'password';
       passwordInput.type = isPassword ? 'text' : 'password';
       toggleIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
     });
-
-    // =========================================================
-    // ВАЛИДАЦИЯ
-    // =========================================================
 
     function validateForm() {
       clearErrors();
@@ -740,10 +716,6 @@
       return ok;
     }
 
-    // =========================================================
-    // ПЕРЕВОД ОШИБОК
-    // =========================================================
-
     function translateAuthError(code) {
       const map = {
         'auth/email-already-in-use':     'Этот email уже зарегистрирован. Войдите или используйте другой email.',
@@ -769,10 +741,6 @@
       };
       return map[code] || ('Ошибка записи в базу: ' + (code || 'неизвестная'));
     }
-
-    // =========================================================
-    // ОСНОВНАЯ ЛОГИКА
-    // =========================================================
 
     async function registerOwner(event) {
       event.preventDefault();
@@ -901,10 +869,10 @@
 
     updatePhonePlaceholder();
 
-    console.info('[KUT register] Готово · проект:', firebaseConfig.projectId);
-    console.info('[KUT register] apiKey:', firebaseConfig.apiKey);
-    console.info('[KUT register] apiKey длина:', firebaseConfig.apiKey.length);
-    console.info('[KUT register] authDomain:', firebaseConfig.authDomain);
+    console.info('[NexusBiz register] Готово · проект:', firebaseConfig.projectId);
+    console.info('[NexusBiz register] apiKey:', firebaseConfig.apiKey);
+    console.info('[NexusBiz register] apiKey длина:', firebaseConfig.apiKey.length);
+    console.info('[NexusBiz register] authDomain:', firebaseConfig.authDomain);
   </script>
 
 </body>
