@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Theme Controller v10.0 «Aurora»
+   NexusBiz — Theme Controller v10.1 «Aurora»
    
    • Хранит выбор в localStorage.kut_theme
    • Ставит html[data-theme="dark|light"] + body.dark-mode
@@ -18,9 +18,6 @@
     dark:  '#0D1418',
   };
 
-  /* ---------------------------------------------------------
-     Утилиты
-     --------------------------------------------------------- */
   function getSaved() {
     try {
       const v = localStorage.getItem(KEY);
@@ -45,31 +42,22 @@
     return document.documentElement.getAttribute('data-theme') || THEMES.DARK;
   }
 
-  /* ---------------------------------------------------------
-     Применение темы (DOM + meta)
-     --------------------------------------------------------- */
   function applyTheme(theme) {
     if (theme !== THEMES.LIGHT && theme !== THEMES.DARK) theme = THEMES.DARK;
 
-    // Синхронно ставим на <html> — работает до первого рендера
     document.documentElement.setAttribute('data-theme', theme);
 
-    // Дублируем классом на body — совместимость с ТЗ (body.dark-mode)
     if (document.body) {
       if (theme === THEMES.DARK) document.body.classList.add('dark-mode');
       else document.body.classList.remove('dark-mode');
     }
 
-    // meta theme-color — под цвет canvas
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', META_COLORS[theme]);
 
     updateSegmentedUI(theme);
   }
 
-  /* ---------------------------------------------------------
-     Segmented control в сайдбаре
-     --------------------------------------------------------- */
   function updateSegmentedUI(theme) {
     document.querySelectorAll('.theme-segmented__btn').forEach((btn) => {
       const isActive = btn.dataset.theme === theme;
@@ -122,7 +110,6 @@
       else sidebar.appendChild(slot);
     }
 
-    // Чистим старые варианты — оставляем один segmented
     slot.querySelectorAll('.theme-segmented, .sidebar-theme, .sidebar-theme-toggle, .theme-toggle')
       .forEach((el) => el.remove());
 
@@ -130,14 +117,10 @@
     updateSegmentedUI(currentTheme());
   }
 
-  /* ---------------------------------------------------------
-     Публичный сеттер
-     --------------------------------------------------------- */
   function setTheme(theme, opts) {
     opts = opts || {};
     if (theme !== THEMES.LIGHT && theme !== THEMES.DARK) return;
 
-    // Плавный переход
     document.documentElement.classList.add('kut-theme-transition');
     applyTheme(theme);
     if (opts.persist !== false) save(theme);
@@ -146,7 +129,6 @@
       detail: { theme: theme },
     }));
 
-    // Убираем класс переходов через 350мс
     setTimeout(() => {
       document.documentElement.classList.remove('kut-theme-transition');
     }, 350);
@@ -158,15 +140,9 @@
     return next;
   }
 
-  /* ---------------------------------------------------------
-     Инициализация
-     --------------------------------------------------------- */
-
-  // 1. Мгновенно применяем тему (ещё до CSS)
   const initial = getSaved() || systemPrefers();
   document.documentElement.setAttribute('data-theme', initial);
 
-  // 2. После DOM — синхронизируем body + UI
   function boot() {
     applyTheme(initial);
     mountSidebarToggle();
@@ -178,25 +154,22 @@
     boot();
   }
 
-  // 3. Повторный монтаж — на случай, если модули пересобирают DOM
   window.addEventListener('load', () => {
     mountSidebarToggle();
     setTimeout(mountSidebarToggle, 600);
     setTimeout(mountSidebarToggle, 1500);
   });
 
-  // 4. Синхронизация между вкладками
   window.addEventListener('storage', (e) => {
     if (e.key !== KEY || !e.newValue) return;
     if (e.newValue !== currentTheme()) applyTheme(e.newValue);
     mountSidebarToggle();
   });
 
-  // 5. Реакция на системное изменение темы — только если пользователь не выбрал вручную
   try {
     const mq = window.matchMedia('(prefers-color-scheme: light)');
     const handler = (e) => {
-      if (getSaved()) return; // пользователь выбрал вручную — не перебиваем
+      if (getSaved()) return;
       const next = e.matches ? THEMES.LIGHT : THEMES.DARK;
       applyTheme(next);
     };
@@ -204,7 +177,6 @@
     else if (mq.addListener) mq.addListener(handler);
   } catch (_) {}
 
-  // 6. Публичный API
   window.KUT_THEME = {
     get: currentTheme,
     set: (t) => setTheme(t, { persist: true }),
@@ -213,8 +185,7 @@
     KEY: KEY,
   };
 
-  // Обратная совместимость
   window.KUT_THEME_V10 = window.KUT_THEME;
 
-  console.info('[KUT theme v10.0 «Aurora»] · загружено · текущая тема:', currentTheme());
+  console.info('[NexusBiz theme v10.1 «Aurora»] · загружено · текущая тема:', currentTheme());
 })();
