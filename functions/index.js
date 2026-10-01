@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Cloud Functions v1.1
+   NexusBiz — Cloud Functions v1.2
    Бот: @NexusBizIDBot
    
    • telegramAuth — HTTPS-функция для входа через Telegram
@@ -74,7 +74,6 @@ function verifyTelegramHash(data, botToken) {
 exports.telegramAuth = functions
   .region('us-central1')
   .https.onRequest(async (req, res) => {
-    // CORS
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -207,7 +206,7 @@ exports.telegramAuth = functions
 exports.health = functions.https.onRequest((req, res) => {
   res.json({
     ok: true,
-    service: 'kut-biznes-functions',
+    service: 'nexusbiz-functions',
     bot: '@NexusBizIDBot',
     botTokenConfigured: Boolean(getBotToken()),
     ts: Date.now(),
