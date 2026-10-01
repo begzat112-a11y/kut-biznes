@@ -1,11 +1,12 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Ядро системы (app.js) · v11.0 «SaaS»
+   NexusBiz — Ядро системы (app.js) · v11.1 «SaaS»
    
    + Мультифилиалы: businessIds, селектор точки, «Все филиалы»
    + Агрегация данных по всем точкам владельца
    + Реагирует на kut:business-changed → перезагрузка
    + Периоды аналитики (Сегодня / Вчера / 7 дней / Месяц)
    + Критические остатки, кэш-хеш, пагинация
+   + Исправлен tryClaimStaffInvite (проверка FB готовности)
    ========================================================= */
 
 import './firebase-config.js';
@@ -28,7 +29,7 @@ function todayISO() {
 }
 function nowTimeHHMM() {
   const d = new Date();
-  const z = (n) => String(d.getHours()).padStart(2, '0');
+  const z = (n) => String(n).padStart(2, '0');
   return `${z(d.getHours())}:${z(d.getMinutes())}`;
 }
 function escapeHtml(str) {
@@ -119,8 +120,8 @@ function toast(message, isError) {
 // СОСТОЯНИЕ
 // =========================================================
 const state = {
-  businessId: null,       // активный (или первый, если «все»)
-  businessIds: [],        // 🆕 все доступные
+  businessId: null,
+  businessIds: [],
   profile: null,
   products: [],
   sales: [],
@@ -128,9 +129,9 @@ const state = {
   staff: [],
   requests: [],
   unsubRequests: null,
-  unsubProducts: null,    // 🆕
-  unsubSales: null,       // 🆕
-  unsubDebts: null,       // 🆕
+  unsubProducts: null,
+  unsubSales: null,
+  unsubDebts: null,
   period: 'month',
 };
 
@@ -290,10 +291,10 @@ async function tryEnablePersistence() {
   try {
     if (window.FB && typeof window.FB.enablePersistence === 'function') {
       const res = await window.FB.enablePersistence();
-      console.info('[KUT] enablePersistence:', res);
+      console.info('[NexusBiz] enablePersistence:', res);
     }
   } catch (err) {
-    console.warn('[KUT] enablePersistence error:', err?.message || err);
+    console.warn('[NexusBiz] enablePersistence error:', err?.message || err);
   }
 }
 
@@ -417,7 +418,6 @@ function renderCriticalStock() {
   }
 }
 
-// 🆕 Короткое имя бизнеса по его ID (напр. "Точка a1b2")
 function shortBizLabel(bizId) {
   const metas = window.FB.getBusinessesMeta();
   const meta = metas.find((m) => m.id === bizId);
@@ -1072,7 +1072,6 @@ async function saveProfile(event) {
       toast('Профиль обновлён');
       closeProfileModal();
     } else {
-      // Заявка от сотрудника — идёт в первый доступный бизнес
       const bizId = window.FB.getWriteBusinessId() || window.FB.getBusinessId();
       if (!bizId) { toast('Нет привязанного бизнеса', true); return; }
 
@@ -1215,6 +1214,12 @@ async function tryClaimStaffInvite(profile, user) {
   const phone = profile.phone;
   if (!phone || !/^\+\d{8,15}$/.test(phone)) return null;
   const phoneKey = phone.replace(/\D/g, '');
+
+  if (!window.FB || typeof window.FB.getDoc !== 'function' || typeof window.FB.updateDoc !== 'function') {
+    console.warn('[NexusBiz] FB not ready for claim');
+    return null;
+  }
+
   const { db, doc, getDoc, updateDoc, serverTimestamp } = window.FB;
   try {
     const staffRef = doc(db, 'staff', phoneKey);
@@ -1224,7 +1229,6 @@ async function tryClaimStaffInvite(profile, user) {
     if (!staff.businessId) return null;
     if (staff.active === false) return null;
 
-    // 🆕 добавляем бизнес в массив
     const existingIds = Array.isArray(profile.businessIds) ? profile.businessIds.slice() : [];
     const newIds = existingIds.includes(staff.businessId)
       ? existingIds
@@ -1239,7 +1243,7 @@ async function tryClaimStaffInvite(profile, user) {
 
     return { ...profile, businessIds: newIds, businessId: staff.businessId };
   } catch (err) {
-    console.error('[KUT] tryClaimStaffInvite failed:', err);
+    console.error('[NexusBiz] tryClaimStaffInvite failed:', err);
     return null;
   }
 }
@@ -1257,7 +1261,6 @@ const getProducts = () => state.products || [];
 const getSales    = () => state.sales || [];
 const getDebts    = () => state.debts || [];
 
-// 🆕 Загрузка всех данных (все филиалы или один)
 async function reloadAll() {
   const bizIds = window.FB.getEffectiveBusinessIds();
   if (!bizIds || bizIds.length === 0) return;
@@ -1275,11 +1278,10 @@ async function reloadAll() {
   state.sales    = sales;
   state.debts    = debts;
 
-  console.info('[KUT] reloadAll ·', bizIds.length, 'филиал(ов) ·',
+  console.info('[NexusBiz] reloadAll ·', bizIds.length, 'филиал(ов) ·',
                products.length, 'товаров ·', sales.length, 'продаж ·', debts.length, 'долгов');
 }
 
-// 🆕 Подписка на все данные (реагирует на смену филиала)
 function subscribeAllData() {
   if (state.unsubProducts) { try { state.unsubProducts(); } catch (_) {} }
   if (state.unsubSales)    { try { state.unsubSales();    } catch (_) {} }
@@ -1300,11 +1302,10 @@ function subscribeAllData() {
     (items) => { state.debts = items; renderDashboard(); },
     { pageSize: 200, orderByField: 'createdAt', orderDirection: 'desc' });
 
-  console.info('[KUT] subscribeAllData ·', bizIds.length, 'филиал(ов)');
+  console.info('[NexusBiz] subscribeAllData ·', bizIds.length, 'филиал(ов)');
 }
 
 async function registerSale({ cart, total, paymentMethod, customer, customerPhone, cashier }) {
-  // 🆕 Берём конкретный бизнес — куда писать продажу
   const bizId = window.FB.getWriteBusinessId();
   if (!bizId) {
     const msg = window.FB.getBusinessIds().length > 1
@@ -1364,7 +1365,7 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       cashierUid:  staffInfo.uid,
       cashierName: staffInfo.name,
       cashierRole: staffInfo.role,
-      businessId: bizId,    // 🆕
+      businessId: bizId,
       createdAt: serverTimestamp(),
     });
 
@@ -1375,7 +1376,7 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
       const pRef = doc(db, 'businesses', bizId, 'products', item.productId);
       batch.update(pRef, {
         qty: Number(newQty.toFixed(2)),
-        businessId: bizId,   // 🆕
+        businessId: bizId,
         updatedAt: serverTimestamp(),
       });
     }
@@ -1399,7 +1400,7 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
         source: 'cash',
         cashierUid: staffInfo.uid,
         cashierName: staffInfo.name,
-        businessId: bizId,    // 🆕
+        businessId: bizId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -1410,7 +1411,7 @@ async function registerSale({ cart, total, paymentMethod, customer, customerPhon
     renderDashboard();
     return { ok: true, sale: { id: saleRef.id } };
   } catch (err) {
-    console.error('[KUT] registerSale failed:', err);
+    console.error('[NexusBiz] registerSale failed:', err);
     return { ok: false, error: 'firestore', message: err.message };
   }
 }
@@ -1447,7 +1448,6 @@ async function boot() {
   state.businessIds = window.FB.getBusinessIds();
   state.businessId = window.FB.getBusinessId();
 
-  // Если нет бизнесов и это кассир — пытаемся привязать по приглашению
   if (state.businessIds.length === 0 && profile.role === 'cashier') {
     const claimed = await tryClaimStaffInvite(profile, user);
     if (claimed) {
@@ -1498,10 +1498,8 @@ async function boot() {
   await reloadAll();
   renderDashboard();
 
-  // 🆕 Подписки на все филиалы
   subscribeAllData();
 
-  // Подписка на staff — только в конкретном филиале
   if (isManager) {
     const staffBizId = window.FB.getWriteBusinessId() || window.FB.getBusinessId();
     if (staffBizId) {
@@ -1515,18 +1513,17 @@ async function boot() {
         onSnapshot(q, (snap) => {
           state.staff = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           renderDashboard();
-        }, (err) => console.warn('[KUT] staff subscribe error:', err));
+        }, (err) => console.warn('[NexusBiz] staff subscribe error:', err));
       } catch (err) {
-        console.warn('[KUT] staff subscribe init:', err);
+        console.warn('[NexusBiz] staff subscribe init:', err);
       }
     }
   }
 
   subscribeRequests();
 
-  // 🆕 Реагируем на смену филиала — перезагрузка + переподписка
   window.addEventListener('kut:business-changed', async (e) => {
-    console.info('[KUT app] Филиал изменён →', e.detail?.businessId || 'все филиалы');
+    console.info('[NexusBiz app] Филиал изменён →', e.detail?.businessId || 'все филиалы');
     _lastSalesHash = '';
     state.businessId = window.FB.getBusinessId();
 
@@ -1535,7 +1532,7 @@ async function boot() {
       renderDashboard();
       subscribeAllData();
     } catch (err) {
-      console.warn('[KUT app] reload on business-changed failed:', err);
+      console.warn('[NexusBiz app] reload on business-changed failed:', err);
     }
   });
 
@@ -1548,7 +1545,7 @@ async function boot() {
     if (state.unsubDebts)    { try { state.unsubDebts();    } catch (_) {} }
   });
 
-  console.info('[KUT] Ядро v11.0 «SaaS» · филиалов:', state.businessIds.length,
+  console.info('[NexusBiz] Ядро v11.1 «SaaS» · филиалов:', state.businessIds.length,
                '· активный:', state.businessId || 'все',
                '· роль:', profile.role);
 }
