@@ -1,10 +1,11 @@
 /* =========================================================
-   theme.js v10.2 — Единый переключатель День/Ночь
+   theme.js v10.3 — Единый переключатель День/Ночь (NexusBiz)
    
    • Гарантированная работа toggle
    • Синхронизация между вкладками
    • Синхронное применение ДО первой отрисовки
    • Публичный API: window.KUT_THEME
+   • Совместим с ui-chrome.js (segmented control)
    ========================================================= */
 
 (function () {
@@ -34,11 +35,9 @@
 
     document.documentElement.setAttribute('data-theme', theme);
 
-    // Обновляем meta theme-color под шапку
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', theme === 'light' ? '#FFFFFF' : '#0A1F18');
 
-    // Обновляем иконку во всех существующих кнопках
     document.querySelectorAll('.theme-toggle, .sidebar-theme, .sidebar-theme-toggle').forEach((btn) => {
       const icon = btn.querySelector('.sidebar-theme-toggle__label');
       if (icon) {
@@ -59,24 +58,19 @@
     const next = cur === 'dark' ? 'light' : 'dark';
     save(next);
     apply(next);
-    // Синхронизация между вкладками
     try { localStorage.setItem(KEY + '_ts', String(Date.now())); } catch (_) {}
-    // Оповещаем модули
     try {
       window.dispatchEvent(new CustomEvent('kut:theme', { detail: { theme: next } }));
     } catch (_) {}
     return next;
   }
 
-  // 🚀 Синхронная установка ДО первого рендера
   apply(saved() || detect());
 
-  // Синхронизация между вкладками
   window.addEventListener('storage', (e) => {
     if (e.key === KEY && e.newValue) apply(e.newValue);
   });
 
-  // Реакция на системные изменения (если юзер не выбирал вручную)
   try {
     window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
       if (saved()) return;
@@ -84,7 +78,6 @@
     });
   } catch (_) {}
 
-  // Делегирование — работает даже для кнопок, добавленных позже
   document.addEventListener('click', (e) => {
     const btn = e.target.closest && e.target.closest(
       '.theme-toggle, .sidebar-theme, .sidebar-theme-toggle'
@@ -95,7 +88,6 @@
     toggle();
   }, true);
 
-  // Публичный API
   window.KUT_THEME = {
     get: () => document.documentElement.getAttribute('data-theme') || 'dark',
     set: (t) => { save(t); apply(t); },
@@ -103,5 +95,5 @@
     apply,
   };
 
-  console.info('[KUT theme] v10.2 · текущая тема:', window.KUT_THEME.get());
+  console.info('[NexusBiz theme] v10.3 · текущая тема:', window.KUT_THEME.get());
 })();
