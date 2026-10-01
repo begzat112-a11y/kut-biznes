@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Firebase Core v14.1 «Google + Telegram (client)»
+   NexusBiz — Firebase Core v14.2 «Google + Telegram (client)»
    
    • Вход: Google (popup/redirect) + Telegram (без Cloud Functions)
    • Telegram: производный пароль от Telegram ID → Email/Password Auth
@@ -67,7 +67,7 @@ export const TELEGRAM_BOT_NAME = 'NexusBizIDBot';
    ⚠️ НЕ меняй после релиза — иначе существующие
       Telegram-пользователи не смогут войти.
    ------------------------------------ */
-const TG_SALT = 'KUT_BIZ_2026_a7f3e9c2d4b8_x9K3_pL8q_R2f';
+const TG_SALT = 'NEXUS_BIZ_2026_a7f3e9c2d4b8_x9K3_pL8q_R2f';
 
 /* ---------- INIT ---------- */
 const app  = initializeApp(firebaseConfig);
@@ -81,7 +81,7 @@ try {
     }),
   });
 } catch (err) {
-  console.warn('[KUT FB] persistence fallback:', err && err.message);
+  console.warn('[NexusBiz FB] persistence fallback:', err && err.message);
   db = getFirestore(app);
 }
 
@@ -91,7 +91,7 @@ let currentProfile = null;
 let currentBusinessId = null;
 let businessMetas = [];
 
-const BIZ_LS_KEY = 'kut_current_business';
+const BIZ_LS_KEY = 'nexus_current_business';
 const DEFAULT_PAGE_SIZE = 50;
 
 /* ---------- HELPERS ---------- */
@@ -235,7 +235,7 @@ async function fetchProfile(uid) {
     const snap = await getDoc(doc(db, 'users', uid));
     return snap.exists() ? { uid, ...snap.data() } : null;
   } catch (e) {
-    console.error('[KUT FB] fetchProfile failed:', e);
+    console.error('[NexusBiz FB] fetchProfile failed:', e);
     return null;
   }
 }
@@ -351,11 +351,11 @@ async function sha256Hex(input) {
 }
 
 async function deriveTgPassword(telegramId) {
-  return sha256Hex(`${telegramId}_${TG_SALT}_KUT`);
+  return sha256Hex(`${telegramId}_${TG_SALT}_NEXUS`);
 }
 
 function deriveTgEmail(telegramId) {
-  return `tg_${telegramId}@kut-biznes.app`;
+  return `tg_${telegramId}@nexusbiz.app`;
 }
 
 async function signInWithTelegram(tgUser) {
@@ -437,7 +437,7 @@ function waitForAuth() {
           currentProfile = await ensureCompany(user);
           restoreSelectedBusinessId();
         } catch (e) {
-          console.error('[KUT FB] ensureCompany failed:', e);
+          console.error('[NexusBiz FB] ensureCompany failed:', e);
         }
       }
       resolve({ user: currentUser, profile: currentProfile });
@@ -497,7 +497,7 @@ async function getCollection(name) {
     const snap = await getDocs(collection(db, 'businesses', bizId, name));
     return snap.docs.map((d) => mapDoc(d, bizId));
   } catch (e) {
-    console.error('[KUT FB] getCollection failed:', name, e);
+    console.error('[NexusBiz FB] getCollection failed:', name, e);
     return [];
   }
 }
@@ -516,7 +516,7 @@ function subscribeCollection(name, callback, opts = {}) {
   });
   return track(onSnapshot(q,
     (snap) => callback(snap.docs.map((d) => mapDoc(d, bizId))),
-    (err) => console.error('[KUT FB] subscribe error:', name, err)));
+    (err) => console.error('[NexusBiz FB] subscribe error:', name, err)));
 }
 
 async function getCollectionMulti(bizIds, name, opts = {}) {
@@ -529,7 +529,7 @@ async function getCollectionMulti(bizIds, name, opts = {}) {
       const snap = await getDocs(q);
       return snap.docs.map((d) => mapDoc(d, bizId));
     } catch (e) {
-      console.warn('[KUT FB] getCollectionMulti failed:', bizId, name, e && e.code);
+      console.warn('[NexusBiz FB] getCollectionMulti failed:', bizId, name, e && e.code);
       return [];
     }
   }));
@@ -561,12 +561,12 @@ function subscribeMulti(bizIds, name, callback, opts = {}) {
         buffers[bizId] = snap.docs.map((d) => mapDoc(d, bizId));
         emit();
       }, (err) => {
-        console.error('[KUT FB] subscribeMulti error:', bizId, err && err.code);
+        console.error('[NexusBiz FB] subscribeMulti error:', bizId, err && err.code);
         buffers[bizId] = [];
         emit();
       }));
     } catch (e) {
-      console.error('[KUT FB] subscribeMulti init error:', bizId, e);
+      console.error('[NexusBiz FB] subscribeMulti init error:', bizId, e);
     }
   });
 
@@ -597,7 +597,7 @@ async function getPage(name, opts = {}) {
         hasMore: snap.docs.length === pageSize,
       };
     } catch (err) {
-      console.error('[KUT FB] getPage failed:', name, err && err.code);
+      console.error('[NexusBiz FB] getPage failed:', name, err && err.code);
       return { items: [], lastDoc: null, hasMore: false, error: err };
     }
   }
@@ -628,7 +628,7 @@ function subscribePage(name, callback, opts = {}) {
         hasMore: snap.docs.length === pageSize,
       });
     }, (err) => {
-      console.error('[KUT FB] subscribePage error:', name, err && err.code);
+      console.error('[NexusBiz FB] subscribePage error:', name, err && err.code);
       callback({ items: [], hasMore: false, error: err });
     }));
   }
@@ -652,7 +652,7 @@ async function loadMore(name, lastDoc, opts = {}) {
       hasMore: snap.docs.length === pageSize,
     };
   } catch (err) {
-    console.error('[KUT FB] loadMore failed:', name, err && err.code);
+    console.error('[NexusBiz FB] loadMore failed:', name, err && err.code);
     return { items: [], lastDoc: null, hasMore: false };
   }
 }
@@ -756,5 +756,5 @@ export {
   query, where, orderBy, limit, startAfter, serverTimestamp, onSnapshot,
   writeBatch, collectionGroup,
   normalizePhone, toDate,
-  // TELEGRAM_BOT_NAME уже экспортирован выше через `export const` — здесь НЕ дублируем!
+  // TELEGRAM_BOT_NAME экспортирован выше через `export const` — здесь НЕ дублируем!
 };
