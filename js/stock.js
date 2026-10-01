@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Склад и товары» (stock.js) · v11.0 «Square»
+   NexusBiz — Модуль «Склад и товары» (stock.js) · v11.1 «Square»
    
    + Пагинация через subscribePage (не жрёт память)
    + Складской журнал (warehouse_logs) — автотриггеры при +/−
@@ -7,7 +7,7 @@
    + Категории подтягиваются из существующих товаров
    + Универсальный сканер через window.KUTScanner
 
-   🆕 v11.0 SQUARE:
+   🆕 v11.1 SQUARE:
    • Автопоиск существующего товара по штрихкоду
    • Если найден — переключение в режим редактирования
    • Firestore lookup как fallback
@@ -111,9 +111,6 @@
     }
   }
 
-  // =========================================================
-  // СКЛАДСКОЙ ЖУРНАЛ — безопасный хелпер
-  // =========================================================
   function logWarehouse(params) {
     if (!window.WAREHOUSE_LOG) {
       console.warn('[stock] WAREHOUSE_LOG не подключён');
@@ -124,9 +121,6 @@
     });
   }
 
-  // =========================================================
-  // КАТЕГОРИИ
-  // =========================================================
   function getAllCategories() {
     const set = new Set(BASE_CATEGORIES);
     (state.products || []).forEach((p) => {
@@ -187,10 +181,6 @@
     return sel;
   }
 
-  // =========================================================
-  // 🚀 СКАНЕР ШТРИХКОДА — через универсальный KUTScanner
-  // 🆕 Автопоиск существующего товара по штрихкоду
-  // =========================================================
   function calcMargin(costRaw, saleRaw) {
     const cost = Number(costRaw) || 0;
     const sale = Number(saleRaw) || 0;
@@ -209,17 +199,14 @@
       const trimmed = String(code || '').trim();
       if (!trimmed) return;
 
-      // Пишем код в поле
       if (el.fBarcode) el.fBarcode.value = trimmed;
       if (navigator.vibrate) navigator.vibrate(80);
 
-      // 🆕 Ищем товар с таким штрихкодом
       const st = window.KUT?.getState?.();
       let existing = (st?.products || []).find(
         (p) => String(p.barcode) === trimmed
       );
 
-      // 🆕 Если не нашли локально — Firestore lookup
       if (!existing && window.FB?.db) {
         const bizId = st?.businessId || window.FB?.getBusinessId?.();
         if (bizId) {
@@ -241,7 +228,6 @@
         }
       }
 
-      // 🆕 Найден — переключаемся в режим редактирования
       if (existing) {
         closeModal(el.productModal);
         setTimeout(() => {
@@ -251,15 +237,11 @@
         return;
       }
 
-      // 🆕 Не найден — остаёмся в форме создания
       showToast(`Штрихкод ${trimmed} добавлен в форму`);
       if (el.fBarcode) el.fBarcode.focus();
     });
   }
 
-  // =========================================================
-  // РЕНДЕР
-  // =========================================================
   function renderStats() {
     const list = state.products;
     const totalItems = list.length;
@@ -376,9 +358,6 @@
     }).join('');
   }
 
-  // =========================================================
-  // ОПЕРАЦИИ
-  // =========================================================
   async function changeQty(productId, delta) {
     if (!state.canEdit) return;
     const p = state.products.find((x) => x.id === productId);
@@ -557,9 +536,6 @@
     }
   }
 
-  // =========================================================
-  // ВАЛИДАЦИЯ
-  // =========================================================
   function setFieldError(fieldId, message) {
     const input = document.getElementById(fieldId);
     const hint = document.querySelector(`.field__hint[data-for="${fieldId}"]`);
@@ -638,9 +614,6 @@
     }
   }
 
-  // =========================================================
-  // МОДАЛКИ
-  // =========================================================
   let lastFocused = null;
   function openModal(modal) {
     lastFocused = document.activeElement;
@@ -653,9 +626,6 @@
     if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
   }
 
-  // =========================================================
-  // СОБЫТИЯ
-  // =========================================================
   function bindEvents() {
     if (el.openAddBtn) el.openAddBtn.addEventListener('click', openAddModal);
     if (el.emptyAddBtn) el.emptyAddBtn.addEventListener('click', openAddModal);
@@ -731,9 +701,6 @@
     });
   }
 
-  // =========================================================
-  // ИНИЦИАЛИЗАЦИЯ
-  // =========================================================
   async function init() {
     const st = await waitForReady();
     if (!st) { console.warn('[stock] Не дождались businessId'); return; }
@@ -749,7 +716,6 @@
     renderChips();
     renderStats();
 
-    // 🚀 Пагинированная подписка на товары
     state.unsubProducts = window.FB.subscribePage('products', ({ items }) => {
       state.products = items;
       renderStats();
@@ -766,7 +732,7 @@
     });
 
     bindEvents();
-    console.info('[stock] Склад v11.0 SQUARE · роль:', role, '· canEdit:', state.canEdit);
+    console.info('[NexusBiz stock] Склад v11.1 SQUARE · роль:', role, '· canEdit:', state.canEdit);
   }
 
   if (document.readyState === 'loading') {
