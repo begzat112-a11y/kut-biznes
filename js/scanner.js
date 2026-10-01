@@ -1,5 +1,5 @@
 /* =========================================================
-   scanner.js v2.0 — Универсальный сканер штрих-кодов
+   scanner.js v2.1 — Универсальный сканер штрих-кодов
    
    Публичный API:
      KUTScanner.open(callback)         — открыть сканер
@@ -27,7 +27,6 @@
   let lastCode = null;
   let lastAt = 0;
 
-  // ---------- STYLES ----------
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const css = `
@@ -123,7 +122,6 @@
     document.head.appendChild(s);
   }
 
-  // ---------- MODAL ----------
   function injectModal() {
     if (document.getElementById(MODAL_ID)) return;
     const m = document.createElement('div');
@@ -151,7 +149,6 @@
     m.addEventListener('click', (e) => { if (e.target === m) stop(); });
   }
 
-  // ---------- LIB ----------
   function loadLibrary() {
     if (window.Html5Qrcode) return Promise.resolve();
     if (libPromise) return libPromise;
@@ -165,7 +162,6 @@
     return libPromise;
   }
 
-  // ---------- AUDIO ----------
   function beep() {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -189,7 +185,6 @@
     try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {}
   }
 
-  // ---------- DECODED ----------
   function onDecoded(text) {
     const now = Date.now();
     if (text === lastCode && now - lastAt < 1500) return;
@@ -208,7 +203,6 @@
     });
   }
 
-  // ---------- START / STOP ----------
   async function open(cb) {
     if (isScanning) return;
     successCb = typeof cb === 'function' ? cb : null;
@@ -274,7 +268,6 @@
     document.body.style.overflow = '';
   }
 
-  // ---------- BUTTON ----------
   function iconSvg() {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
   }
@@ -293,13 +286,6 @@
     return btn;
   }
 
-  // ---------- 🆕 ЗАГЛУШКА для будущего внедрения ----------
-  /**
-   * initBarcodeScanner({ target, onScan, label })
-   * Универсальная точка интеграции сканера на любой странице.
-   * Если target передан — вставит кнопку в этот контейнер.
-   * Если нет — просто вернёт функцию open(cb).
-   */
   function initBarcodeScanner(opts) {
     opts = opts || {};
     const cb = typeof opts.onScan === 'function' ? opts.onScan : (code) => console.log('[scan]', code);
@@ -309,7 +295,6 @@
     return { open: () => open(cb), close: stop };
   }
 
-  // ---------- EXPORT ----------
   window.KUTScanner = {
     open,
     close: stop,
@@ -320,7 +305,6 @@
   window.openBarcodeScanner = open;
   window.initBarcodeScanner = initBarcodeScanner;
 
-  // Автозакрытие при уходе со страницы
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && isScanning) stop();
   });
