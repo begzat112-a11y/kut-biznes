@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Аналитика Pro (analytics-pro.js) · v1.0
+   NexusBiz — Аналитика Pro (analytics-pro.js) · v1.1
    
    Square-style Reports:
    • COGS (себестоимость проданного)
@@ -15,7 +15,7 @@
   'use strict';
 
   const state = {
-    period: 'month', // 'today' | 'yesterday' | 'week' | 'month' | 'all'
+    period: 'month',
     unsub: null,
     lastHash: '',
   };
@@ -29,9 +29,6 @@
     String(s ?? '').replace(/[&<>"']/g, (c) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  // =========================================================
-  // ПЕРИОДЫ
-  // =========================================================
   function getRange(period) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -75,9 +72,6 @@
     });
   }
 
-  // =========================================================
-  // АГРЕГАТЫ
-  // =========================================================
   function aggregateProfitDetailed() {
     const sales = getPeriodSales();
     const revenue = sales.reduce((s, x) => s + sumOfSale(x), 0);
@@ -159,9 +153,6 @@
       .slice(0, limit);
   }
 
-  // =========================================================
-  // РЕНДЕР
-  // =========================================================
   function render() {
     const wrap = document.getElementById('kutAnalyticsPro');
     if (!wrap) return;
@@ -264,7 +255,6 @@
         </div>`}
     `;
 
-    // Bind periods
     wrap.querySelectorAll('[data-period]').forEach((btn) => {
       btn.addEventListener('click', () => {
         state.period = btn.dataset.period;
@@ -280,13 +270,9 @@
       sales.slice(0, 5).map((s) => s.id + sumOfSale(s)).join(',');
   }
 
-  // =========================================================
-  // ВСТАВКА НА ДАШБОРД
-  // =========================================================
   function injectContainer() {
     if (document.getElementById('kutAnalyticsPro')) return;
 
-    // Ищем куда вставить — на index.html есть .analytics
     const analytics = document.querySelector('.analytics');
     if (analytics) {
       const wrap = document.createElement('section');
@@ -296,7 +282,6 @@
       return;
     }
 
-    // Fallback — в .main-content
     const main = document.querySelector('.main-content');
     if (main) {
       const wrap = document.createElement('section');
@@ -306,9 +291,6 @@
     }
   }
 
-  // =========================================================
-  // СТИЛИ
-  // =========================================================
   function injectStyles() {
     if (document.getElementById('anp-styles')) return;
     const style = document.createElement('style');
@@ -369,9 +351,6 @@
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // ПУБЛИЧНОЕ API
-  // =========================================================
   window.KUT_ANALYTICS = {
     render,
     aggregateProfitDetailed,
@@ -381,9 +360,6 @@
     getState: () => state,
   };
 
-  // =========================================================
-  // BOOT
-  // =========================================================
   function boot() {
     injectStyles();
     injectContainer();
@@ -392,12 +368,11 @@
       state.lastHash = '';
       render();
     });
-    // Перерисовка при изменении данных
     setInterval(() => {
       const h = hashState();
       if (h !== state.lastHash) render();
     }, 3000);
-    console.info('[analytics-pro v1.0] готов');
+    console.info('[analytics-pro v1.1] готов');
   }
 
   if (document.readyState === 'loading') {
