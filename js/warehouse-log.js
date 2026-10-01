@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Складской журнал · v10.1 «Aurora»
+   NexusBiz — Складской журнал · v10.2 «Aurora»
    
    • Первая загрузка: 10 последних операций
    • Кнопка «Показать ещё 50»: +50 записей за клик
@@ -30,9 +30,6 @@ import './firebase-config.js';
     bizId: null,
   };
 
-  // =========================================================
-  // УТИЛИТЫ
-  // =========================================================
   function getState() {
     return (window.KUT && typeof window.KUT.getState === 'function') ? window.KUT.getState() : {};
   }
@@ -82,9 +79,6 @@ import './firebase-config.js';
     return m ? m[0] : null;
   }
 
-  // =========================================================
-  // 1. saveLog
-  // =========================================================
   async function saveLog({ actionType, itemName, quantity, unit, totalPrice, workerName }) {
     if (!window.FB || !window.FB.db) return { ok: false, error: 'no_fb' };
     const bizId = getBizId();
@@ -111,9 +105,6 @@ import './firebase-config.js';
     }
   }
 
-  // =========================================================
-  // 2. createTestLog
-  // =========================================================
   const TEST_TEMPLATES = [
     { actionType: 'in',  itemName: 'Хлеб (тест)',      quantity: 20, unit: 'шт', totalPrice: 400 },
     { actionType: 'out', itemName: 'Молоко (тест)',    quantity: 3,  unit: 'шт', totalPrice: 240 },
@@ -128,9 +119,6 @@ import './firebase-config.js';
     return res;
   }
 
-  // =========================================================
-  // 3. listenToLogsRealtime
-  // =========================================================
   function listenToLogsRealtime(filterType) {
     filterType = filterType || local.filter;
 
@@ -208,9 +196,6 @@ import './firebase-config.js';
     );
   }
 
-  // =========================================================
-  // 4. loadMoreLogs — +50 за клик
-  // =========================================================
   async function loadMoreLogs() {
     if (local.loadingMore) return;
     if (!local.hasMore) return;
@@ -264,9 +249,6 @@ import './firebase-config.js';
     }
   }
 
-  // =========================================================
-  // 5. РЕНДЕР
-  // =========================================================
   function setLiveStatus(status, count) {
     const el = document.getElementById('whLive');
     if (!el) return;
@@ -447,9 +429,6 @@ Field 2: timestamp — Descending</div>`}
     btn.textContent = loading ? 'Загружаем…' : '📜 Показать ещё 50';
   }
 
-  // =========================================================
-  // 6. CSS
-  // =========================================================
   function injectStyles() {
     if (document.getElementById('wh-log-styles')) return;
     const css = `
@@ -555,9 +534,6 @@ Field 2: timestamp — Descending</div>`}
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // 7. Слушатели UI
-  // =========================================================
   function mountFilters() {
     const wrap = document.getElementById('whFilters');
     if (!wrap || wrap.dataset.wired === '1') return;
@@ -609,9 +585,6 @@ Field 2: timestamp — Descending</div>`}
     tryStart(0);
   }
 
-  // =========================================================
-  // ПУБЛИЧНЫЙ API
-  // =========================================================
   window.WAREHOUSE_LOG = {
     saveLog,
     createTestLog,
