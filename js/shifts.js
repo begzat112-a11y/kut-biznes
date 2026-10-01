@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Смены и отчёты (shifts.js) · v1.1
+   NexusBiz — Смены и отчёты (shifts.js) · v1.2
    
    Square-style Cash Management:
    • Открытие смены → ввод начальной кассы
@@ -8,8 +8,8 @@
    • Z-отчёт (финальный, при закрытии)
    • Разбивка по кассирам, оплатам, нал/безнал
    • Автосохранение в shifts/{shiftId}
-   • 🆕 Использует KUT_CART.openNumpad, если он доступен
-   • 🆕 Совместим с firestore.rules (updatedAt, openedByUid)
+   • Использует KUT_CART.openNumpad, если он доступен
+   • Совместим с firestore.rules (updatedAt, openedByUid)
    Публичное API: window.KUT_SHIFTS
    ========================================================= */
 
@@ -17,7 +17,7 @@
   'use strict';
 
   const state = {
-    current: null,      // активная смена
+    current: null,
     history: [],
     unsub: null,
   };
@@ -48,15 +48,10 @@
     return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  // =========================================================
-  // NUMPAD — использует KUT_CART, если доступен
-  // =========================================================
   function promptNumpad({ title, subtitle, value, allowDecimal }) {
-    // 🆕 Приоритет 1: Numpad из cart-pro.js
     if (window.KUT_CART?.openNumpad) {
       return new Promise((resolve) => {
         let resolved = false;
-        const originalToast = window.KUT?.toast;
         window.KUT_CART.openNumpad({
           title: title + (subtitle ? ' · ' + subtitle : ''),
           value: String(value || '0'),
@@ -65,8 +60,6 @@
             if (!resolved) { resolved = true; resolve(Number(v) || 0); }
           },
         });
-        // Если модалка закрыта без onConfirm — резолвим null через 100мс таймер
-        // (детектируем, что DOM-элемент numpad удалён и onConfirm не вызвался)
         const check = setInterval(() => {
           if (!document.getElementById('kutNumpadModal') && !resolved) {
             clearInterval(check);
@@ -77,7 +70,6 @@
       });
     }
 
-    // Fallback: собственный numpad
     return new Promise((resolve) => {
       const modal = document.createElement('div');
       modal.className = 'kut-numpad-modal';
@@ -125,9 +117,6 @@
     });
   }
 
-  // =========================================================
-  // ОТКРЫТИЕ СМЕНЫ
-  // =========================================================
   async function openShift() {
     if (state.current) { toast('Смена уже открыта', true); return; }
 
@@ -169,9 +158,6 @@
     }
   }
 
-  // =========================================================
-  // ЗАКРЫТИЕ СМЕНЫ
-  // =========================================================
   async function closeShift() {
     if (!state.current) { toast('Нет открытой смены', true); return; }
 
@@ -204,9 +190,6 @@
     }
   }
 
-  // =========================================================
-  // ЗАГРУЗКА ТЕКУЩЕЙ СМЕНЫ
-  // =========================================================
   async function loadCurrentShift() {
     const bizId = window.FB?.getWriteBusinessId?.() || window.FB?.getBusinessId?.();
     if (!bizId || !window.FB?.db) return;
@@ -227,9 +210,6 @@
     }
   }
 
-  // =========================================================
-  // ОТЧЁТ (X / Z)
-  // =========================================================
   function buildReport(shift) {
     const sales = window.KUT?.getSales?.() || [];
     const shiftStart = toDate(shift.openedAt)?.getTime() || 0;
@@ -309,18 +289,12 @@
     };
   }
 
-  // =========================================================
-  // X-ОТЧЁТ
-  // =========================================================
   function showXReport() {
     if (!state.current) { toast('Смена не открыта', true); return; }
     const report = buildReport(state.current);
     renderReportModal(report);
   }
 
-  // =========================================================
-  // МОДАЛКА ЗАКРЫТИЯ (Z)
-  // =========================================================
   function openCloseModal(report) {
     return new Promise((resolve) => {
       const existing = document.getElementById('kutShiftCloseModal');
@@ -400,9 +374,6 @@
     });
   }
 
-  // =========================================================
-  // HTML ОТЧЁТА
-  // =========================================================
   function renderReportHtml(r) {
     const opened = toDate(r.openedAt);
     return `
@@ -461,9 +432,6 @@
     `;
   }
 
-  // =========================================================
-  // X-ОТЧЁТ — модалка
-  // =========================================================
   function renderReportModal(report) {
     const existing = document.getElementById('kutXReportModal');
     if (existing) existing.remove();
@@ -498,9 +466,6 @@
     if (printBtn) printBtn.addEventListener('click', () => window.print());
   }
 
-  // =========================================================
-  // UI: Кнопка в шапке
-  // =========================================================
   function injectShiftButton() {
     const pages = ['cash', 'index'];
     const page = (location.pathname.split('/').pop() || '').replace('.html', '') || 'index';
@@ -530,9 +495,6 @@
     btn.classList.toggle('is-active', Boolean(state.current));
   }
 
-  // =========================================================
-  // ПАНЕЛЬ СМЕНЫ
-  // =========================================================
   function openShiftPanel() {
     const existing = document.getElementById('kutShiftPanel');
     if (existing) existing.remove();
@@ -598,16 +560,10 @@
     });
   }
 
-  // =========================================================
-  // РЕНДЕР
-  // =========================================================
   function render() {
     updateShiftButton();
   }
 
-  // =========================================================
-  // СТИЛИ
-  // =========================================================
   function injectStyles() {
     if (document.getElementById('kut-shift-styles')) return;
     const style = document.createElement('style');
@@ -670,7 +626,6 @@
       .kut-shift__panel-btn--primary { background: linear-gradient(135deg, #10B981, #059669); color: #fff; }
       .kut-shift__panel-btn--danger { background: rgba(248,113,113,.15); color: #F87171; border: 1px solid rgba(248,113,113,.3); }
 
-      /* NUMPAD (fallback, если cart-pro не подключён) */
       .kut-numpad-modal { position: fixed; inset: 0; z-index: 10001; display: grid; place-items: center; padding: 16px; }
       .kut-numpad-backdrop { position: absolute; inset: 0; background: rgba(2,8,18,.7); backdrop-filter: blur(8px); }
       .kut-numpad { position: relative; width: 100%; max-width: 360px; padding: 20px; background: var(--kut-surface, #1E293B); border: 1px solid var(--kut-border, rgba(255,255,255,.08)); border-radius: 22px; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: var(--kut-text-1, #F1F5F9); }
@@ -688,9 +643,6 @@
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // ПУБЛИЧНОЕ API
-  // =========================================================
   window.KUT_SHIFTS = {
     openShift, closeShift, showXReport,
     loadCurrentShift, buildReport,
@@ -698,9 +650,6 @@
     getState: () => state,
   };
 
-  // =========================================================
-  // BOOT
-  // =========================================================
   async function boot() {
     injectStyles();
     await loadCurrentShift();
@@ -711,7 +660,7 @@
       await loadCurrentShift();
       updateShiftButton();
     });
-    console.info('[shifts v1.1] смены и X/Z-отчёты готовы');
+    console.info('[shifts v1.2] смены и X/Z-отчёты готовы');
   }
 
   if (document.readyState === 'loading') {
