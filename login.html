@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0F172A">
-  <title>Вход — КУТ: БИЗНЕС</title>
+  <title>Вход — NexusBiz</title>
 
   <script>
     try {
@@ -80,14 +80,12 @@
 
     .auth-btn__icon { width: 22px; height: 22px; flex-shrink: 0; }
 
-    /* Обёртка вокруг кнопки Telegram — виджет ложится поверх */
     .auth-btn--telegram-wrap {
       position: relative;
       margin-top: 12px;
       min-height: 54px;
     }
 
-    /* Прозрачный overlay-виджет Telegram поверх кнопки */
     #tgWidgetSlot {
       position: absolute;
       inset: 0;
@@ -144,8 +142,8 @@
 <body>
 
   <main class="card login">
-    <div class="login__logo" aria-hidden="true">К</div>
-    <h1>КУТ: БИЗНЕС</h1>
+    <div class="login__logo" aria-hidden="true">N</div>
+    <h1>NexusBiz</h1>
     <p>Касса, склад и долги для вашего магазина.<br>Войдите одним из способов ниже.</p>
 
     <!-- Google -->
@@ -161,7 +159,7 @@
 
     <div class="login__divider">или</div>
 
-    <!-- Telegram — стилизованная кнопка + невидимый виджет поверх -->
+    <!-- Telegram -->
     <div class="auth-btn--telegram-wrap">
       <button class="auth-btn auth-btn--telegram" id="telegramBtn" type="button">
         <svg class="auth-btn__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -176,14 +174,11 @@
 
     <div class="login__foot">
       Нажимая «Войти», вы соглашаетесь с правилами сервиса.<br>
-      © 2026 КУТ: БИЗНЕС
+      © 2026 NexusBiz
     </div>
   </main>
 
   <script type="module">
-    // ============================================
-    // ДИАГНОСТИКА НА ЭКРАНЕ (без DevTools)
-    // ============================================
     const debugBox = document.createElement('pre');
     debugBox.id = 'kutDebug';
     debugBox.style.cssText = `
@@ -289,7 +284,6 @@
       tgTxt.textContent = on ? 'Входим…' : 'Войти через Telegram';
     }
 
-    // Google
     if (googleBtn) {
       googleBtn.addEventListener('click', async () => {
         log('👉 Клик по Google');
@@ -309,7 +303,6 @@
       });
     }
 
-    // Telegram callback
     window.onTelegramAuth = async function (tgUser) {
       log('👉 Telegram callback получен');
       log('   data: ' + JSON.stringify(tgUser));
@@ -327,7 +320,6 @@
       }
     };
 
-    // Telegram кнопка
     if (tgBtn) {
       tgBtn.addEventListener('click', () => {
         log('👉 Клик по Telegram');
@@ -345,7 +337,6 @@
       });
     }
 
-    // Рендер виджета
     (function mountTgWidget() {
       const slot = document.getElementById('tgWidgetSlot');
       if (!slot) { log('❌ #tgWidgetSlot не найден', 'err'); return; }
@@ -366,7 +357,6 @@
       slot.appendChild(s);
     })();
 
-    // Автостарт
     (async function autoStart() {
       try {
         log('🔄 Проверяю redirect...');
