@@ -1,10 +1,10 @@
 /* =========================================================
-   КУТ: БИЗНЕС — UI Chrome v11.0 «SaaS»
+   NexusBiz — UI Chrome v11.1 «SaaS»
    
    • Глобальный хедер
    • Динамический заголовок страницы
    • Кнопка темы в сайдбаре (segmented control)
-   • 🆕 Селектор филиала в шапке (показывается если >1 точки)
+   • Селектор филиала в шапке (показывается если >1 точки)
    • Защита от двойных обработчиков
    ========================================================= */
 
@@ -34,12 +34,9 @@
     const el = document.getElementById('page-title');
     const title = PAGE_TITLES[currentFile()] || 'Главная';
     if (el) el.textContent = title;
-    document.title = title + ' — КУТ: БИЗНЕС';
+    document.title = title + ' — NexusBiz';
   }
 
-  // =========================================================
-  // БУРГЕР — capture-фаза + stopImmediatePropagation
-  // =========================================================
   let burgerWired = false;
   function wireBurgerOnce() {
     if (burgerWired) return;
@@ -100,9 +97,6 @@
     });
   }
 
-  // =========================================================
-  // КНОПКА ТЕМЫ — segmented control в сайдбаре
-  // =========================================================
   function mountSidebarThemeToggle() {
     const api = window.KUT_THEME;
     if (!api || typeof api.toggle !== 'function') return;
@@ -163,11 +157,6 @@
     slot.appendChild(wrap);
   }
 
-  // =========================================================
-  // 🆕 СЕЛЕКТОР ФИЛИАЛА
-  // =========================================================
-  let bizSwitcherListener = null;
-
   function mountBusinessSwitcher() {
     const slot = document.getElementById('business-switcher-slot');
     if (!slot) return;
@@ -179,7 +168,6 @@
     const metas = FB.getBusinessesMeta();
     const selected = FB.getSelectedBusinessId();
 
-    // Если у пользователя ≤1 бизнеса — селектор не нужен
     if (ids.length <= 1) {
       slot.innerHTML = '';
       slot.hidden = true;
@@ -188,7 +176,6 @@
 
     slot.hidden = false;
 
-    // Название текущего выбора
     let label = 'Все филиалы';
     let icon = '🌐';
     if (selected) {
@@ -217,7 +204,6 @@
     const metas = FB.getBusinessesMeta();
     const selected = FB.getSelectedBusinessId();
 
-    // Удаляем старую модалку
     let modal = document.getElementById('bizPickerModal');
     if (modal) modal.remove();
 
@@ -278,9 +264,7 @@
         FB.setSelectedBusinessId(next);
         close();
 
-        // Небольшая задержка — чтобы модалка успела закрыться
         setTimeout(() => {
-          // Мягкая перезагрузка данных — через кастомное событие
           window.dispatchEvent(new CustomEvent('kut:business-changed', {
             detail: { businessId: next },
           }));
@@ -288,7 +272,6 @@
       });
     });
 
-    // Esc
     const onKey = (e) => {
       if (e.key === 'Escape') {
         close();
@@ -304,11 +287,9 @@
     }[ch]));
   }
 
-  // Инжектим стили для селектора и пикера
   function injectBusinessSwitcherStyles() {
     if (document.getElementById('kut-biz-switcher-styles')) return;
     const css = `
-      /* Селектор филиала в шапке */
       #business-switcher-slot { flex-shrink: 0; }
 
       .biz-switcher {
@@ -349,7 +330,6 @@
         margin-left: 2px;
       }
 
-      /* Модалка выбора */
       .biz-picker-modal {
         position: fixed; inset: 0; z-index: 200;
         display: flex; align-items: flex-end; justify-content: center;
@@ -447,31 +427,25 @@
     document.head.appendChild(style);
   }
 
-  // =========================================================
-  // BOOT
-  // =========================================================
   async function boot() {
     setPageTitle();
     wireBurgerOnce();
     mountSidebarThemeToggle();
     injectBusinessSwitcherStyles();
 
-    // Ждём загрузки профиля, чтобы получить список бизнесов
     try {
       const FB = window.FB;
       if (FB && typeof FB.waitForAuth === 'function') {
         const { profile } = await FB.waitForAuth();
         if (profile) {
-          // Загружаем метаданные
           await FB.loadBusinessesMeta();
           mountBusinessSwitcher();
         }
       }
     } catch (e) {
-      console.warn('[KUT ui-chrome] switcher mount failed:', e);
+      console.warn('[NexusBiz ui-chrome] switcher mount failed:', e);
     }
 
-    // Реагируем на смену бизнеса — перерисовываем селектор
     window.addEventListener('kut:business-changed', () => {
       mountBusinessSwitcher();
     });
@@ -490,5 +464,5 @@
     }, t));
   });
 
-  console.info('[KUT ui-chrome v11.0] · селектор филиала · тема');
+  console.info('[NexusBiz ui-chrome v11.1] · селектор филиала · тема');
 })();
