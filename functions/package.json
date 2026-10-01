@@ -1,6 +1,6 @@
 {
-  "name": "kut-biznes-functions",
-  "description": "Cloud Functions для КУТ: БИЗНЕС",
+  "name": "nexusbiz-functions",
+  "description": "Cloud Functions для NexusBiz",
   "engines": {
     "node": "20"
   },
