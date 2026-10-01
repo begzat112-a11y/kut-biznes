@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Service Worker v4.9.2
+   КУТ: БИЗНЕС — Service Worker v4.9.3
    HTML — всегда из сети. Кэш только для CSS/иконок.
    ========================================================= */
 
@@ -37,6 +37,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // HTML — всегда из сети, чтобы не показывать старую версию
   if (req.mode === 'navigate' ||
       (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith(
@@ -47,6 +48,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Остальные ресурсы — кэшируем
   event.respondWith(
     fetch(req)
       .then((res) => {
