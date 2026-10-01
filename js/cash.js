@@ -1,5 +1,5 @@
 /* =========================================================
-   КУТ: БИЗНЕС — Модуль «Касса» (cash.js) · v11.0 «Square»
+   NexusBiz — Модуль «Касса» (cash.js) · v11.1 «Square»
    
    НАДЁЖНОЕ СОХРАНЕНИЕ КОРЗИНЫ:
    • Синхронно при КАЖДОМ изменении корзины
@@ -10,7 +10,7 @@
    • Миграция со старых ключей v1/v2
    • Отладка через console + window.__KUT_CART__
 
-   🆕 v11.0 SQUARE:
+   🆕 v11.1 SQUARE:
    • Интеграция со сканером штрихкодов (kut:barcode)
    • Автопоиск товара в Firestore + добавление в корзину
    • Приоритет cart-pro.js, если он подключён
@@ -26,7 +26,6 @@
   const PHONE_REGEX = /^\+?[0-9\s\-()]{9,20}$/;
   const digitsOnly = (s) => String(s || '').replace(/\D/g, '');
 
-  // Ключи localStorage для корзины
   const CART_LS_KEYS = ['kut_cart_v3', 'kut_cart_v2', 'kut_cart_v1'];
   const CART_LS_PRIMARY = 'kut_cart_v3';
 
@@ -112,9 +111,6 @@
     }
   }
 
-  // =========================================================
-  // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ КОРЗИНЫ
-  // =========================================================
   function saveCartToLS() {
     try {
       const full = state.cart.map((i) => ({
@@ -263,9 +259,6 @@
     };
   }
 
-  // =========================================================
-  // ЗВУК
-  // =========================================================
   let audioCtx = null;
   function getAudioCtx() {
     if (!audioCtx) {
@@ -301,9 +294,6 @@
     });
   }
 
-  // =========================================================
-  // ГОЛОСОВОЕ ОЗВУЧИВАНИЕ
-  // =========================================================
   function speakAmount(total) {
     try {
       if (!('speechSynthesis' in window)) return;
@@ -334,9 +324,6 @@
     }
   }
 
-  // =========================================================
-  // СКАНЕР
-  // =========================================================
   async function openScanner() {
     if (window.KUTScanner && typeof window.KUTScanner.open === 'function') {
       window.KUTScanner.open((code) => {
@@ -402,9 +389,6 @@
     saveCartToLS();
   }
 
-  // =========================================================
-  // РЕНДЕР
-  // =========================================================
   function renderCategories() {
     if (!el.categories) return;
     const available = ['Все', ...new Set(state.products.map((p) => p.category).filter(Boolean))];
@@ -462,9 +446,6 @@
     }).join('');
   }
 
-  // =========================================================
-  // КОРЗИНА
-  // =========================================================
   function addToCart(productId) {
     const product = state.products.find((p) => p.id === productId);
     if (!product) return;
@@ -575,9 +556,6 @@
     );
   }
 
-  // =========================================================
-  // МОДАЛКИ
-  // =========================================================
   let lastFocused = null;
   function openModal(modal) {
     if (!modal) return;
@@ -666,9 +644,6 @@
     el.confirmPayBtn.disabled = !(nameOk && phoneOk);
   }
 
-  // =========================================================
-  // СПИСОК КЛИЕНТОВ
-  // =========================================================
   function readCustomersLS() {
     try {
       const raw = localStorage.getItem('kut_customers');
@@ -690,9 +665,6 @@
     el.debtList.innerHTML = list.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('');
   }
 
-  // =========================================================
-  // QR-ОПЛАТА
-  // =========================================================
   function openQrPaymentModal() {
     if (state.cart.length === 0) {
       closeModal(el.paymentModal);
@@ -738,10 +710,10 @@
     try {
       const profile = window.KUT?.getState?.()?.profile || null;
       const bizId = window.KUT?.getState?.()?.businessId || '';
-      const bizName = profile?.displayName || profile?.email || 'КУТ: БИЗНЕС';
+      const bizName = profile?.displayName || profile?.email || 'NexusBiz';
 
       const payload = JSON.stringify({
-        t: 'kut_pay',
+        t: 'nexus_pay',
         b: bizName,
         bid: bizId,
         a: Number(total) || 0,
@@ -770,9 +742,6 @@
     if (el.qrCodeContainer) el.qrCodeContainer.innerHTML = '';
   }
 
-  // =========================================================
-  // ПОДТВЕРЖДЕНИЕ И ЗАВЕРШЕНИЕ ПРОДАЖИ
-  // =========================================================
   async function confirmPayment() {
     if (state.cart.length === 0) return;
     if (!state.paymentMethod) return;
@@ -906,9 +875,6 @@
     if (el.cart) el.cart.classList.remove('is-open');
   }
 
-  // =========================================================
-  // СОБЫТИЯ
-  // =========================================================
   function bindEvents() {
     if (el.searchInput) {
       el.searchInput.addEventListener('input', (e) => {
@@ -1035,9 +1001,6 @@
     });
   }
 
-  // =========================================================
-  // ГЛОБАЛЬНЫЕ ХУКИ СОХРАНЕНИЯ
-  // =========================================================
   function bindGlobalPersistence() {
     window.addEventListener('pagehide', () => {
       console.log('[cash] 📌 pagehide → сохраняем корзину');
@@ -1071,9 +1034,6 @@
     });
   }
 
-  // =========================================================
-  // 🆕 ИНТЕГРАЦИЯ СО СКАНЕРОМ ШТРИХКОДОВ
-  // =========================================================
   function bindBarcodeListener() {
     window.addEventListener('kut:barcode', async (e) => {
       const code = String(e.detail?.code || '').trim();
@@ -1081,10 +1041,8 @@
 
       console.log('[cash] 📷 Barcode получен:', code);
 
-      // 1. Мгновенный локальный поиск
       let product = state.products.find((p) => String(p.barcode) === code);
 
-      // 2. Firestore lookup (если локально нет)
       if (!product && window.FB?.db) {
         const kst = window.KUT?.getState?.();
         const bizId = kst?.businessId || window.FB?.getBusinessId?.();
@@ -1107,7 +1065,6 @@
         }
       }
 
-      // 3. Не нашли — ошибка
       if (!product) {
         notify(`Товар со штрихкодом ${code} не найден`, true);
         if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
@@ -1115,7 +1072,6 @@
         return;
       }
 
-      // 4. Приоритет — cart-pro (Square-style корзина)
       if (window.KUT_CART && typeof window.KUT_CART.addItem === 'function') {
         window.KUT_CART.addItem({
           id: product.id,
@@ -1130,7 +1086,6 @@
         return;
       }
 
-      // 5. Fallback на старую логику
       addToCart(product.id);
       notify(`+ ${product.name}`);
       if (navigator.vibrate) navigator.vibrate(80);
@@ -1140,26 +1095,20 @@
     console.log('[cash] 📷 Слушатель сканера штрихкодов активирован');
   }
 
-  // =========================================================
-  // ИНИЦИАЛИЗАЦИЯ
-  // =========================================================
   async function init() {
-    console.log('[cash] 🚀 init() · v11.0 SQUARE');
+    console.log('[cash] 🚀 init() · v11.1 SQUARE');
     console.log('[cash] 📦 LS ключи:', CART_LS_KEYS.map((k) => k + '=' + (localStorage.getItem(k)?.length || 0) + 'b').join(', '));
 
-    // 🆕 ШАГ 1: мгновенно восстанавливаем корзину из LS
     restoreCartFromLS();
 
     const st = await waitForReady();
     if (!st) { console.warn('[cash] Не дождались businessId'); return; }
 
-    // 🆕 ШАГ 2: подписка на товары
     state.unsubProducts = window.FB.subscribePage('products', ({ items }) => {
       state.products = items.map(stockToCashProduct);
       renderCategories();
       renderProducts();
 
-      // 🆕 ШАГ 3: как только товары пришли — мерджим корзину
       if (!state.productsLoaded) {
         state.productsLoaded = true;
         mergeCartWithProducts();
@@ -1177,7 +1126,7 @@
     bindGlobalPersistence();
     bindBarcodeListener();
 
-    console.log('[cash] ✓ v11.0 SQUARE запущена · бизнес:', st.businessId);
+    console.log('[cash] ✓ v11.1 SQUARE запущена · бизнес:', st.businessId);
     console.log('[cash] 💡 Отладка: window.__KUT_CART__ покажет текущую корзину');
   }
 
